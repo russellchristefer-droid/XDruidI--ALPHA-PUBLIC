@@ -230,6 +230,17 @@ test("he feeds himself when hungry and you are not steering", () => {
   assert.ok(s.x > x);
 });
 
+test("he strolls the yard on his own", () => {
+  const s = createGame();
+  s.life.pause = 0;
+  s.life.tx = 80;
+  s.life.ty = 140;
+  const x = s.x;
+  step(s, 0.5, { mx: 0, my: 0, run: false, frozen: false });
+  assert.ok(s.x < x);
+  assert.ok(s.speed > 1);
+});
+
 test("animal wander is the same for the same seed", () => {
   const a = createGame();
   const b = createGame();

@@ -1176,6 +1176,7 @@ function tendSelf(s: GameState, dt: number, input: Input) {
           : null;
   if (!spot) {
     life.errand = null;
+    stroll(s, dt);
     return;
   }
   life.errand = spot.kind;
@@ -1209,6 +1210,58 @@ function tendSelf(s: GameState, dt: number, input: Input) {
   s.speed = 36;
   if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
   else s.dir = dy > 0 ? "s" : "n";
+}
+
+function stroll(s: GameState, dt: number) {
+  const life = s.life;
+  if (life.pause > 0) {
+    life.pause -= dt;
+    s.speed = 0;
+    return;
+  }
+  if (!life.tx || !life.ty) pickRoam(s);
+  const dx = life.tx - s.x;
+  const dy = life.ty - s.y;
+  if (Math.hypot(dx, dy) < 8) {
+    life.pause = 1.4 + unitRand(s) * 2.4;
+    life.face = life.mood > 70 ? "happy" : "ok";
+    life.emote = 1.3;
+    pickRoam(s);
+    s.speed = 0;
+    return;
+  }
+  const mag = Math.hypot(dx, dy) || 1;
+  moveAxis(s, (dx / mag) * 30 * dt, (dy / mag) * 30 * dt);
+  s.speed = 30;
+  if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
+  else s.dir = dy > 0 ? "s" : "n";
+}
+
+const ROAM: [number, number][] = [
+  [78, 136],
+  [200, 138],
+  [248, 128],
+  [168, 146],
+  [96, 118],
+  [172, 220],
+  [88, 280],
+  [230, 310],
+  [120, 420],
+  [64, 250],
+];
+
+function pickRoam(s: GameState) {
+  const life = s.life;
+  for (let i = 0; i < 6; i++) {
+    const spot = ROAM[Math.floor(unitRand(s) * ROAM.length)]!;
+    if (!footBlocked(spot[0], spot[1]) && Math.hypot(spot[0] - s.x, spot[1] - s.y) > 20) {
+      life.tx = spot[0];
+      life.ty = spot[1];
+      return;
+    }
+  }
+  life.tx = 168;
+  life.ty = 146;
 }
 
 function faceFor(s: GameState): Life["face"] {

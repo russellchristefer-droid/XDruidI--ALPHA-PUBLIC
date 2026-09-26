@@ -458,10 +458,24 @@ export type Life = {
   face: Face;
   emote: number;
   errand: "eat" | "drink" | "wash" | "rest" | null;
+  tx: number;
+  ty: number;
+  pause: number;
 };
 
 export function freshLife(): Life {
-  return { hunger: 12, thirst: 10, dirt: 8, mood: 80, face: "ok", emote: 0, errand: null };
+  return {
+    hunger: 12,
+    thirst: 10,
+    dirt: 8,
+    mood: 80,
+    face: "ok",
+    emote: 0,
+    errand: null,
+    tx: 78,
+    ty: 136,
+    pause: 1.1,
+  };
 }
 
 export function ensureLife(s: GameState): void {
@@ -474,6 +488,9 @@ export function ensureLife(s: GameState): void {
   if (!life.face) life.face = "ok";
   if (typeof life.emote !== "number") life.emote = 0;
   if (life.errand === undefined) life.errand = null;
+  if (typeof life.tx !== "number") life.tx = 78;
+  if (typeof life.ty !== "number") life.ty = 136;
+  if (typeof life.pause !== "number") life.pause = 0.4;
 }
 
 export type Sky = "clear" | "rain" | "storm";

@@ -124,8 +124,78 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
   blit(ctx, sheet, pose.col * 80, row * 112, 80, 112, s.x, s.y, CHAR, flip, 40, 96);
-  drawHat(ctx, s);
-  drawFace(ctx, sheets, s);
+  drawHat(ctx, s, pose, row, flip);
+  drawFace(ctx, sheets, s, pose, row, flip);
+  ctx.restore();
+}
+
+const HAT_DARK = "#152656";
+const HAT_BLUE = "#2a4cb8";
+const HAT_LITE = "#8eb4f4";
+const HAT_GOLD = "#e6c86a";
+
+type HatPix = [number, number, string];
+
+function hatPixels(kind: "front" | "side" | "back"): HatPix[] {
+  const out: HatPix[] = [];
+  const put = (x: number, y: number, color: string) => out.push([x, y, color]);
+  const band = (y: number, x0: number, x1: number, color: string) => {
+    for (let x = x0; x <= x1; x++) put(x, y, color);
+  };
+  if (kind === "side") {
+    put(-1, -7, HAT_GOLD);
+    band(-6, -2, -1, HAT_BLUE);
+    put(-2, -6, HAT_DARK);
+    put(0, -6, HAT_DARK);
+    band(-5, -2, 0, HAT_BLUE);
+    put(-1, -5, HAT_LITE);
+    band(-4, -2, 1, HAT_BLUE);
+    put(-2, -4, HAT_DARK);
+    put(1, -4, HAT_DARK);
+    band(-3, -1, 2, HAT_BLUE);
+    put(-1, -3, HAT_DARK);
+    put(2, -3, HAT_DARK);
+    band(-1, -2, 4, HAT_BLUE);
+    band(0, -2, 4, HAT_DARK);
+    return out;
+  }
+  const point = kind === "back" ? HAT_BLUE : HAT_GOLD;
+  put(0, -8, point);
+  put(0, -7, HAT_BLUE);
+  band(-6, -1, 1, HAT_BLUE);
+  put(-1, -6, HAT_DARK);
+  put(1, -6, HAT_DARK);
+  if (kind === "front") put(0, -6, HAT_LITE);
+  band(-5, -2, 2, HAT_BLUE);
+  put(-2, -5, HAT_DARK);
+  put(2, -5, HAT_DARK);
+  band(-4, -3, 3, HAT_BLUE);
+  put(-3, -4, HAT_DARK);
+  put(3, -4, HAT_DARK);
+  if (kind === "front") put(0, -4, HAT_LITE);
+  band(-3, -3, 3, HAT_BLUE);
+  band(-1, -5, 5, HAT_BLUE);
+  band(0, -5, 5, HAT_DARK);
+  return out;
+}
+
+function drawHat(
+  ctx: CanvasRenderingContext2D,
+  s: GameState,
+  pose: { sheet: string; col: number },
+  row: number,
+  flip: boolean,
+) {
+  const bob = pose.sheet.endsWith("walk") ? [0, 1, 2, 1, 0, 1, 2, 1][pose.col] ?? 0 : pose.col % 2;
+  const anchor = row === 1 ? { x: 38, y: 25 } : row === 2 ? { x: 36, y: 24 } : { x: 35, y: 24 };
+  const shape = hatPixels(row === 1 ? "side" : row === 2 ? "back" : "front");
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  if (flip) ctx.scale(-1, 1);
+  for (const [dx, dy, color] of shape) {
+    ctx.fillStyle = color;
+    ctx.fillRect((anchor.x + dx - 40) * CHAR, (anchor.y + bob + dy - 96) * CHAR, CHAR, CHAR);
+  }
   ctx.restore();
 }
 
@@ -138,32 +208,25 @@ const FACES = {
   heart: [6, 2],
 } as const;
 
-function drawHat(ctx: CanvasRenderingContext2D, s: GameState) {
-  const hx = Math.round(s.x + (36 - 40) * CHAR);
-  const hy = Math.round(s.y + (24 - 96) * CHAR);
-  const tip = s.downed ? 2 : 0;
-  const px = (x: number, y: number, color: string) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(hx + x + tip, hy + y, 1, 1);
-  };
-  for (let x = -6; x <= 6; x++) px(x, 1, "#1a2a62");
-  for (let x = -5; x <= 5; x++) px(x, 0, "#2a46a4");
-  const cone = [5, 4, 4, 3, 3, 2, 2, 1, 1, 0];
-  cone.forEach((half, i) => {
-    const y = -1 - i;
-    for (let x = -half; x <= half; x++) px(x, y, x === 0 && i < 3 ? "#8eb0ff" : x === -half || x === half ? "#1a2a62" : "#3c64d4");
-  });
-  px(0, -11, "#e2c56a");
-  px(0, -12, "#f2e2a0");
-}
-
-function drawFace(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
+function drawFace(
+  ctx: CanvasRenderingContext2D,
+  sheets: Sheets,
+  s: GameState,
+  pose: { sheet: string; col: number },
+  row: number,
+  flip: boolean,
+) {
   const img = sheets.emoji;
   const life = s.life;
   if (!img || !life) return;
+  const show = life.emote > 0 || life.face === "need" || life.face === "ill" || life.face === "tired" || life.face === "heart";
+  if (!show) return;
   const cell = FACES[life.face] ?? FACES.ok;
-  const bob = Math.sin(s.clock * 3) * 0.6;
-  blit(ctx, img, cell[1] * 16, cell[0] * 16, 16, 16, s.x, s.y - 46 + bob, 0.7, false, 8, 16);
+  const bob = pose.sheet.endsWith("walk") ? [0, 1, 2, 1, 0, 1, 2, 1][pose.col] ?? 0 : pose.col % 2;
+  const anchor = row === 1 ? { x: 38, y: 25 } : row === 2 ? { x: 36, y: 24 } : { x: 35, y: 24 };
+  const hx = s.x + (anchor.x - 40) * CHAR * (flip ? -1 : 1);
+  const tip = s.y + (anchor.y + bob - 10 - 96) * CHAR;
+  blit(ctx, img, cell[1] * 16, cell[0] * 16, 16, 16, hx, tip, 0.34, false, 8, 16);
 }
 
 function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
