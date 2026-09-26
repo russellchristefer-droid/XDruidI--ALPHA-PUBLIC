@@ -143,7 +143,7 @@ function trackMotion(s: GameState) {
   const dist = Math.hypot(dx, dy);
   stepMoving = dist > 0.08;
   if (!stepMoving) return;
-  walkPhase += dist / 2.6;
+  walkPhase += dist / 2.2;
   velX = velX * 0.45 + dx;
   velY = velY * 0.45 + dy;
   if (Math.hypot(velX, velY) < 0.25) return;
@@ -162,7 +162,7 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   let sheet: HTMLImageElement | undefined = sheets.goddess;
   let frameW = 64;
   let frameH = 64;
-  let frames = 8;
+  let frames = 13;
   let scale = 0.58;
   let footX = 32;
   let footY = 63;
@@ -173,7 +173,7 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
     if (sheet && sheet !== sheets.goddess) {
       frameW = 21;
       frameH = 67;
-      frames = 8;
+      frames = 13;
       scale = 0.4;
       footX = 10;
       footY = 67;
@@ -185,7 +185,7 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
     if (sheet && sheet !== sheets.goddess) {
       frameW = 26;
       frameH = 67;
-      frames = 8;
+      frames = 13;
       scale = 0.4;
       footX = 11;
       footY = 67;
@@ -204,7 +204,7 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
 function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
   const life = s.life;
   let key: keyof Sheets | null = null;
-  if (s.downed || life?.face === "ill") key = "fxBlood";
+  if (s.downed || life?.face === "ill") key = "fxDebuff";
   else if (life && life.emote > 0 && life.face === "heart") key = "fxHearts";
   else if (life && life.emote > 0 && life.face === "happy") key = "fxHeartsPink";
   else if (life && life.emote > 0 && life.face === "tired") key = "fxTired";
