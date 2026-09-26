@@ -124,7 +124,7 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   const flip = s.dir === "w";
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  blit(ctx, sheet, col * 64, 0, 64, 64, s.x, s.y, 1, flip, 32, 63);
+  blit(ctx, sheet, col * 64, 0, 64, 64, s.x, s.y, 0.58, flip, 32, 63);
   drawEffect(ctx, sheets, s);
   ctx.restore();
 }
@@ -143,7 +143,7 @@ function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState)
   const img = sheets[key];
   if (!img) return;
   const frame = Math.floor(s.clock * 8) % 5;
-  blit(ctx, img, frame * 80, 0, 80, 64, s.x, s.y - 18, 0.7, false, 40, 40);
+  blit(ctx, img, frame * 80, 0, 80, 64, s.x, s.y - 16, 0.4, false, 40, 40);
 }
 
 const HAT_DARK = "#152a66";
