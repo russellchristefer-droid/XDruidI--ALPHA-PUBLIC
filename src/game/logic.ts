@@ -1157,7 +1157,11 @@ function roam(s: GameState, box: { x: number; y: number; w: number; h: number },
 }
 
 function stepCat(s: GameState, dt: number) {
-  const lane = { x: 214, y: 148, w: 70 };
+  const yards = [
+    { x: 40, y: 104, w: 150, h: 44 },
+    { x: 214, y: 146, w: 62, h: 4 },
+    { x: 48, y: 210, w: 250, h: 200 },
+  ];
   if (!s.cat.mode) s.cat.mode = "sit";
   if (s.cat.tx == null) {
     s.cat.tx = s.cat.x;
@@ -1168,33 +1172,35 @@ function stepCat(s: GameState, dt: number) {
     return;
   }
   if (s.cat.mode === "sit") {
-    if (unitRand(s) < 0.4) {
+    if (unitRand(s) < 0.35) {
       s.cat.face *= -1;
-      s.cat.pause = 0.7 + unitRand(s) * 1.4;
+      s.cat.pause = 0.6 + unitRand(s) * 1.1;
       return;
     }
     s.cat.mode = "stand";
-    s.cat.pause = 0.35;
+    s.cat.pause = 0.25;
     return;
   }
   if (s.cat.mode === "stand") {
-    const dash = unitRand(s) < 0.16;
+    const dash = unitRand(s) < 0.2;
     s.cat.mode = dash ? "run" : "walk";
+    const yard = yards[Math.floor(unitRand(s) * yards.length)]!;
     const near = Math.hypot(s.x - s.cat.x, s.y - s.cat.y);
-    let tx = lane.x + unitRand(s) * lane.w;
-    if (near < 42 && Math.abs(s.y - s.cat.y) < 28) {
-      tx = near < 14 ? s.cat.x + Math.sign(s.cat.x - s.x || 1) * 16 : s.x;
+    let next = roam(s, yard, { x: s.cat.x, y: s.cat.y }, dash ? 18 : 10, dash ? 48 : 28);
+    if (near < 36) {
+      const away = near < 14;
+      const gx = clamp(s.cat.x + Math.sign(s.cat.x - s.x || 1) * (away ? 20 : -14), yard.x, yard.x + yard.w);
+      const gy = clamp(s.cat.y + Math.sign(s.cat.y - s.y || 1) * (away ? 12 : -8), yard.y, yard.y + yard.h);
+      if (!footBlocked(gx, gy)) next = { x: gx, y: gy };
     }
-    tx = clamp(tx, lane.x, lane.x + lane.w);
-    const ty = lane.y;
-    if (footBlocked(tx, ty)) {
+    if (footBlocked(next.x, next.y)) {
       s.cat.mode = "sit";
-      s.cat.pause = 1.2;
+      s.cat.pause = 0.8;
       return;
     }
-    s.cat.tx = tx;
-    s.cat.ty = ty;
-    s.cat.face = tx >= s.cat.x ? 1 : -1;
+    s.cat.tx = next.x;
+    s.cat.ty = next.y;
+    s.cat.face = next.x >= s.cat.x ? -1 : 1;
     return;
   }
   const dx = s.cat.tx - s.cat.x;
@@ -1204,10 +1210,10 @@ function stepCat(s: GameState, dt: number) {
     s.cat.x = s.cat.tx;
     s.cat.y = s.cat.ty;
     s.cat.mode = "sit";
-    s.cat.pause = 1.8 + unitRand(s) * 3.2;
+    s.cat.pause = 1.1 + unitRand(s) * 2.2;
     return;
   }
-  const sp = s.cat.mode === "run" ? 36 : 14;
+  const sp = s.cat.mode === "run" ? 40 : 16;
   const ox = s.cat.x;
   const oy = s.cat.y;
   s.cat.x += (dx / dist) * sp * dt;
@@ -1216,10 +1222,10 @@ function stepCat(s: GameState, dt: number) {
     s.cat.x = ox;
     s.cat.y = oy;
     s.cat.mode = "sit";
-    s.cat.pause = 0.9;
+    s.cat.pause = 0.6;
     return;
   }
-  if (Math.abs(dx) > 0.15) s.cat.face = dx > 0 ? 1 : -1;
+  if (Math.abs(dx) > 0.15) s.cat.face = dx > 0 ? -1 : 1;
 }
 
 function stepCritters(s: GameState, dt: number) {
