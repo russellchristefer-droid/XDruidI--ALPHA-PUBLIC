@@ -1,4 +1,4 @@
-import { MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import type { Sheets } from "./assets.ts";
 
 const CHAR = 0.42;
@@ -390,6 +390,18 @@ export function drawWorld(
     const y = 81 + ((i * 3) % 10);
     ctx.fillStyle = i % 2 === 0 ? "rgba(233, 251, 255, 0.55)" : "rgba(90, 180, 196, 0.45)";
     ctx.fillRect(Math.floor(x), y, 3, 1);
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(FISH_WATER.x, FISH_WATER.y, FISH_WATER.w, FISH_WATER.h);
+  ctx.clip();
+  for (let i = 0; i < 7; i++) {
+    const x = FISH_WATER.x + ((s.clock * 10 + i * 11) % (FISH_WATER.w - 4));
+    const y = FISH_WATER.y + 4 + ((i * 7) % (FISH_WATER.h - 8));
+    ctx.fillStyle = i % 2 === 0 ? "rgba(210, 244, 248, 0.45)" : "rgba(70, 150, 168, 0.35)";
+    ctx.fillRect(Math.floor(x), y, 4, 1);
   }
   ctx.restore();
 

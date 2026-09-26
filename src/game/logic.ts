@@ -8,6 +8,7 @@ import {
   defaultFlowers,
   defOf,
   ensureLife,
+  ensureFishing,
   ensureWeather,
   footBlocked,
   isNight,
@@ -80,6 +81,7 @@ export function contactFail(s: GameState): string | null {
     if (tool.floor <= 0) return "The tool is spent. The swing stops.";
     if (need && defOf(tool).tool !== need) return `Requires ${need}. The swing stops.`;
   }
+  if (act.kind === "fish" && !hasRod(s)) return "The rod left your hand.";
   return null;
 }
 
@@ -99,6 +101,7 @@ export function watcherLine(s: GameState): string {
       repair: "Repairing",
       feed: "Feeding",
       collect: "Collecting",
+      fish: "Fishing",
     };
     const name = verb[s.action.kind] ?? "Working";
     return s.action.hit ? `${name}. Contact landed.` : `${name}. Waiting on the swing.`;
@@ -464,6 +467,7 @@ function verb(s: GameState, t: Target): string {
   }
   if (t.kind === "well") return toolKind(s) === "water" ? "Draw well" : "Wash at well";
   if (t.kind === "pond") return "Draw pond";
+  if (t.kind === "fish") return hasRod(s) ? "Cast the line" : "Fishing dock";
   if (t.kind === "tub") {
     if (s.downed) return "Climb into the tub";
     return isNight(s.time) ? "Sleep until dawn" : "Wash in the tub";
@@ -569,6 +573,7 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (t.kind === "plot") return usePlot(s, t.id);
   if (t.kind === "well") return useWell(s);
   if (t.kind === "pond") return usePond(s);
+  if (t.kind === "fish") return useFish(s);
   if (t.kind === "tub") return useTub(s);
   if (t.kind === "fire") return useFire(s);
   if (t.kind === "hearth") {
@@ -640,6 +645,18 @@ function usePond(s: GameState): InteractResult {
   if (!it || defOf(it).tool !== "water") return { msg: "Requires the watering can." };
   if ((it.water ?? 0) >= (defOf(it).waterMax ?? 0)) return { msg: "The can is already full." };
   return startAct(s, "fill", "pond");
+}
+
+function hasRod(s: GameState): boolean {
+  const hand = s.body.hands;
+  if (hand && defOf(hand).tool === "rod") return true;
+  const it = active(s);
+  return !!it && defOf(it).tool === "rod";
+}
+
+function useFish(s: GameState): InteractResult {
+  if (!hasRod(s)) return { msg: "Equip the fishing rod." };
+  return startAct(s, "fish", "fishdock", 1.5);
 }
 
 function useTub(s: GameState): InteractResult {
@@ -779,6 +796,16 @@ export function resolveAction(s: GameState): string {
     can.water = defOf(can).waterMax ?? 8;
     cost(3, 0.15);
     return act.target === "pond" ? "Filled the can at the pond." : "Filled the can at the well.";
+  }
+  if (act.kind === "fish") {
+    if (!hasRod(s)) return "Requires the fishing rod.";
+    const fish = makeItem(s, "fish");
+    if (!hasRoom(s, fish)) return "Pack is full.";
+    giveItem(s, fish);
+    ensureFishing(s);
+    s.fishing += 1;
+    cost(6, 0.2);
+    return `Caught a pond fish. Fishing ${s.fishing}.`;
   }
   if (act.kind === "harvest") {
     const p = s.plots.find((pl) => pl.id === act.target);
@@ -960,6 +987,11 @@ export function onQ(s: GameState): string {
 function eat(s: GameState, it: Item): string {
   const d = defOf(it);
   s.stamina = Math.min(100, s.stamina + (d.stamina ?? 0));
+  if (it.defId === "fish") {
+    ensureLife(s);
+    s.life.hunger = Math.max(0, s.life.hunger - 24);
+    s.stamina = Math.max(0, s.stamina - 4);
+  }
   if (d.stack && it.qty > 1) it.qty -= 1;
   else removeItem(s, it.id);
   return `Ate ${d.name}. Stamina ${Math.round(s.stamina)}.`;
@@ -1205,6 +1237,7 @@ export function step(s: GameState, dt: number, input: Input) {
 
 function tendSelf(s: GameState, dt: number, input: Input) {
   ensureLife(s);
+  ensureFishing(s);
   const life = s.life;
   life.hunger = Math.min(100, life.hunger + dt * 0.7);
   life.thirst = Math.min(100, life.thirst + dt * 0.85);

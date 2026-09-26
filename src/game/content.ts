@@ -16,7 +16,7 @@ export const SAVE_KEY = "assay-homestead-v2";
 
 export type Dir = "s" | "n" | "e" | "w";
 export type CropId = "tomato" | "cabbage" | "greens";
-export type ToolId = "water" | "shovel" | "scythe" | "axe" | "hammer";
+export type ToolId = "water" | "shovel" | "scythe" | "axe" | "hammer" | "rod";
 
 export type IconRef = { sheet: string; x: number; y: number; w: number; h: number };
 
@@ -118,6 +118,18 @@ export const DEFS: Record<string, Def> = {
     tool: "hammer",
     icon: T(0, 0),
     blurb: "Drives a repair kit into the gate, the shed, or the bench.",
+  },
+  rod: {
+    id: "rod",
+    name: "Fishing rod",
+    kind: "tool",
+    weight: 1.2,
+    floor: 16,
+    quality: 46,
+    stack: false,
+    tool: "rod",
+    icon: T(64, 32),
+    blurb: "Cast from the fishing dock. The line needs open water.",
   },
   loaf: {
     id: "loaf",
@@ -605,6 +617,8 @@ export type GameState = {
   bolts: number;
   life: Life;
   auto: boolean;
+  /** Successful casts from the meadow dock. */
+  fishing: number;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
 };
 
@@ -633,6 +647,9 @@ export const SOLIDS: Rect[] = [
 export const SPOTS: { id: string; name: string; kind: string; x: number; y: number; w: number; h: number }[] = [
   { id: "well", name: "Well", kind: "well", x: 158, y: 58, w: 42, h: 50 },
   { id: "pond", name: "Pond", kind: "pond", x: 110, y: 68, w: 50, h: 34 },
+  { id: "fishdock", name: "Fishing dock", kind: "fish", x: 42, y: 238, w: 32, h: 44 },
+  { id: "fishnorth", name: "North bank", kind: "fish", x: 88, y: 218, w: 36, h: 14 },
+  { id: "fishsouth", name: "South bank", kind: "fish", x: 96, y: 284, w: 36, h: 14 },
   { id: "tub", name: "Bathtub", kind: "tub", x: 92, y: 32, w: 52, h: 26 },
   { id: "fire", name: "Campfire", kind: "fire", x: 38, y: 64, w: 30, h: 26 },
   { id: "shed", name: "Shed chest", kind: "shed", x: 236, y: 134, w: 48, h: 24 },
@@ -699,8 +716,8 @@ export function itemMass(it: Item): number {
 
 export function placeHerd(s: GameState): void {
   const home = {
-    cow: { x: 72, y: 280 },
-    rooster: { x: 128, y: 260 },
+    cow: { x: 36, y: 340 },
+    rooster: { x: 108, y: 330 },
     goat: { x: 268, y: 340 },
   } as const;
   for (const a of s.animals) {
@@ -713,6 +730,9 @@ export function placeHerd(s: GameState): void {
     a.pause = a.kind === "cow" ? 1.4 : 0.5;
   }
 }
+
+/** Meadow fishing water. The dock on the west edge stays walkable. */
+export const FISH_WATER: Rect = { x: 74, y: 236, w: 72, h: 46 };
 
 export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Rocks in the meadow, south of the farm fence. The dirt path stays open. */
@@ -759,7 +779,12 @@ export function footBlocked(x: number, y: number): boolean {
     const h = 8 * r.s;
     if (overlap(box, { x: r.x - w / 2, y: r.y - h, w, h })) return true;
   }
+  if (overlap(box, FISH_WATER)) return true;
   return false;
+}
+
+export function ensureFishing(s: GameState): void {
+  if (typeof s.fishing !== "number") s.fishing = 0;
 }
 
 export function ensureAuto(s: GameState): void {
@@ -830,6 +855,7 @@ export function createGame(): GameState {
   const scythe = make(next, "scythe");
   const axe = make(next, "axe");
   const hammer = make(next, "hammer");
+  const rod = make(next, "rod");
   const loaf = make(next, "loaf");
   const packbag = make(next, "backpack");
   const coins = make(next, "coin", 2);
@@ -846,6 +872,7 @@ export function createGame(): GameState {
   pack[2] = scythe;
   pack[3] = axe;
   pack[4] = hammer;
+  pack[5] = rod;
   pack[6] = loaf;
   pack[8] = packbag;
   pack[9] = coins;
@@ -869,7 +896,7 @@ export function createGame(): GameState {
     season: "Spring",
     clock: 0,
     pack,
-    hotbar: [can.id, shovel.id, scythe.id, axe.id, hammer.id, null, loaf.id, null],
+    hotbar: [can.id, shovel.id, scythe.id, axe.id, hammer.id, rod.id, loaf.id, null],
     selected: 0,
     activeId: can.id,
     body: emptyBody(),
@@ -878,8 +905,8 @@ export function createGame(): GameState {
     plots: freshPlots(),
     flowers: defaultFlowers(),
     animals: [
-      { id: "cow", kind: "cow", name: "Cow", x: 72, y: 280, dir: "s", fed: false, ready: false, tx: 72, ty: 280, pause: 1.4 },
-      { id: "rooster", kind: "rooster", name: "Rooster", x: 128, y: 260, dir: "e", fed: false, ready: false, tx: 128, ty: 260, pause: 0.4 },
+      { id: "cow", kind: "cow", name: "Cow", x: 36, y: 340, dir: "s", fed: false, ready: false, tx: 36, ty: 340, pause: 1.4 },
+      { id: "rooster", kind: "rooster", name: "Rooster", x: 108, y: 330, dir: "e", fed: false, ready: false, tx: 108, ty: 330, pause: 0.4 },
       { id: "goat", kind: "goat", name: "Goat", x: 268, y: 340, dir: "w", fed: false, ready: false, tx: 268, ty: 340, pause: 0.6 },
     ],
     branches: [],
@@ -904,5 +931,6 @@ export function createGame(): GameState {
     bolts: 0,
     life: freshLife(),
     auto: true,
+    fishing: 0,
   };
 }

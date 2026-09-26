@@ -334,3 +334,28 @@ test("starting pack ids resolve, and the watcher names a dry bed", () => {
   s.stamina = 10;
   assert.match(watcherLine(s), /tired/);
 });
+
+test("the dock is walkable, the pond is not, and a rod catches a fish", () => {
+  const s = createGame();
+  assert.equal(footBlocked(56, 256), false);
+  assert.equal(footBlocked(100, 256), true);
+  s.x = 56;
+  s.y = 256;
+  const bare = interact(s, 58, 256);
+  assert.match(bare.msg ?? "", /rod/);
+  const rod = s.pack.find((p) => p?.defId === "rod")!;
+  s.activeId = rod.id;
+  s.selected = 5;
+  const cast = interact(s, 58, 256);
+  assert.equal(cast.msg, "Working…");
+  const idle = { mx: 0, my: 0, run: false, frozen: false };
+  for (let i = 0; i < 40; i++) step(s, 0.05, idle);
+  assert.equal(s.fishing, 1);
+  assert.ok(s.pack.some((p) => p?.defId === "fish"));
+  const fish = s.pack.find((p) => p?.defId === "fish")!;
+  s.life.hunger = 40;
+  s.hotbar[7] = fish.id;
+  s.selected = 7;
+  onQ(s);
+  assert.ok(s.life.hunger < 40);
+});
