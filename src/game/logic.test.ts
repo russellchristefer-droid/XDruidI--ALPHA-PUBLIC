@@ -215,6 +215,21 @@ test("rain waters the beds and the grove", () => {
   assert.equal(s.plots[2]!.watered, true);
 });
 
+test("he feeds himself when hungry and you are not steering", () => {
+  const s = createGame();
+  s.life.hunger = 80;
+  const loaf = s.pack.find((p) => p?.defId === "loaf")!;
+  step(s, 0.2, { mx: 0, my: 0, run: false, frozen: false });
+  assert.ok(s.life.hunger < 80);
+  assert.equal(s.pack.some((p) => p?.id === loaf.id), false);
+  assert.equal(s.life.face, "heart");
+  s.life.hunger = 90;
+  s.x = 40;
+  const x = s.x;
+  step(s, 0.2, { mx: 1, my: 0, run: false, frozen: false });
+  assert.ok(s.x > x);
+});
+
 test("animal wander is the same for the same seed", () => {
   const a = createGame();
   const b = createGame();

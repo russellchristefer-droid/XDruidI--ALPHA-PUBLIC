@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260926t";
+export const ART = "20260926u";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -48,6 +48,7 @@ const URLS: Record<string, string> = {
   occlude: art("/game/covers/occlude.png"),
   path: art("/game/covers/path.png"),
   rocks: art("/game/props/seam-rocks.png"),
+  emoji: art("/game/ui/emoji.png"),
   landGrass: art("/game/land/grass.png"),
   landSoil: art("/game/land/soil.png"),
   landTilled: art("/game/land/tilled.png"),

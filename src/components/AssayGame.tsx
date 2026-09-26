@@ -11,6 +11,7 @@ import {
   createGame,
   defOf,
   isNight,
+  lifeLabel,
   skyLabel,
 } from "@/game/content";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
@@ -758,7 +759,7 @@ export function AssayGame() {
               <div>
                 {clockLabel(s.time)} · Day {s.day} · {skyLabel(s)}
               </div>
-              <div>{s.season}</div>
+              <div style={{ color: "#c4a574" }}>{s.life ? lifeLabel(s.life) : ""}</div>
               <div style={{ color: "#c4a574", maxWidth: 220 }}>{watcherLine(s)}</div>
             </div>
             <div className="panel" style={{ padding: "6px 8px", fontSize: 13, textAlign: "right" }}>

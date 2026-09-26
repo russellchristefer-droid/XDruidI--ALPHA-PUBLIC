@@ -124,7 +124,46 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
   blit(ctx, sheet, pose.col * 80, row * 112, 80, 112, s.x, s.y, CHAR, flip, 40, 96);
+  drawHat(ctx, s);
+  drawFace(ctx, sheets, s);
   ctx.restore();
+}
+
+const FACES = {
+  ok: [2, 2],
+  happy: [4, 2],
+  tired: [7, 2],
+  ill: [8, 2],
+  need: [9, 2],
+  heart: [6, 2],
+} as const;
+
+function drawHat(ctx: CanvasRenderingContext2D, s: GameState) {
+  const hx = Math.round(s.x + (36 - 40) * CHAR);
+  const hy = Math.round(s.y + (24 - 96) * CHAR);
+  const tip = s.downed ? 2 : 0;
+  const px = (x: number, y: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(hx + x + tip, hy + y, 1, 1);
+  };
+  for (let x = -6; x <= 6; x++) px(x, 1, "#1a2a62");
+  for (let x = -5; x <= 5; x++) px(x, 0, "#2a46a4");
+  const cone = [5, 4, 4, 3, 3, 2, 2, 1, 1, 0];
+  cone.forEach((half, i) => {
+    const y = -1 - i;
+    for (let x = -half; x <= half; x++) px(x, y, x === 0 && i < 3 ? "#8eb0ff" : x === -half || x === half ? "#1a2a62" : "#3c64d4");
+  });
+  px(0, -11, "#e2c56a");
+  px(0, -12, "#f2e2a0");
+}
+
+function drawFace(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
+  const img = sheets.emoji;
+  const life = s.life;
+  if (!img || !life) return;
+  const cell = FACES[life.face] ?? FACES.ok;
+  const bob = Math.sin(s.clock * 3) * 0.6;
+  blit(ctx, img, cell[1] * 16, cell[0] * 16, 16, 16, s.x, s.y - 46 + bob, 0.7, false, 8, 16);
 }
 
 function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {

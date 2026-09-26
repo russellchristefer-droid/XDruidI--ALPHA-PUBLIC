@@ -448,6 +448,34 @@ export type Branch = { id: string; x: number; y: number; left: boolean };
 
 export type Structure = { id: string; name: string; quality: number; floor: number; floorMax: number };
 
+export type Face = "ok" | "happy" | "tired" | "ill" | "need" | "heart";
+
+export type Life = {
+  hunger: number;
+  thirst: number;
+  dirt: number;
+  mood: number;
+  face: Face;
+  emote: number;
+  errand: "eat" | "drink" | "wash" | "rest" | null;
+};
+
+export function freshLife(): Life {
+  return { hunger: 12, thirst: 10, dirt: 8, mood: 80, face: "ok", emote: 0, errand: null };
+}
+
+export function ensureLife(s: GameState): void {
+  if (!s.life) s.life = freshLife();
+  const life = s.life;
+  if (typeof life.hunger !== "number") life.hunger = 12;
+  if (typeof life.thirst !== "number") life.thirst = 10;
+  if (typeof life.dirt !== "number") life.dirt = 8;
+  if (typeof life.mood !== "number") life.mood = 80;
+  if (!life.face) life.face = "ok";
+  if (typeof life.emote !== "number") life.emote = 0;
+  if (life.errand === undefined) life.errand = null;
+}
+
 export type Sky = "clear" | "rain" | "storm";
 
 export type GameState = {
@@ -495,6 +523,7 @@ export type GameState = {
   wet: number;
   flash: number;
   bolts: number;
+  life: Life;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
 };
 
@@ -652,6 +681,15 @@ export function footBlocked(x: number, y: number): boolean {
   return false;
 }
 
+export function lifeLabel(life: Life): string {
+  const mood = Math.round(life.mood);
+  if (life.hunger > 60) return `Mood ${mood} · Hungry`;
+  if (life.thirst > 60) return `Mood ${mood} · Thirsty`;
+  if (life.dirt > 60) return `Mood ${mood} · Grimy`;
+  if (life.mood < 40) return `Mood ${mood} · Low`;
+  return `Mood ${mood}`;
+}
+
 export function skyLabel(s: { weather?: Sky; wet?: number }): string {
   if (s.weather === "storm") return "Thunderstorm";
   if (s.weather === "rain") return "Rain";
@@ -771,5 +809,6 @@ export function createGame(): GameState {
     wet: 0.15,
     flash: 0,
     bolts: 0,
+    life: freshLife(),
   };
 }

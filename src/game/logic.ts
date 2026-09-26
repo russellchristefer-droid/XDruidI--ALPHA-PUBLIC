@@ -7,6 +7,7 @@ import {
   createGame,
   defaultFlowers,
   defOf,
+  ensureLife,
   ensureWeather,
   footBlocked,
   isNight,
@@ -15,6 +16,7 @@ import {
   type CropId,
   type GameState,
   type Item,
+  type Life,
   type PanelId,
   type Plot,
 } from "./content.ts";
@@ -1127,7 +1129,95 @@ export function step(s: GameState, dt: number, input: Input) {
   }
   s.time = Math.min(0.999, s.time + stepDt / 90);
   stepWeather(s, stepDt);
+  tendSelf(s, stepDt, input);
   stepCritters(s, stepDt);
+}
+
+function tendSelf(s: GameState, dt: number, input: Input) {
+  ensureLife(s);
+  const life = s.life;
+  life.hunger = Math.min(100, life.hunger + dt * 0.7);
+  life.thirst = Math.min(100, life.thirst + dt * 0.85);
+  life.dirt = Math.min(100, life.dirt + dt * 0.28);
+  if (s.weather !== "clear") life.dirt = Math.max(0, life.dirt - dt * 0.35);
+  life.mood = Math.max(
+    0,
+    Math.min(100, 100 - life.hunger * 0.35 - life.thirst * 0.35 - life.dirt * 0.2 - Math.max(0, 40 - s.stamina) * 0.45),
+  );
+  if (life.emote > 0) life.emote = Math.max(0, life.emote - dt);
+  else life.face = faceFor(s);
+
+  const steered = Math.hypot(input.mx, input.my) > 0.2;
+  if (steered) life.errand = null;
+  if (steered || s.action || input.frozen || s.downed) return;
+
+  if (life.hunger > 58) {
+    const food = s.pack.find((p) => p && (defOf(p).kind === "food" || defOf(p).kind === "product") && (defOf(p).stamina ?? 0) > 0);
+    if (food) {
+      eat(s, food);
+      life.hunger = Math.max(0, life.hunger - 46);
+      life.face = "heart";
+      life.emote = 2.4;
+      life.errand = null;
+      s.message = "He feeds himself.";
+      return;
+    }
+    life.face = "need";
+  }
+
+  const night = isNight(s.time);
+  const spot =
+    life.thirst > 62
+      ? { kind: "drink" as const, x: 150, y: 120 }
+      : life.dirt > 68
+        ? { kind: "wash" as const, x: 118, y: 78 }
+        : s.stamina < 28 || (night && s.stamina < 42)
+          ? { kind: "rest" as const, x: night ? 118 : 64, y: night ? 78 : 98 }
+          : null;
+  if (!spot) {
+    life.errand = null;
+    return;
+  }
+  life.errand = spot.kind;
+  if (life.emote <= 0) life.face = spot.kind === "rest" ? "tired" : "need";
+  const dx = spot.x - s.x;
+  const dy = spot.y - s.y;
+  if (Math.hypot(dx, dy) < 12) {
+    if (spot.kind === "drink") {
+      life.thirst = Math.max(0, life.thirst - 50);
+      s.stamina = Math.min(100, s.stamina + 6);
+      s.message = "He drinks at the well.";
+    } else if (spot.kind === "wash") {
+      life.dirt = Math.max(0, life.dirt - 55);
+      s.stamina = Math.min(100, s.stamina + 8);
+      s.message = "He washes in the tub.";
+    } else if (night) {
+      s.message = sleepNow(s).msg ?? s.message;
+    } else {
+      s.stamina = Math.min(100, s.stamina + dt * 22);
+      s.message = "He rests by the fire.";
+      life.face = "tired";
+      return;
+    }
+    life.face = "heart";
+    life.emote = 2.2;
+    life.errand = null;
+    return;
+  }
+  const mag = Math.hypot(dx, dy) || 1;
+  moveAxis(s, (dx / mag) * 36 * dt, (dy / mag) * 36 * dt);
+  s.speed = 36;
+  if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
+  else s.dir = dy > 0 ? "s" : "n";
+}
+
+function faceFor(s: GameState): Life["face"] {
+  const life = s.life;
+  if (s.downed || life.hunger > 82 || life.thirst > 82) return "ill";
+  if (life.hunger > 55 || life.thirst > 55 || life.dirt > 70) return "need";
+  if (s.stamina < 32) return "tired";
+  if (life.mood > 72) return "happy";
+  return "ok";
 }
 
 function stepWeather(s: GameState, dt: number) {
