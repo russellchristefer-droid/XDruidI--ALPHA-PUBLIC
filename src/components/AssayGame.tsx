@@ -321,14 +321,16 @@ export function AssayGame() {
 
   useEffect(() => {
     let dead = false;
-    loadSheets()
-      .then((sheets) => {
-        if (dead) return;
-        sheetsRef.current = sheets;
-        loadTileLayer();
-        if (!stateRef.current) stateRef.current = readSave() ?? createGame();
-        return loadGroveWalkerSheet();
-      })
+    const yard = loadSheets().then((sheets) => {
+      if (dead) return;
+      sheetsRef.current = sheets;
+      loadTileLayer();
+      if (!stateRef.current) stateRef.current = readSave() ?? createGame();
+    });
+    const walker = loadGroveWalkerSheet().catch(() => null);
+    const opened = Promise.all([yard, walker]);
+    const giveUp = new Promise((resolve) => window.setTimeout(resolve, 8000));
+    Promise.race([opened, giveUp])
       .then(() => {
         if (dead) return;
         setReady(true);

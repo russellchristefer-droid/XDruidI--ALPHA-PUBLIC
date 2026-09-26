@@ -1,6 +1,6 @@
 import { MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import type { Sheets } from "./assets.ts";
-import { GROVE_WALKER, drawGroveWalker, groveWalkerFrameIndex } from "../groveCrownWalker13.js";
+import { GROVE_WALKER, drawGroveWalker, groveWalkerFrameIndex, groveWalkerReady } from "../groveCrownWalker13.js";
 
 const CHAR = 0.42;
 
@@ -204,19 +204,58 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   const facing = walkerFacing(head);
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  if (facing) {
+  if (facing && groveWalkerReady()) {
     paintWalker(ctx, s, facing);
     drawEffect(ctx, sheets, s);
     ctx.restore();
     return;
   }
-  const sheet = sheets.goddess;
+  let sheet: HTMLImageElement | undefined = sheets.goddess;
+  let frameW = 64;
+  let frameH = 64;
+  let frames = 13;
+  let scale = 0.58;
+  let footX = 32;
+  let footY = 63;
+  let flip = head === "e";
+  if (!facing && sheet) {
+    const col = stepMoving ? Math.floor(walkPhase) % frames : 0;
+    blit(ctx, sheet, col * frameW, 0, frameW, frameH, s.x, s.y, scale, flip, footX, footY);
+    drawEffect(ctx, sheets, s);
+    ctx.restore();
+    return;
+  }
+  if (head === "s" || head === "se" || head === "sw") {
+    const turned = head !== "s";
+    sheet = (turned ? sheets.goddessFront3 : sheets.goddessFront) ?? sheets.goddessFront ?? sheets.goddess;
+    if (sheet && sheet !== sheets.goddess) {
+      frameW = 33;
+      frameH = 67;
+      frames = 13;
+      scale = 0.4;
+      footX = 16;
+      footY = 67;
+      flip = head === "sw";
+    }
+  } else if (head === "n" || head === "ne" || head === "nw") {
+    const turned = head !== "n";
+    sheet = (turned ? sheets.goddessBack3 : sheets.goddessBack) ?? sheets.goddessBack ?? sheets.goddess;
+    if (sheet && sheet !== sheets.goddess) {
+      frameW = 38;
+      frameH = 67;
+      frames = 13;
+      scale = 0.4;
+      footX = 17;
+      footY = 67;
+      flip = head === "nw";
+    }
+  }
   if (!sheet) {
     ctx.restore();
     return;
   }
-  const col = stepMoving ? Math.floor(walkPhase) % 13 : 0;
-  blit(ctx, sheet, col * 64, 0, 64, 64, s.x, s.y, 0.58, head === "e", 32, 63);
+  const col = stepMoving ? Math.floor(walkPhase) % frames : 0;
+  blit(ctx, sheet, col * frameW, 0, frameW, frameH, s.x, s.y, scale, flip, footX, footY);
   drawEffect(ctx, sheets, s);
   ctx.restore();
 }
