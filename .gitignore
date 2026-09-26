@@ -4,6 +4,9 @@ node_modules/
 .env
 .env.*
 .vercel/
+artifacts/
+attachments/
+screenshots/
 
 # GitHub rejects any file over 100 MB. These stay on disk, not in the repo.
 artifacts/Bare Knuckle \[Build\] v5.zip
