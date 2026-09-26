@@ -182,19 +182,18 @@ function hatPixels(kind: "front" | "side" | "back"): HatPix[] {
 function drawHat(
   ctx: CanvasRenderingContext2D,
   s: GameState,
-  pose: { sheet: string; col: number },
+  _pose: { sheet: string; col: number },
   row: number,
   flip: boolean,
 ) {
-  const bob = pose.sheet.endsWith("walk") ? [0, 1, 2, 1, 0, 1, 2, 1][pose.col] ?? 0 : pose.col % 2;
-  const anchor = row === 1 ? { x: 38, y: 25 } : row === 2 ? { x: 36, y: 24 } : { x: 35, y: 24 };
+  const anchor = row === 1 ? { x: 38, y: 26 } : row === 2 ? { x: 36, y: 25 } : { x: 35, y: 25 };
   const shape = hatPixels(row === 1 ? "side" : row === 2 ? "back" : "front");
   ctx.save();
   ctx.translate(s.x, s.y);
   if (flip) ctx.scale(-1, 1);
   for (const [dx, dy, color] of shape) {
     ctx.fillStyle = color;
-    ctx.fillRect((anchor.x + dx - 40) * CHAR, (anchor.y + bob + dy - 96) * CHAR, CHAR, CHAR);
+    ctx.fillRect((anchor.x + dx - 40) * CHAR, (anchor.y + dy - 96) * CHAR, CHAR, CHAR);
   }
   ctx.restore();
 }
@@ -212,21 +211,20 @@ function drawFace(
   ctx: CanvasRenderingContext2D,
   sheets: Sheets,
   s: GameState,
-  pose: { sheet: string; col: number },
+  _pose: { sheet: string; col: number },
   row: number,
   flip: boolean,
 ) {
   const img = sheets.emoji;
   const life = s.life;
   if (!img || !life) return;
-  const show = life.emote > 0 || life.face === "need" || life.face === "ill" || life.face === "tired" || life.face === "heart";
+  const show = life.emote > 0 || life.face === "need" || life.face === "ill" || life.face === "tired" || life.face === "heart" || life.face === "happy";
   if (!show) return;
   const cell = FACES[life.face] ?? FACES.ok;
-  const bob = pose.sheet.endsWith("walk") ? [0, 1, 2, 1, 0, 1, 2, 1][pose.col] ?? 0 : pose.col % 2;
-  const anchor = row === 1 ? { x: 38, y: 25 } : row === 2 ? { x: 36, y: 24 } : { x: 35, y: 24 };
+  const anchor = row === 1 ? { x: 38, y: 26 } : row === 2 ? { x: 36, y: 25 } : { x: 35, y: 25 };
   const hx = s.x + (anchor.x - 40) * CHAR * (flip ? -1 : 1);
-  const tip = s.y + (anchor.y + bob - 10 - 96) * CHAR;
-  blit(ctx, img, cell[1] * 16, cell[0] * 16, 16, 16, hx, tip, 0.34, false, 8, 16);
+  const tip = s.y + (anchor.y - 9 - 96) * CHAR - 1;
+  blit(ctx, img, cell[1] * 16 + 1, cell[0] * 16 + 7, 14, 8, hx, tip, 1, false, 7, 8);
 }
 
 function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
