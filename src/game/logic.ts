@@ -1145,7 +1145,11 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     Math.min(100, 100 - life.hunger * 0.35 - life.thirst * 0.35 - life.dirt * 0.2 - Math.max(0, 40 - s.stamina) * 0.45),
   );
   if (life.emote > 0) life.emote = Math.max(0, life.emote - dt);
-  else life.face = faceFor(s);
+  else {
+    const next = faceFor(s);
+    if (next !== "ok" && next !== life.face) life.emote = 1.8;
+    life.face = next;
+  }
 
   const steered = Math.hypot(input.mx, input.my) > 0.2;
   if (steered) {
@@ -1233,8 +1237,10 @@ function stroll(s: GameState, dt: number) {
   const step = followGoal(s, dt, life.tx, life.ty, 30);
   if (step === "arrive") {
     life.pause = 1.4 + unitRand(s) * 2.4;
-    life.face = life.mood > 70 ? "happy" : "ok";
-    life.emote = 1.3;
+    if (life.mood > 70) {
+      life.face = "happy";
+      life.emote = 1.6;
+    }
     life.route = [];
     pickRoam(s);
     s.speed = 0;

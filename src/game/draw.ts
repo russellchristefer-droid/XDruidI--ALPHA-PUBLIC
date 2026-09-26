@@ -242,22 +242,39 @@ function vividFace(sheet: CanvasImageSource, col: number, row: number): HTMLCanv
   if (cached) return cached;
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
-  canvas.width = 16;
-  canvas.height = 10;
+  canvas.width = 18;
+  canvas.height = 12;
   const g = canvas.getContext("2d");
   if (!g) return null;
   g.imageSmoothingEnabled = false;
-  g.drawImage(sheet, col * 16, row * 16 + 6, 16, 10, 0, 0, 16, 10);
-  const img = g.getImageData(0, 0, 16, 10);
-  for (let i = 0; i < img.data.length; i += 4) {
-    if (img.data[i + 3]! < 20) continue;
-    const r = img.data[i]!;
-    const gr = img.data[i + 1]!;
-    const b = img.data[i + 2]!;
-    if (r + gr + b < 140) continue;
-    img.data[i] = Math.min(255, Math.round(r * 1.35 + 28));
-    img.data[i + 1] = Math.min(255, Math.round(gr * 1.28 + 18));
-    img.data[i + 2] = Math.min(255, Math.round(b * 1.12 + 8));
+  g.drawImage(sheet, col * 16, row * 16 + 6, 16, 10, 1, 1, 16, 10);
+  const img = g.getImageData(0, 0, 18, 12);
+  const src = new Uint8ClampedArray(img.data);
+  const opaque = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= 18 || y >= 12) return false;
+    return src[(y * 18 + x) * 4 + 3]! > 20;
+  };
+  for (let y = 0; y < 12; y++) {
+    for (let x = 0; x < 18; x++) {
+      const i = (y * 18 + x) * 4;
+      if (src[i + 3]! > 20) {
+        const r = src[i]!;
+        const gr = src[i + 1]!;
+        const b = src[i + 2]!;
+        if (r + gr + b >= 140) {
+          img.data[i] = Math.min(255, Math.round(r * 1.4 + 36));
+          img.data[i + 1] = Math.min(255, Math.round(gr * 1.32 + 24));
+          img.data[i + 2] = Math.min(255, Math.round(b * 1.15 + 10));
+        }
+        continue;
+      }
+      if (opaque(x - 1, y) || opaque(x + 1, y) || opaque(x, y - 1) || opaque(x, y + 1)) {
+        img.data[i] = 0;
+        img.data[i + 1] = 0;
+        img.data[i + 2] = 0;
+        img.data[i + 3] = 255;
+      }
+    }
   }
   g.putImageData(img, 0, 0);
   vividFaces.set(key, canvas);
@@ -274,16 +291,14 @@ function drawFace(
 ) {
   const img = sheets.emoji;
   const life = s.life;
-  if (!img || !life) return;
-  const show = life.emote > 0 || life.face === "need" || life.face === "ill" || life.face === "tired" || life.face === "heart" || life.face === "happy";
-  if (!show) return;
+  if (!img || !life || life.emote <= 0 || life.face === "ok") return;
   const cell = FACES[life.face] ?? FACES.ok;
   const headX = row === 1 ? 38 : row === 2 ? 36 : 35;
   const headY = headTop(pose, row) + 2;
   const hx = s.x + (headX - 40) * CHAR * (flip ? -1 : 1);
   const hy = s.y + (headY - 16 - 96) * CHAR;
   const face = vividFace(img, cell[1], cell[0]);
-  blit(ctx, face ?? img, face ? 0 : cell[1] * 16, face ? 0 : cell[0] * 16 + 6, 16, 10, hx, hy, 1.7, false, 8, 10);
+  blit(ctx, face ?? img, face ? 0 : cell[1] * 16, face ? 0 : cell[0] * 16 + 6, face ? 18 : 16, face ? 12 : 10, hx, hy, 1.6, false, face ? 9 : 8, face ? 11 : 10);
 }
 
 function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
