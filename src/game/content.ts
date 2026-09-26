@@ -1,11 +1,11 @@
 import { tileBlocks } from "./tiles";
 export const WORLD_W = 347;
-export const WORLD_H = 704;
+export const WORLD_H = 960;
 /** The frame that fits on screen. The yard stays this size; the meadow is below it. */
 export const VIEW_W = 347;
 export const VIEW_H = 194;
-/** South meadow. Same grass as the yard, full width, on the 32px grid. */
-export const MEADOW = { x: 0, y: 192, w: 347, h: 512 } as const;
+/** South meadow, drawn from the-meadow.png. */
+export const MEADOW = { x: 0, y: 192, w: 347, h: 768 } as const;
 export const TILE = 8;
 export const PACK_SLOTS = 28;
 export const VAULT_SLOTS = 40;

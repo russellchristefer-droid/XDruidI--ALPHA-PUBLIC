@@ -1,4 +1,4 @@
-import { TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { MEADOW, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import type { Sheets } from "./assets.ts";
 
 const CHAR = 0.42;
@@ -188,6 +188,8 @@ export function drawWorld(
 ) {
   const yard = sheets.yard;
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, WORLD_H);
+  const meadow = sheets.meadow;
+  if (meadow) ctx.drawImage(meadow, MEADOW.x, MEADOW.y);
 
   ctx.save();
   ctx.beginPath();

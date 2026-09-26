@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260926q";
+export const ART = "20260926r";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -7,6 +7,7 @@ function art(path: string): string {
 
 const URLS: Record<string, string> = {
   yard: art("/game/yard.png"),
+  meadow: art("/game/the-meadow.png"),
   idle: art("/game/char/idle.png"),
   walk: art("/game/char/walk.png"),
   water: art("/game/char/water.png"),

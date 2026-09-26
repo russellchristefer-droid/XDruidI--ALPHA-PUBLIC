@@ -28,7 +28,7 @@ function canWalk(from: { x: number; y: number }, to: { x: number; y: number }): 
 test("the original painting is back on the house square", () => {
   const yard = readFileSync("public/game/yard.png");
   assert.equal(yard.readUInt32BE(16), 347);
-  assert.equal(yard.readUInt32BE(20), 704);
+  assert.equal(yard.readUInt32BE(20), 960);
   const shed = SPOTS.find((s) => s.id === "shed");
   assert.ok(shed);
   assert.equal(shed.x, 236);
@@ -39,12 +39,12 @@ test("the south path walks onto the meadow", () => {
   assert.equal(MEADOW.x, 0);
   assert.equal(MEADOW.y, 192);
   assert.equal(MEADOW.w, 347);
-  assert.equal(MEADOW.h, 512);
+  assert.equal(MEADOW.h, 768);
   assert.equal(footBlocked(172, 160), false);
   assert.equal(footBlocked(180, 300), false);
   assert.equal(footBlocked(40, 300), false);
   assert.equal(footBlocked(300, 300), false);
   assert.equal(footBlocked(2, 300), true);
-  assert.ok(canWalk({ x: 172, y: 160 }, { x: 180, y: 640 }));
+  assert.ok(canWalk({ x: 172, y: 160 }, { x: 180, y: 900 }));
   assert.ok(canWalk({ x: 172, y: 160 }, { x: 80, y: 320 }));
 });
