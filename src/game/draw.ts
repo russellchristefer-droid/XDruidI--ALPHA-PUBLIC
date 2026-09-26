@@ -116,39 +116,84 @@ function feetOnPath(sheets: Sheets, x: number, y: number): boolean {
   return pathBits[iy * img.width + ix] === 1;
 }
 
+const HEADINGS = ["e", "se", "s", "sw", "w", "nw", "n", "ne"] as const;
+type Heading = (typeof HEADINGS)[number];
+
+let seenClock = -1;
+let lastX = Number.NaN;
+let lastY = Number.NaN;
+let heading: Heading = "s";
+let walkPhase = 0;
+let stepMoving = false;
+let velX = 0;
+let velY = 0;
+
+function trackMotion(s: GameState) {
+  if (s.clock === seenClock) return;
+  seenClock = s.clock;
+  if (!Number.isFinite(lastX)) {
+    lastX = s.x;
+    lastY = s.y;
+    return;
+  }
+  const dx = s.x - lastX;
+  const dy = s.y - lastY;
+  lastX = s.x;
+  lastY = s.y;
+  const dist = Math.hypot(dx, dy);
+  stepMoving = dist > 0.08;
+  if (!stepMoving) return;
+  walkPhase += dist / 2.6;
+  velX = velX * 0.45 + dx;
+  velY = velY * 0.45 + dy;
+  if (Math.hypot(velX, velY) < 0.25) return;
+  let ang = Math.atan2(velY, velX);
+  if (ang < 0) ang += Math.PI * 2;
+  const next = HEADINGS[Math.round(ang / (Math.PI / 4)) % 8] ?? heading;
+  if (next === heading) return;
+  const center = (HEADINGS.indexOf(next) * Math.PI) / 4;
+  const delta = Math.atan2(Math.sin(ang - center), Math.cos(ang - center));
+  if (Math.abs(delta) < 0.2) heading = next;
+}
+
 function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
-  const moving = s.speed > 1;
-  let sheet = sheets.goddess;
-  let frames = 13;
+  trackMotion(s);
+  const head = heading;
+  let sheet: HTMLImageElement | undefined = sheets.goddess;
   let frameW = 64;
   let frameH = 64;
+  let frames = 8;
   let scale = 0.58;
   let footX = 32;
   let footY = 63;
-  let flip = s.dir === "e";
-  if (s.dir === "s" && sheets.goddessFront) {
-    sheet = sheets.goddessFront;
-    frames = 5;
-    frameW = 21;
-    frameH = 67;
-    scale = 0.4;
-    footX = 10;
-    footY = 67;
-    flip = false;
-  } else if (s.dir === "n" && sheets.goddessBack) {
-    sheet = sheets.goddessBack;
-    frames = 5;
-    frameW = 26;
-    frameH = 67;
-    scale = 0.4;
-    footX = 11;
-    footY = 67;
-    flip = false;
+  let flip = head === "e";
+  if (head === "s" || head === "se" || head === "sw") {
+    const turned = head !== "s";
+    sheet = (turned ? sheets.goddessFront3 : sheets.goddessFront) ?? sheets.goddessFront ?? sheets.goddess;
+    if (sheet && sheet !== sheets.goddess) {
+      frameW = 21;
+      frameH = 67;
+      frames = 8;
+      scale = 0.4;
+      footX = 10;
+      footY = 67;
+      flip = head === "sw";
+    }
+  } else if (head === "n" || head === "ne" || head === "nw") {
+    const turned = head !== "n";
+    sheet = (turned ? sheets.goddessBack3 : sheets.goddessBack) ?? sheets.goddessBack ?? sheets.goddess;
+    if (sheet && sheet !== sheets.goddess) {
+      frameW = 26;
+      frameH = 67;
+      frames = 8;
+      scale = 0.4;
+      footX = 11;
+      footY = 67;
+      flip = head === "nw";
+    }
   }
   if (!sheet) return;
-  const col = frames === 13
-    ? (moving || s.action ? Math.floor(s.clock * (s.action ? 10 : 8)) % frames : 0)
-    : (moving || s.action ? 1 + Math.floor(s.clock * 8) % 4 : 0);
+  const col = stepMoving ? Math.floor(walkPhase) % frames : 0;
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
   blit(ctx, sheet, col * frameW, 0, frameW, frameH, s.x, s.y, scale, flip, footX, footY);
