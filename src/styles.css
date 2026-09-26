@@ -518,9 +518,9 @@
 }
 
 .sheet.inv {
-  background: #0c2414;
-  border-color: #14e07a;
-  color: #d8ffe6;
+  background: #2a2118;
+  border-color: #c4a574;
+  color: #f3e6c8;
   max-width: 980px;
 }
 
@@ -572,7 +572,7 @@
   font-size: 8px;
   font-style: normal;
   letter-spacing: 0.02em;
-  color: #b6ffc8;
+  color: #c4a574;
   text-align: center;
   pointer-events: none;
 }
