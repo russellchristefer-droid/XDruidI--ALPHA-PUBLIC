@@ -117,11 +117,14 @@ function feetOnPath(sheets: Sheets, x: number, y: number): boolean {
 }
 
 function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
-  const sheet = sheets.goddess;
+  const side = s.dir === "e" || s.dir === "w";
+  const sheet = s.dir === "n" ? sheets.goddessBack ?? sheets.goddess : s.dir === "s" ? sheets.goddessFront ?? sheets.goddess : sheets.goddess;
   if (!sheet) return;
+  const frames = side || sheet === sheets.goddess ? 13 : 4;
   const moving = s.speed > 1;
-  const col = moving || s.action ? Math.floor(s.clock * (s.action ? 12 : 8)) % 13 : Math.floor(s.clock * 1.5) % 2;
-  const flip = s.dir === "w";
+  const col = moving || s.action ? Math.floor(s.clock * (s.action ? 10 : 8)) % frames : 0;
+  // The side sheet faces west. Flip only when she walks east, so she never moonwalks.
+  const flip = side && s.dir === "e";
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
   blit(ctx, sheet, col * 64, 0, 64, 64, s.x, s.y, 0.58, flip, 32, 63);
