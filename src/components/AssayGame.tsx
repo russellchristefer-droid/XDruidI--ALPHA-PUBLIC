@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { IconRef, GameState, Item, PanelId } from "@/game/content";
+import type { IconRef, GameState, Item, PanelId, EquipSlot } from "@/game/content";
 import {
   MASS_CAP,
   SAVE_KEY,
@@ -27,6 +27,9 @@ import {
   craftSeeds,
   deposit,
   dropItem,
+  equipItem,
+  unequipItem,
+  bestSlot,
   examineAt,
   facingPoint,
   findItem,
@@ -154,6 +157,24 @@ function Icon({ icon, size = 28 }: { icon: IconRef; size?: number }) {
       />
     );
   }
+  if (icon.sheet === "wear") {
+    const sc = size / icon.w;
+    return (
+      <span
+        className="icon"
+        style={{
+          display: "inline-block",
+          width: size,
+          height: size,
+          backgroundImage: "url(/game/ui/gear.png)",
+          backgroundPosition: `${-icon.x * sc}px ${-icon.y * sc}px`,
+          backgroundSize: `${128 * sc}px ${32 * sc}px`,
+          backgroundRepeat: "no-repeat",
+          imageRendering: "pixelated",
+        }}
+      />
+    );
+  }
   const meta = SHEET[icon.sheet as keyof typeof SHEET];
   if (!meta) return null;
   const sc = size / icon.w;
@@ -228,6 +249,7 @@ export function AssayGame() {
   const [touch, setTouch] = useState(false);
   const [wipe, setWipe] = useState(false);
   const [vaultSel, setVaultSel] = useState(0);
+  const [picked, setPicked] = useState<string | null>(null);
   const [devHere, setDevHere] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editMode, setEditMode] = useState<"box" | "paint">("box");
@@ -591,6 +613,16 @@ export function AssayGame() {
     const rows: Menu["rows"] = [
       { label: "Examine", run: () => ((s.message = itemLabel(it)), bump()) },
     ];
+    if (d.kind === "tool" || d.kind === "wear" || d.kind === "container") {
+      rows.push({
+        label: "Equip",
+        run: () => {
+          const slot = bestSlot(s, it.id);
+          s.message = slot ? equipItem(s, it.id, slot) : `${d.name} cannot be worn.`;
+          bump();
+        },
+      });
+    }
     if (d.kind === "tool") {
       rows.push({
         label: "Activate",
@@ -971,21 +1003,44 @@ export function AssayGame() {
         </div>
       )}
 
-      {screen === "play" && s && (panel === "pack" || panel === "vault" || panel === "backpack") && (
+      {screen === "play" && s && (panel === "pack" || panel === "vault" || panel === "backpack" || panel === "body") && (
         <div className="overlay">
-          <div className="panel sheet">
-            <h2>{panel === "vault" ? "House" : "Field pack"}</h2>
+          <div className="panel sheet inv">
+            <h2>{panel === "vault" ? "House stores" : "Inventory"}</h2>
             <p style={{ marginTop: 0, fontSize: 13 }}>
               {s.pack.filter(Boolean).length}/28 slots · {mass.toFixed(1)} / {MASS_CAP.toFixed(1)} · Floor purse {coinCount(s)}
-              {panel === "vault" ? " · Sell pays Floor. A note is one slot, no weight, no use." : ""}
+              {panel === "vault" ? " · The chest is beside the pack. Click a pack item, then a chest slot, to store it." : " · Click an item, then a body slot, to equip it."}
             </p>
+            {picked && findItem(s, picked) && (
+              <p style={{ fontSize: 13, marginTop: 0 }}>
+                {defOf(findItem(s, picked)!).name}.{" "}
+                {bestSlot(s, picked) ? (
+                  <button
+                    type="button"
+                    className="slot"
+                    style={{ width: "auto", padding: "4px 8px" }}
+                    onClick={() => {
+                      const slot = bestSlot(s, picked);
+                      if (!slot) return;
+                      s.message = equipItem(s, picked, slot);
+                      setPicked(null);
+                      bump();
+                    }}
+                  >
+                    Equip
+                  </button>
+                ) : (
+                  "This cannot be worn."
+                )}
+              </p>
+            )}
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
               <div>
-                <div className="grid28">
+                <div className="inv-grid">
                   {s.pack.map((it, i) => (
                     <button
                       key={i}
-                      className={`slot${it && s.activeId === it.id ? " on" : ""}`}
+                      className={`inv-slot${it && picked === it.id ? " pick" : ""}${it && s.activeId === it.id ? " worn" : ""}`}
                       draggable={!!it}
                       onDragStart={(e) => e.dataTransfer.setData("text/plain", `pack:${i}`)}
                       onDragOver={(e) => e.preventDefault()}
@@ -993,6 +1048,9 @@ export function AssayGame() {
                         e.preventDefault();
                         const data = e.dataTransfer.getData("text/plain");
                         if (data.startsWith("pack:")) swapPack(s, Number(data.slice(5)), i);
+                        else if (data.startsWith("body:") && !it) {
+                          s.message = unequipItem(s, data.slice(5) as EquipSlot);
+                        }
                         bump();
                       }}
                       onContextMenu={(e) => {
@@ -1000,10 +1058,16 @@ export function AssayGame() {
                         if (it) slotMenu(it, e.clientX, e.clientY, "pack");
                       }}
                       onClick={() => {
-                        if (it?.defId === "backpack") {
+                        if (!it) {
+                          setPicked(null);
+                          return;
+                        }
+                        if (picked === it.id && it.defId === "backpack") {
                           panelRef.current = "backpack";
                           setPanel("backpack");
+                          return;
                         }
+                        setPicked(picked === it.id ? null : it.id);
                       }}
                       aria-label={it ? defOf(it).name : "Empty pack slot"}
                     >
@@ -1038,11 +1102,82 @@ export function AssayGame() {
                   </>
                 )}
               </div>
+              <div>
+                <h2 style={{ fontSize: 14, marginTop: 0 }}>Worn</h2>
+                <div className="doll">
+                  {(
+                    [
+                      ["amulet", "Amulet"],
+                      ["head", "Head"],
+                      ["ring", "Ring"],
+                      ["hands", "Hands"],
+                      ["torso", "Torso"],
+                      ["offhand", "Off hand"],
+                      ["feet", "Feet"],
+                      ["legs", "Legs"],
+                      ["belt", "Belt"],
+                      ["container", "Bag"],
+                    ] as const
+                  ).map(([slot, label]) => {
+                    const worn = s.body[slot];
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        className={`inv-slot${worn ? " worn" : ""}`}
+                        style={{ gridArea: slot }}
+                        draggable={!!worn}
+                        onDragStart={(e) => worn && e.dataTransfer.setData("text/plain", `body:${slot}`)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const data = e.dataTransfer.getData("text/plain");
+                          if (!data.startsWith("pack:")) return;
+                          const it = s.pack[Number(data.slice(5))];
+                          if (!it) return;
+                          s.message = equipItem(s, it.id, slot);
+                          setPicked(null);
+                          bump();
+                        }}
+                        onClick={() => {
+                          if (picked) {
+                            s.message = equipItem(s, picked, slot);
+                            setPicked(null);
+                            bump();
+                            return;
+                          }
+                          if (worn) {
+                            s.message = unequipItem(s, slot);
+                            bump();
+                          }
+                        }}
+                        aria-label={worn ? `${label}: ${defOf(worn).name}` : `${label} empty`}
+                      >
+                        {worn && <Icon icon={defOf(worn).icon} size={26} />}
+                        <em>{label}</em>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p style={{ fontSize: 12, maxWidth: 200 }}>Click a worn slot to stow it. Tools go on the hands. Clothes go on their own slot.</p>
+              </div>
               {panel === "vault" && (
                 <div>
-                  <div className="grid28" style={{ gridTemplateColumns: "repeat(8, 40px)" }}>
+                  <div className="inv-grid" style={{ gridTemplateColumns: "repeat(8, 56px)" }}>
                     {s.vault.map((it, i) => (
-                      <button key={i} className={`slot${vaultSel === i ? " sel" : ""}`} onClick={() => setVaultSel(i)}>
+                      <button
+                        key={i}
+                        className={`inv-slot${vaultSel === i ? " pick" : ""}`}
+                        onClick={() => {
+                          setVaultSel(i);
+                          if (picked && s.pack.some((p) => p?.id === picked)) {
+                            s.message = deposit(s, picked);
+                            setPicked(null);
+                            persist(s);
+                            bump();
+                          }
+                        }}
+                      >
                         {it && <Icon icon={defOf(it).icon} size={26} />}
                       </button>
                     ))}
@@ -1064,64 +1199,6 @@ export function AssayGame() {
             </div>
             <p style={{ fontSize: 13 }}>{s.message}</p>
             <button className="slot" style={{ width: "auto", padding: "6px 10px" }} onClick={() => { panelRef.current = null; setPanel(null); }}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {screen === "play" && s && panel === "body" && (
-        <div className="overlay">
-          <div className="panel sheet" style={{ maxWidth: 520 }}>
-            <h2>Body</h2>
-            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-              <canvas
-                width={80}
-                height={112}
-                ref={(node) => {
-                  const img = sheetsRef.current?.idle;
-                  if (!node || !img) return;
-                  const ctx = node.getContext("2d");
-                  if (!ctx) return;
-                  ctx.imageSmoothingEnabled = false;
-                  ctx.clearRect(0, 0, 80, 112);
-                  ctx.drawImage(img, 0, 0, 80, 112, 0, 0, 80, 112);
-                }}
-                style={{ width: 80, height: 112, imageRendering: "pixelated", background: "#1a140f" }}
-              />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 13 }}>
-                {(
-                  [
-                    ["head", "Head"],
-                    ["torso", "Torso"],
-                    ["legs", "Legs"],
-                    ["feet", "Feet"],
-                    ["hands", "Hands"],
-                    ["amulet", "Amulet"],
-                    ["ring", "Ring"],
-                    ["belt", "Belt"],
-                    ["container", "Container"],
-                    ["offhand", "Offhand"],
-                  ] as const
-                ).map(([key, label]) => {
-                  const it = s.body[key];
-                  return (
-                    <div key={key}>
-                      {label}: {it ? defOf(it).name : "—"}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <p style={{ fontSize: 13 }}>
-              Hands: {s.body.hands ? `${defOf(s.body.hands).name} · Floor ${s.body.hands.floor.toFixed(1)}` : "empty"}.
-              Burden {mass.toFixed(1)} / {MASS_CAP.toFixed(1)}. Over {MASS_CAP.toFixed(0)} you cannot lift. Over 16 you cannot run.
-              The hand can hold a tool while a different tool stays active. Clothing for the other slots is not in this yard.
-            </p>
-            <button className="slot" style={{ width: "auto", padding: "6px 10px" }} onClick={() => { s.message = onF(s); bump(); }}>
-              Stow / draw hand
-            </button>
-            <button className="slot" style={{ width: "auto", padding: "6px 10px", marginLeft: 8 }} onClick={() => { panelRef.current = null; setPanel(null); }}>
               Close
             </button>
           </div>

@@ -20,15 +20,18 @@ export type ToolId = "water" | "shovel" | "scythe" | "axe" | "hammer";
 
 export type IconRef = { sheet: string; x: number; y: number; w: number; h: number };
 
+export type EquipSlot = "head" | "torso" | "legs" | "feet" | "hands" | "amulet" | "ring" | "belt" | "container" | "offhand";
+
 export type Def = {
   id: string;
   name: string;
-  kind: "tool" | "food" | "seed" | "resource" | "product" | "container" | "note" | "coin" | "kit";
+  kind: "tool" | "food" | "seed" | "resource" | "product" | "container" | "note" | "coin" | "kit" | "wear";
   weight: number;
   floor: number;
   quality: number;
   stack: boolean;
   tool?: ToolId;
+  equip?: EquipSlot;
   stamina?: number;
   waterMax?: number;
   icon: IconRef;
@@ -283,6 +286,54 @@ export const DEFS: Record<string, Def> = {
     stack: false,
     icon: { sheet: "pack", x: 0, y: 0, w: 32, h: 32 },
     blurb: "Eight nested slots. This is what drops first if you go down.",
+  },
+  hood: {
+    id: "hood",
+    name: "Field hood",
+    kind: "wear",
+    weight: 0.3,
+    floor: 8,
+    quality: 40,
+    stack: false,
+    equip: "head",
+    icon: { sheet: "wear", x: 0, y: 0, w: 32, h: 32 },
+    blurb: "Worn on the head. Click it, then the head slot.",
+  },
+  cloak: {
+    id: "cloak",
+    name: "Field cloak",
+    kind: "wear",
+    weight: 0.8,
+    floor: 10,
+    quality: 44,
+    stack: false,
+    equip: "torso",
+    icon: { sheet: "wear", x: 32, y: 0, w: 32, h: 32 },
+    blurb: "Worn on the torso.",
+  },
+  pants: {
+    id: "pants",
+    name: "Trail trousers",
+    kind: "wear",
+    weight: 0.5,
+    floor: 8,
+    quality: 40,
+    stack: false,
+    equip: "legs",
+    icon: { sheet: "wear", x: 64, y: 0, w: 32, h: 32 },
+    blurb: "Worn on the legs.",
+  },
+  boots: {
+    id: "boots",
+    name: "Work boots",
+    kind: "wear",
+    weight: 0.6,
+    floor: 9,
+    quality: 42,
+    stack: false,
+    equip: "feet",
+    icon: { sheet: "wear", x: 96, y: 0, w: 32, h: 32 },
+    blurb: "Worn on the feet.",
   },
   coin: {
     id: "coin",
@@ -785,6 +836,10 @@ export function createGame(): GameState {
   const seedT = make(next, "seed_tomato", 6);
   const seedC = make(next, "seed_cabbage", 4);
   const seedG = make(next, "seed_greens", 4);
+  const hood = make(next, "hood");
+  const cloak = make(next, "cloak");
+  const pants = make(next, "pants");
+  const boots = make(next, "boots");
   const pack: (Item | null)[] = Array.from({ length: PACK_SLOTS }, () => null);
   pack[0] = can;
   pack[1] = shovel;
@@ -797,6 +852,10 @@ export function createGame(): GameState {
   pack[10] = seedT;
   pack[11] = seedC;
   pack[12] = seedG;
+  pack[13] = hood;
+  pack[14] = cloak;
+  pack[15] = pants;
+  pack[16] = boots;
   return {
     version: 1,
     x: 180,

@@ -517,6 +517,79 @@
   overflow: auto;
 }
 
+.sheet.inv {
+  background: #0c2414;
+  border-color: #14e07a;
+  color: #d8ffe6;
+  max-width: 980px;
+}
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 56px);
+  gap: 4px;
+}
+
+.inv-slot {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-image: url("/game/ui/hacker/hacker_slot_normal.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  cursor: pointer;
+}
+
+.inv-slot:hover {
+  background-image: url("/game/ui/hacker/hacker_slot_hover.png");
+}
+
+.inv-slot.pick {
+  background-image: url("/game/ui/hacker/hacker_slot_selected.png");
+}
+
+.inv-slot.worn {
+  background-image: url("/game/ui/hacker/hacker_slot_rare.png");
+}
+
+.inv-slot .icon {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.inv-slot em {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  font-size: 8px;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  color: #b6ffc8;
+  text-align: center;
+  pointer-events: none;
+}
+
+.doll {
+  display: grid;
+  grid-template-columns: 56px 56px 56px;
+  grid-template-areas:
+    "amulet head ring"
+    "hands torso offhand"
+    "feet legs belt"
+    "container container container";
+  gap: 6px;
+  justify-items: center;
+}
+
+
 .assay.touch .map-edit {
   top: 42%;
 }

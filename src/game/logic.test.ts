@@ -11,6 +11,9 @@ import {
   onQ,
   sellItem,
   step,
+  equipItem,
+  unequipItem,
+  bestSlot,
   totalMass,
   autoRoute,
   watcherLine,
@@ -276,6 +279,22 @@ test("he waters a dry bed on his own, and stops when autonomy is off", () => {
   step(waiting, 0.5, idle);
   assert.equal(waiting.action, null);
   assert.equal(waiting.x, x);
+});
+
+test("clothes and tools can be equipped from the pack", () => {
+  const s = createGame();
+  const shovel = s.pack.find((p) => p?.defId === "shovel")!;
+  const hood = s.pack.find((p) => p?.defId === "hood")!;
+  assert.equal(bestSlot(s, shovel.id), "hands");
+  assert.match(equipItem(s, shovel.id, "hands"), /Equipped/);
+  assert.equal(s.body.hands?.id, shovel.id);
+  assert.equal(s.pack.some((p) => p?.id === shovel.id), false);
+  assert.match(equipItem(s, hood.id, "hands"), /does not fit/);
+  assert.match(equipItem(s, hood.id, "head"), /Equipped/);
+  assert.equal(s.body.head?.defId, "hood");
+  assert.match(unequipItem(s, "hands"), /Stowed/);
+  assert.equal(s.body.hands, null);
+  assert.ok(s.pack.some((p) => p?.defId === "shovel"));
 });
 
 test("he strolls the yard on his own", () => {

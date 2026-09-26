@@ -15,6 +15,7 @@ import {
   type Animal,
   type CropId,
   type GameState,
+  type EquipSlot,
   type Item,
   type Life,
   type PanelId,
@@ -230,6 +231,75 @@ export function giveItem(s: GameState, it: Item): boolean {
   if (slot < 0) return false;
   s.pack[slot] = it;
   return true;
+}
+
+const SLOT_NAME: Record<EquipSlot, string> = {
+  head: "head",
+  torso: "torso",
+  legs: "legs",
+  feet: "feet",
+  hands: "hands",
+  amulet: "amulet",
+  ring: "ring",
+  belt: "belt",
+  container: "pack",
+  offhand: "off hand",
+};
+
+export function slotFits(slot: EquipSlot, d: ReturnType<typeof defOf>): boolean {
+  if (d.equip) return d.equip === slot;
+  if (slot === "hands" || slot === "offhand") return d.kind === "tool";
+  if (slot === "container") return d.kind === "container";
+  if (slot === "belt") return d.kind === "tool" || d.kind === "kit";
+  return false;
+}
+
+export function bestSlot(s: GameState, id: string): EquipSlot | null {
+  const it = findItem(s, id);
+  if (!it) return null;
+  const d = defOf(it);
+  if (d.equip) return d.equip;
+  if (d.kind === "container") return "container";
+  if (d.kind === "tool") return s.body.hands && s.body.hands.id !== id ? "offhand" : "hands";
+  return null;
+}
+
+export function equipItem(s: GameState, id: string, slot: EquipSlot): string {
+  const found = findItem(s, id);
+  if (!found) return "That item is gone.";
+  const d = defOf(found);
+  if (!slotFits(slot, d)) return `${d.name} does not fit the ${SLOT_NAME[slot]}.`;
+  if (s.body[slot]?.id === id) return `${d.name} is already on the ${SLOT_NAME[slot]}.`;
+  const worn = s.body[slot] ?? null;
+  const packIndex = s.pack.findIndex((p) => p?.id === id);
+  const taken = takeItem(s, id);
+  if (!taken) return "Could not take it.";
+  if (worn) {
+    s.body[slot] = null;
+    if (packIndex >= 0) s.pack[packIndex] = worn;
+    else if (!giveItem(s, worn)) {
+      s.body[slot] = worn;
+      if (!giveItem(s, taken)) s.body[slot] = taken;
+      return "No room in the pack to swap.";
+    }
+  }
+  s.body[slot] = taken;
+  if (slot === "hands" || slot === "offhand") s.activeId = taken.id;
+  const idx = s.hotbar.findIndex((h) => h === taken.id);
+  if (idx >= 0) s.selected = idx;
+  return `Equipped ${d.name} on the ${SLOT_NAME[slot]}.`;
+}
+
+export function unequipItem(s: GameState, slot: EquipSlot): string {
+  const it = s.body[slot];
+  if (!it) return "Nothing is worn there.";
+  s.body[slot] = null;
+  if (!giveItem(s, it)) {
+    s.body[slot] = it;
+    return "The pack is full.";
+  }
+  if (s.activeId === it.id) s.activeId = null;
+  return `Stowed ${defOf(it).name}.`;
 }
 
 export function addCoins(s: GameState, n: number): void {
@@ -1233,6 +1303,8 @@ function holdItem(s: GameState, id: string): boolean {
 }
 
 function toolItem(s: GameState, tool: string): Item | null {
+  const worn = [s.body.hands, s.body.offhand, s.body.belt].find((p) => p && defOf(p).tool === tool && p.floor > 0);
+  if (worn) return worn;
   return s.pack.find((p) => p && defOf(p).tool === tool && p.floor > 0) ?? null;
 }
 
