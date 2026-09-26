@@ -120,32 +120,38 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   const moving = s.speed > 1;
   let sheet = sheets.goddess;
   let frames = 13;
+  let frameW = 64;
+  let frameH = 64;
   let scale = 0.58;
   let footX = 32;
   let footY = 63;
   let flip = s.dir === "e";
   if (s.dir === "s" && sheets.goddessFront) {
     sheet = sheets.goddessFront;
-    frames = 1;
+    frames = 5;
+    frameW = 21;
+    frameH = 67;
     scale = 0.4;
     footX = 10;
-    footY = sheet.height;
+    footY = 67;
     flip = false;
   } else if (s.dir === "n" && sheets.goddessBack) {
     sheet = sheets.goddessBack;
-    frames = 1;
+    frames = 5;
+    frameW = 26;
+    frameH = 67;
     scale = 0.4;
     footX = 11;
-    footY = sheet.height;
+    footY = 67;
     flip = false;
   }
   if (!sheet) return;
-  const col = frames === 1 ? 0 : moving || s.action ? Math.floor(s.clock * (s.action ? 10 : 8)) % frames : 0;
-  const fw = frames === 1 ? sheet.width : 64;
-  const fh = frames === 1 ? sheet.height : 64;
+  const col = frames === 13
+    ? (moving || s.action ? Math.floor(s.clock * (s.action ? 10 : 8)) % frames : 0)
+    : (moving || s.action ? 1 + Math.floor(s.clock * 8) % 4 : 0);
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  blit(ctx, sheet, col * fw, 0, fw, fh, s.x, s.y, scale, flip, footX, footY);
+  blit(ctx, sheet, col * frameW, 0, frameW, frameH, s.x, s.y, scale, flip, footX, footY);
   drawEffect(ctx, sheets, s);
   ctx.restore();
 }
