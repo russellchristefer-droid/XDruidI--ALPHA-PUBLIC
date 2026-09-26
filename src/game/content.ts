@@ -734,7 +734,7 @@ export function placeHerd(s: GameState): void {
 /** Meadow fishing water. The dock on the west edge stays walkable. */
 export const FISH_WATER: Rect = { x: 74, y: 236, w: 72, h: 46 };
 /** Raised crown of the same pond, so the curved top is not walkable. */
-export const FISH_CROWN: Rect = { x: 90, y: 214, w: 40, h: 22 };
+export const FISH_CROWN: Rect = { x: 84, y: 204, w: 52, h: 32 };
 
 export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Rocks in the meadow, south of the farm fence. The dirt path stays open. */
