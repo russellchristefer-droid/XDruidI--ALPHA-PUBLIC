@@ -171,11 +171,11 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
     const turned = head !== "s";
     sheet = (turned ? sheets.goddessFront3 : sheets.goddessFront) ?? sheets.goddessFront ?? sheets.goddess;
     if (sheet && sheet !== sheets.goddess) {
-      frameW = 21;
+      frameW = 33;
       frameH = 67;
       frames = 13;
       scale = 0.4;
-      footX = 10;
+      footX = 16;
       footY = 67;
       flip = head === "sw";
     }
@@ -183,11 +183,11 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
     const turned = head !== "n";
     sheet = (turned ? sheets.goddessBack3 : sheets.goddessBack) ?? sheets.goddessBack ?? sheets.goddess;
     if (sheet && sheet !== sheets.goddess) {
-      frameW = 26;
+      frameW = 38;
       frameH = 67;
       frames = 13;
       scale = 0.4;
-      footX = 11;
+      footX = 17;
       footY = 67;
       flip = head === "nw";
     }

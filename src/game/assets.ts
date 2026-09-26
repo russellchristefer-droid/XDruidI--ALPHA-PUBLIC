@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260927e";
+export const ART = "20260927f";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
