@@ -597,6 +597,24 @@ export function placeHerd(s: GameState): void {
   }
 }
 
+export type SeamRock = { x: number; y: number; i: number; s: number };
+/** Two rows where the meadow meets the farm. The dirt path stays open. */
+export const SEAM_ROCKS: SeamRock[] = [
+  { x: 36, y: 184, i: 1, s: 0.72 },
+  { x: 78, y: 186, i: 2, s: 0.66 },
+  { x: 118, y: 183, i: 0, s: 0.7 },
+  { x: 236, y: 185, i: 3, s: 0.68 },
+  { x: 278, y: 183, i: 1, s: 0.74 },
+  { x: 318, y: 186, i: 2, s: 0.66 },
+  { x: 20, y: 206, i: 0, s: 1.05 },
+  { x: 58, y: 210, i: 3, s: 1.12 },
+  { x: 98, y: 204, i: 2, s: 0.96 },
+  { x: 128, y: 208, i: 1, s: 1.02 },
+  { x: 232, y: 208, i: 0, s: 1.08 },
+  { x: 272, y: 212, i: 2, s: 1.14 },
+  { x: 312, y: 206, i: 3, s: 1.0 },
+];
+
 export function overlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
@@ -619,6 +637,11 @@ export function footBlocked(x: number, y: number): boolean {
   for (const s of SOLIDS) if (overlap(box, s)) return true;
   for (const s of PROP_SOLIDS) if (overlap(box, s)) return true;
   for (const s of tileBlocks()) if (overlap(box, s)) return true;
+  for (const r of SEAM_ROCKS) {
+    const w = 14 * r.s;
+    const h = 8 * r.s;
+    if (overlap(box, { x: r.x - w / 2, y: r.y - h, w, h })) return true;
+  }
   return false;
 }
 

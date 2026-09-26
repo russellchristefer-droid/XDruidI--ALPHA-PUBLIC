@@ -45,6 +45,8 @@ test("the south path walks onto the meadow", () => {
   assert.equal(footBlocked(40, 300), false);
   assert.equal(footBlocked(300, 300), false);
   assert.equal(footBlocked(2, 300), true);
+  assert.equal(footBlocked(180, 200), false);
+  assert.equal(footBlocked(58, 206), true);
   assert.ok(canWalk({ x: 172, y: 160 }, { x: 180, y: 900 }));
   assert.ok(canWalk({ x: 172, y: 160 }, { x: 80, y: 320 }));
 });

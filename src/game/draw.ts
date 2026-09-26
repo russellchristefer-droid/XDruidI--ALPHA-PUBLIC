@@ -1,4 +1,4 @@
-import { MEADOW, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import type { Sheets } from "./assets.ts";
 
 const CHAR = 0.42;
@@ -294,6 +294,15 @@ export function drawWorld(
         blit(ctx, catSheet, col * 64, 0, 64, 64, s.cat.x, s.cat.y, 0.36, s.cat.face < 0, 32, 48);
       },
     });
+  }
+  const rocks = sheets.rocks;
+  if (rocks) {
+    for (const r of SEAM_ROCKS) {
+      queue.push({
+        y: r.y,
+        paint: () => blit(ctx, rocks, r.i * 48, 0, 48, 48, r.x, r.y, r.s, false, 24, 40),
+      });
+    }
   }
   const pose = charPose(s);
   const sheet = sheets[pose.sheet];
