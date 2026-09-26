@@ -580,6 +580,23 @@ export function itemMass(it: Item): number {
   return m;
 }
 
+export function placeHerd(s: GameState): void {
+  const home = {
+    cow: { x: 72, y: 280 },
+    rooster: { x: 128, y: 260 },
+    goat: { x: 268, y: 340 },
+  } as const;
+  for (const a of s.animals) {
+    const spot = home[a.kind];
+    if (!spot || a.y >= MEADOW.y + 8) continue;
+    a.x = spot.x;
+    a.y = spot.y;
+    a.tx = spot.x;
+    a.ty = spot.y;
+    a.pause = a.kind === "cow" ? 1.4 : 0.5;
+  }
+}
+
 export function overlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
@@ -685,9 +702,9 @@ export function createGame(): GameState {
     plots: freshPlots(),
     flowers: defaultFlowers(),
     animals: [
-      { id: "cow", kind: "cow", name: "Cow", x: 200, y: 136, dir: "s", fed: false, ready: false, tx: 200, ty: 136, pause: 1.2 },
-      { id: "rooster", kind: "rooster", name: "Rooster", x: 186, y: 148, dir: "e", fed: false, ready: false, tx: 186, ty: 148, pause: 0.6 },
-      { id: "goat", kind: "goat", name: "Goat", x: 214, y: 146, dir: "w", fed: false, ready: false, tx: 214, ty: 146, pause: 0.9 },
+      { id: "cow", kind: "cow", name: "Cow", x: 72, y: 280, dir: "s", fed: false, ready: false, tx: 72, ty: 280, pause: 1.4 },
+      { id: "rooster", kind: "rooster", name: "Rooster", x: 128, y: 260, dir: "e", fed: false, ready: false, tx: 128, ty: 260, pause: 0.4 },
+      { id: "goat", kind: "goat", name: "Goat", x: 268, y: 340, dir: "w", fed: false, ready: false, tx: 268, ty: 340, pause: 0.6 },
     ],
     branches: [],
     structures: [

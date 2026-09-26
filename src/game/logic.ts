@@ -1128,14 +1128,15 @@ export function step(s: GameState, dt: number, input: Input) {
   stepCritters(s, stepDt);
 }
 
-function leash(a: Animal): { x: number; y: number; w: number; h: number } {
-  if (a.kind === "cow") return { x: 184, y: 128, w: 40, h: 22 };
-  if (a.kind === "goat") return { x: 200, y: 138, w: 28, h: 14 };
-  return { x: 178, y: 140, w: 24, h: 12 };
+function pasture(kind: Animal["kind"]): { x: number; y: number; w: number; h: number } {
+  if (kind === "cow") return { x: 36, y: 230, w: 120, h: 340 };
+  if (kind === "goat") return { x: 200, y: 240, w: 112, h: 360 };
+  return { x: 96, y: 214, w: 60, h: 200 };
 }
 
-const WATER = { x: 188, y: 124 };
-const FEED = { x: 210, y: 146 };
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
+}
 
 function openIn(s: GameState, box: { x: number; y: number; w: number; h: number }, fallback: { x: number; y: number }) {
   for (let i = 0; i < 6; i++) {
@@ -1146,7 +1147,17 @@ function openIn(s: GameState, box: { x: number; y: number; w: number; h: number 
   return fallback;
 }
 
+function roam(s: GameState, box: { x: number; y: number; w: number; h: number }, from: { x: number; y: number }, min: number, max: number) {
+  const ang = unitRand(s) * Math.PI * 2;
+  const dist = min + unitRand(s) * (max - min);
+  const x = clamp(from.x + Math.cos(ang) * dist, box.x, box.x + box.w);
+  const y = clamp(from.y + Math.sin(ang) * dist, box.y, box.y + box.h);
+  if (!footBlocked(x, y)) return { x, y };
+  return openIn(s, box, from);
+}
+
 function stepCat(s: GameState, dt: number) {
+  const lane = { x: 214, y: 148, w: 70 };
   if (!s.cat.mode) s.cat.mode = "sit";
   if (s.cat.tx == null) {
     s.cat.tx = s.cat.x;
@@ -1156,29 +1167,34 @@ function stepCat(s: GameState, dt: number) {
     s.cat.pause -= dt;
     return;
   }
-  const home = { x: 252, y: 144, w: 34, h: 8 };
   if (s.cat.mode === "sit") {
+    if (unitRand(s) < 0.4) {
+      s.cat.face *= -1;
+      s.cat.pause = 0.7 + unitRand(s) * 1.4;
+      return;
+    }
     s.cat.mode = "stand";
-    s.cat.pause = 0.45;
+    s.cat.pause = 0.35;
     return;
   }
   if (s.cat.mode === "stand") {
-    const dash = unitRand(s) < 0.22;
+    const dash = unitRand(s) < 0.16;
     s.cat.mode = dash ? "run" : "walk";
-    const next = openIn(s, home, { x: s.cat.x, y: s.cat.y });
-    const dx = next.x - s.cat.x;
-    const dy = next.y - s.cat.y;
-    const d = Math.hypot(dx, dy) || 1;
-    const reach = dash ? 12 : 7;
-    s.cat.tx = s.cat.x + (dx / d) * Math.min(reach, d);
-    s.cat.ty = s.cat.y + (dy / d) * Math.min(reach, d * 0.4);
-    if (footBlocked(s.cat.tx, s.cat.ty)) {
-      s.cat.tx = s.cat.x;
-      s.cat.ty = s.cat.y;
-      s.cat.mode = "sit";
-      s.cat.pause = 1.4;
+    const near = Math.hypot(s.x - s.cat.x, s.y - s.cat.y);
+    let tx = lane.x + unitRand(s) * lane.w;
+    if (near < 42 && Math.abs(s.y - s.cat.y) < 28) {
+      tx = near < 14 ? s.cat.x + Math.sign(s.cat.x - s.x || 1) * 16 : s.x;
     }
-    s.cat.face = s.cat.tx >= s.cat.x ? 1 : -1;
+    tx = clamp(tx, lane.x, lane.x + lane.w);
+    const ty = lane.y;
+    if (footBlocked(tx, ty)) {
+      s.cat.mode = "sit";
+      s.cat.pause = 1.2;
+      return;
+    }
+    s.cat.tx = tx;
+    s.cat.ty = ty;
+    s.cat.face = tx >= s.cat.x ? 1 : -1;
     return;
   }
   const dx = s.cat.tx - s.cat.x;
@@ -1188,10 +1204,10 @@ function stepCat(s: GameState, dt: number) {
     s.cat.x = s.cat.tx;
     s.cat.y = s.cat.ty;
     s.cat.mode = "sit";
-    s.cat.pause = 1.5 + unitRand(s) * 2.4;
+    s.cat.pause = 1.8 + unitRand(s) * 3.2;
     return;
   }
-  const sp = s.cat.mode === "run" ? 32 : 11;
+  const sp = s.cat.mode === "run" ? 36 : 14;
   const ox = s.cat.x;
   const oy = s.cat.y;
   s.cat.x += (dx / dist) * sp * dt;
@@ -1200,7 +1216,7 @@ function stepCat(s: GameState, dt: number) {
     s.cat.x = ox;
     s.cat.y = oy;
     s.cat.mode = "sit";
-    s.cat.pause = 0.8;
+    s.cat.pause = 0.9;
     return;
   }
   if (Math.abs(dx) > 0.15) s.cat.face = dx > 0 ? 1 : -1;
@@ -1209,6 +1225,15 @@ function stepCat(s: GameState, dt: number) {
 function stepCritters(s: GameState, dt: number) {
   stepCat(s, dt);
   for (const a of s.animals) {
+    const box = pasture(a.kind);
+    const pdx = a.x - s.x;
+    const pdy = a.y - s.y;
+    const pd = Math.hypot(pdx, pdy);
+    if (a.kind === "rooster" && pd < 22 && pd > 0.5) {
+      a.pause = 0;
+      a.tx = clamp(a.x + (pdx / pd) * 16, box.x, box.x + box.w);
+      a.ty = clamp(a.y + (pdy / pd) * 10, box.y, box.y + box.h);
+    }
     if (a.pause > 0) {
       a.pause -= dt;
       continue;
@@ -1216,40 +1241,40 @@ function stepCritters(s: GameState, dt: number) {
     const dx = a.tx - a.x;
     const dy = a.ty - a.y;
     const dist = Math.hypot(dx, dy);
-    if (dist < 1.5) {
-      const eating = Math.hypot(a.x - FEED.x, a.y - FEED.y) < 6 || Math.hypot(a.x - WATER.x, a.y - WATER.y) < 6;
-      a.pause = eating ? 1.6 : 0.7 + unitRand(s) * 0.6;
-      const roll = unitRand(s);
-      const goal = roll < 0.25 ? WATER : roll < 0.5 ? FEED : null;
-      if (goal && !footBlocked(goal.x, goal.y)) {
-        a.tx = goal.x;
-        a.ty = goal.y;
-      } else {
-        const next = openIn(s, leash(a), { x: a.x, y: a.y });
-        a.tx = next.x;
-        a.ty = next.y;
+    if (dist < 1.2) {
+      if (a.kind === "cow") a.pause = 2.2 + unitRand(s) * 2.4;
+      else if (a.kind === "goat") a.pause = 0.45 + unitRand(s) * 0.9;
+      else a.pause = 0.18 + unitRand(s) * 0.4;
+      let next = roam(s, box, a, a.kind === "cow" ? 16 : a.kind === "goat" ? 22 : 3, a.kind === "cow" ? 46 : a.kind === "goat" ? 78 : 11);
+      if (a.kind === "goat" && pd < 50 && pd > 16 && unitRand(s) < 0.4) {
+        next = {
+          x: clamp(s.x, box.x, box.x + box.w),
+          y: clamp(s.y, box.y, box.y + box.h),
+        };
       }
+      for (const other of s.animals) {
+        if (other.id === a.id) continue;
+        if (Math.hypot(next.x - other.x, next.y - other.y) < 18) {
+          next = roam(s, box, a, 20, 40);
+        }
+      }
+      if (footBlocked(next.x, next.y)) next = openIn(s, box, { x: a.x, y: a.y });
+      a.tx = next.x;
+      a.ty = next.y;
       continue;
     }
-    const sp = a.kind === "rooster" ? 18 : 12;
+    const sp = a.kind === "rooster" ? 22 : a.kind === "goat" ? 16 : 9;
     const ox = a.x;
     const oy = a.y;
-    const mx = (dx / dist) * sp * dt;
-    const my = (dy / dist) * sp * dt;
-    a.x += mx;
-    a.y += my;
+    a.x += (dx / dist) * sp * dt;
+    a.y += (dy / dist) * sp * dt;
     if (footBlocked(a.x, a.y)) {
-      a.x = ox + mx;
+      a.x = ox;
       a.y = oy;
-      if (footBlocked(a.x, a.y)) a.x = ox;
-      a.y = oy + my;
-      if (footBlocked(a.x, a.y)) a.y = oy;
-      if (a.x === ox && a.y === oy) {
-        a.pause = 0.35;
-        const next = openIn(s, leash(a), { x: a.x, y: a.y });
-        a.tx = next.x;
-        a.ty = next.y;
-      }
+      a.pause = 0.3;
+      const next = openIn(s, box, { x: a.x, y: a.y });
+      a.tx = next.x;
+      a.ty = next.y;
     }
     if (Math.abs(dx) > Math.abs(dy)) a.dir = dx > 0 ? "e" : "w";
     else a.dir = dy > 0 ? "s" : "n";
