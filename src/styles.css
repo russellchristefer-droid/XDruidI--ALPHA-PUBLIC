@@ -283,6 +283,134 @@
   pointer-events: auto;
 }
 
+.touch-actions {
+  position: absolute;
+  top: 118px;
+  left: 8px;
+  right: 8px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.touch-actions button {
+  height: 38px;
+  background: #2a2118ee;
+  border: 2px solid #c4a574;
+  color: #f3e6c8;
+  font-size: 12px;
+  box-shadow: 2px 2px 0 #120e0a;
+}
+
+.touch-actions button.on {
+  border-color: #e2b657;
+  color: #e2b657;
+}
+
+.assay.touch .hud-top {
+  top: max(4px, env(safe-area-inset-top));
+  left: 4px;
+  right: 4px;
+  gap: 4px;
+}
+
+.assay.touch .hud-top .panel {
+  min-width: 0;
+  flex: 1 1 0;
+  max-width: 50%;
+  overflow: hidden;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+.assay.touch .hud-top .panel div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assay.touch .meter {
+  width: 100%;
+  max-width: 120px;
+}
+
+.assay.touch .sound-row {
+  gap: 4px;
+}
+
+.assay.touch .sound-row input[type="range"] {
+  width: 56px;
+}
+
+.assay.touch .touch-actions {
+  top: auto;
+  bottom: 148px;
+  left: 4px;
+  right: 4px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.assay.touch .touch-actions button {
+  height: 32px;
+  font-size: 10px;
+  padding: 0 1px;
+  box-shadow: none;
+}
+
+.assay.touch .hotbar-wrap {
+  left: 4px;
+  right: 4px;
+  bottom: 84px;
+  transform: none;
+  width: auto;
+  gap: 3px;
+}
+
+.assay.touch .hotbar {
+  width: 100%;
+  justify-content: center;
+  gap: 3px;
+}
+
+.assay.touch .hotbar .slot {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+}
+
+.assay.touch .prompt {
+  font-size: 11px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.assay.touch .stick {
+  left: 8px;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  width: 72px;
+  height: 72px;
+}
+
+.assay.touch .stick i {
+  width: 28px;
+  height: 28px;
+  left: 22px;
+  top: 22px;
+}
+
+.assay.touch .use-btn {
+  right: 8px;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  font-size: 16px;
+}
+
 @media (max-width: 720px) {
   .slot {
     width: 40px;
@@ -290,6 +418,26 @@
   }
   .grid28 {
     grid-template-columns: repeat(7, 38px);
+  }
+  .overlay {
+    padding: 8px;
+  }
+  .inv-grid,
+  .sheet.inv .inv-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    width: min(100%, 320px);
+  }
+  .inv-slot {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+  }
+  .doll {
+    grid-template-columns: repeat(3, minmax(0, 42px));
+  }
+  .sheet {
+    max-height: 78dvh;
+    padding: 10px;
   }
 }
 

@@ -1240,7 +1240,7 @@ function tendSelf(s: GameState, dt: number, input: Input) {
       life.face = "heart";
       life.emote = 2.4;
       life.errand = null;
-      s.message = "He feeds himself.";
+      s.message = "She feeds herself.";
       return;
     }
     life.face = "need";
@@ -1267,16 +1267,16 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     if (spot.kind === "drink") {
       life.thirst = Math.max(0, life.thirst - 50);
       s.stamina = Math.min(100, s.stamina + 6);
-      s.message = "He drinks at the well.";
+      s.message = "She drinks at the well.";
     } else if (spot.kind === "wash") {
       life.dirt = Math.max(0, life.dirt - 55);
       s.stamina = Math.min(100, s.stamina + 8);
-      s.message = "He washes in the tub.";
+      s.message = "She washes in the tub.";
     } else if (night) {
       s.message = sleepNow(s).msg ?? s.message;
     } else {
       s.stamina = Math.min(100, s.stamina + dt * 22);
-      s.message = "He rests by the fire.";
+      s.message = "She rests by the fire.";
       life.face = "tired";
       return;
     }
@@ -1317,43 +1317,43 @@ function listChores(s: GameState): Chore[] {
   if (dry && s.weather === "clear" && can) {
     if ((can.water ?? 0) <= 0) {
       const well = SPOTS.find((sp) => sp.id === "well")!;
-      out.push({ id: "fill", x: well.x + well.w / 2, y: well.y + well.h / 2, hold: can.id, say: "He goes to fill the can." });
+      out.push({ id: "fill", x: well.x + well.w / 2, y: well.y + well.h / 2, hold: can.id, say: "She goes to fill the can." });
     } else {
-      out.push({ id: `${dry.id}:water`, x: dry.x, y: dry.y, hold: can.id, say: `He waters the ${dry.name.toLowerCase()}.` });
+      out.push({ id: `${dry.id}:water`, x: dry.x, y: dry.y, hold: can.id, say: `She waters the ${dry.name.toLowerCase()}.` });
     }
   }
   const ripe = s.plots.find((p) => p.stage >= 5 && p.crop);
   const scythe = toolItem(s, "scythe");
-  if (ripe && scythe) out.push({ id: `${ripe.id}:cut`, x: ripe.x, y: ripe.y, hold: scythe.id, say: `He harvests the ${ripe.crop}.` });
+  if (ripe && scythe) out.push({ id: `${ripe.id}:cut`, x: ripe.x, y: ripe.y, hold: scythe.id, say: `She harvests the ${ripe.crop}.` });
   const dead = s.plots.find((p) => p.stage < 0);
-  if (dead && scythe) out.push({ id: `${dead.id}:clear`, x: dead.x, y: dead.y, hold: scythe.id, say: "He clears the spent bed." });
+  if (dead && scythe) out.push({ id: `${dead.id}:clear`, x: dead.x, y: dead.y, hold: scythe.id, say: "She clears the spent bed." });
   const packed = s.plots.find((p) => p.stage === 0 && !p.tilled);
   const shovel = toolItem(s, "shovel");
-  if (packed && shovel) out.push({ id: `${packed.id}:till`, x: packed.x, y: packed.y, hold: shovel.id, say: `He tills the ${packed.name.toLowerCase()}.` });
+  if (packed && shovel) out.push({ id: `${packed.id}:till`, x: packed.x, y: packed.y, hold: shovel.id, say: `She tills the ${packed.name.toLowerCase()}.` });
   const open = s.plots.find((p) => p.stage === 0 && p.tilled);
-  if (open && seedItem(s)) out.push({ id: `${open.id}:plant`, x: open.x, y: open.y, hold: null, say: `He plants the ${open.name.toLowerCase()}.` });
+  if (open && seedItem(s)) out.push({ id: `${open.id}:plant`, x: open.x, y: open.y, hold: null, say: `She plants the ${open.name.toLowerCase()}.` });
   const ready = s.animals.find((a) => a.ready && a.kind !== "goat");
-  if (ready) out.push({ id: `${ready.id}:collect`, x: ready.x, y: ready.y, hold: null, say: `He collects from the ${ready.name.toLowerCase()}.` });
+  if (ready) out.push({ id: `${ready.id}:collect`, x: ready.x, y: ready.y, hold: null, say: `She collects from the ${ready.name.toLowerCase()}.` });
   const hungry = s.animals.find((a) => !a.fed);
-  if (hungry && produceItem(s)) out.push({ id: `${hungry.id}:feed`, x: hungry.x, y: hungry.y, hold: null, say: `He feeds the ${hungry.name.toLowerCase()}.` });
+  if (hungry && produceItem(s)) out.push({ id: `${hungry.id}:feed`, x: hungry.x, y: hungry.y, hold: null, say: `She feeds the ${hungry.name.toLowerCase()}.` });
   const bloom = s.flowers?.find((f) => f.bloom >= 2);
-  if (bloom) out.push({ id: `${bloom.id}:pick`, x: bloom.x, y: bloom.y, hold: null, say: `He picks the ${bloom.name.toLowerCase()}.` });
+  if (bloom) out.push({ id: `${bloom.id}:pick`, x: bloom.x, y: bloom.y, hold: null, say: `She picks the ${bloom.name.toLowerCase()}.` });
   const branch = s.branches.find((b) => b.left);
   const axe = toolItem(s, "axe");
   if (branch && axe && s.pack.some((p) => p === null)) {
-    out.push({ id: `${branch.id}:chop`, x: branch.x, y: branch.y, hold: axe.id, say: "He chops a branch." });
+    out.push({ id: `${branch.id}:chop`, x: branch.x, y: branch.y, hold: axe.id, say: "She chops a branch." });
   }
   const gate = s.structures.find((st) => st.id === "gate");
   const hammer = toolItem(s, "hammer");
   const kit = s.pack.some((p) => p?.defId === "kit");
   if (gate && hammer && kit && gate.floor < 8) {
     const spot = SPOTS.find((sp) => sp.id === "gate")!;
-    out.push({ id: "gate:repair", x: spot.x + spot.w / 2, y: spot.y + spot.h / 2, hold: hammer.id, say: "He repairs the gate." });
+    out.push({ id: "gate:repair", x: spot.x + spot.w / 2, y: spot.y + spot.h / 2, hold: hammer.id, say: "She repairs the gate." });
   }
   const dull = s.pack.find((p) => p && defOf(p).kind === "tool" && p.floor > 0 && p.floor < 3);
   if (dull) {
     const grind = SPOTS.find((sp) => sp.id === "grind")!;
-    out.push({ id: `${dull.id}:sharpen`, x: grind.x + grind.w / 2, y: grind.y + grind.h / 2, hold: dull.id, say: `He sharpens the ${defOf(dull).name.toLowerCase()}.` });
+    out.push({ id: `${dull.id}:sharpen`, x: grind.x + grind.w / 2, y: grind.y + grind.h / 2, hold: dull.id, say: `She sharpens the ${defOf(dull).name.toLowerCase()}.` });
   }
   return out;
 }

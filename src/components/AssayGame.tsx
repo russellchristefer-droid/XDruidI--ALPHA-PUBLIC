@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { IconRef, GameState, Item, PanelId, EquipSlot } from "@/game/content";
 import {
   MASS_CAP,
@@ -239,6 +239,8 @@ export function AssayGame() {
   const screenRef = useRef<"title" | "play">("title");
   const panelRef = useRef<PanelId | null>(null);
   const stickRef = useRef({ x: 0, y: 0 });
+  const runHold = useRef(false);
+  const skipTap = useRef(false);
   const padRef = useRef<boolean[]>(Array.from({ length: 16 }, () => false));
   const [tick, setTick] = useState(0);
   const [ready, setReady] = useState(false);
@@ -247,6 +249,8 @@ export function AssayGame() {
   const [panel, setPanel] = useState<PanelId | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [touch, setTouch] = useState(false);
+  const [narrow, setNarrow] = useState(false);
+  const [running, setRunning] = useState(false);
   const [wipe, setWipe] = useState(false);
   const [vaultSel, setVaultSel] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
@@ -331,11 +335,17 @@ export function AssayGame() {
       .catch((e: unknown) => setErr(e instanceof Error ? e.message : "The yard art failed to load."));
     const touchOn = () => setTouch(true);
     window.addEventListener("touchstart", touchOn, { passive: true });
-    if (window.matchMedia("(pointer: coarse)").matches) setTouch(true);
+    const coarse = window.matchMedia("(pointer: coarse)");
+    const phone = window.matchMedia("(max-width: 720px)");
+    if (coarse.matches) setTouch(true);
+    const onPhone = () => setNarrow(phone.matches);
+    onPhone();
+    phone.addEventListener("change", onPhone);
     setDevHere(builderDevAllowed());
     return () => {
       dead = true;
       window.removeEventListener("touchstart", touchOn);
+      phone.removeEventListener("change", onPhone);
     };
   }, []);
 
@@ -408,7 +418,7 @@ export function AssayGame() {
           if (keys.has("KeyD") || keys.has("ArrowRight")) mx += 1;
           if (keys.has("KeyW") || keys.has("ArrowUp")) my -= 1;
           if (keys.has("KeyS") || keys.has("ArrowDown")) my += 1;
-          let run = keys.has("ShiftLeft") || keys.has("ShiftRight");
+          let run = keys.has("ShiftLeft") || keys.has("ShiftRight") || runHold.current;
           const pads = navigator.getGamepads?.();
           const gp = pads ? pads[0] : null;
           if (gp && screenRef.current === "play") {
@@ -718,8 +728,21 @@ export function AssayGame() {
     setMenu({ x, y, rows });
   };
 
+  const holdMenu = (e: ReactPointerEvent, run: () => void) => {
+    if (e.pointerType === "mouse") return;
+    const timer = window.setTimeout(() => {
+      skipTap.current = true;
+      run();
+    }, 480);
+    const clear = () => window.clearTimeout(timer);
+    e.currentTarget.addEventListener("pointerup", clear, { once: true });
+    e.currentTarget.addEventListener("pointercancel", clear, { once: true });
+  };
+
+  const handheld = touch || narrow;
+
   return (
-    <main className={`${touch ? "assay touch" : "assay"}${editorOpen && devHere ? " dev-open" : ""}`}>
+    <main className={`${handheld ? "assay touch" : "assay"}${editorOpen && devHere ? " dev-open" : ""}`}>
       <div className="yard-stage">
       <canvas
         ref={canvasRef}
@@ -735,19 +758,6 @@ export function AssayGame() {
         }}
         onPointerLeave={() => {
           hoverRef.current = null;
-        }}
-        onPointerUp={(e) => {
-          const ed = editorRef.current;
-          if (!ed.open || !ed.drag) return;
-          const w = worldOf(e.clientX, e.clientY) ?? ed.drag;
-          if (ed.mode === "box") {
-            const box = snapRect(ed.drag, w);
-            ed.sel = box;
-            ed.live = null;
-            setEditSel(box);
-          }
-          ed.drag = null;
-          if (ed.mode === "paint") flushTiles();
         }}
         onPointerDown={(e) => {
           if (screenRef.current !== "play") return;
@@ -780,7 +790,54 @@ export function AssayGame() {
             bump();
             return;
           }
+          if (e.pointerType === "touch" || e.pointerType === "pen") {
+            const timer = window.setTimeout(() => {
+              const cur = stateRef.current;
+              if (!cur || screenRef.current !== "play") return;
+              cur.message = examineAt(cur, w.x, w.y);
+              setMenu({
+                x: e.clientX,
+                y: e.clientY,
+                rows: [
+                  { label: promptAt(cur, w.x, w.y).replace("  [E]", "") || "Use", run: () => useAt(w.x, w.y) },
+                  { label: "Examine", run: () => bump() },
+                ],
+              });
+              bump();
+              (e.currentTarget as HTMLElement).dataset.held = "1";
+            }, 460);
+            (e.currentTarget as HTMLElement).dataset.hold = String(timer);
+            (e.currentTarget as HTMLElement).dataset.held = "";
+            return;
+          }
           if (e.button === 0) useAt(w.x, w.y);
+        }}
+        onPointerUp={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          const timer = Number(el.dataset.hold || 0);
+          if (timer) window.clearTimeout(timer);
+          el.dataset.hold = "";
+          const ed = editorRef.current;
+          if (ed.open && ed.drag) {
+            const w = worldOf(e.clientX, e.clientY) ?? ed.drag;
+            if (ed.mode === "box") {
+              const box = snapRect(ed.drag, w);
+              ed.sel = box;
+              ed.live = null;
+              setEditSel(box);
+            }
+            ed.drag = null;
+            if (ed.mode === "paint") flushTiles();
+            return;
+          }
+          if (el.dataset.held === "1") {
+            el.dataset.held = "";
+            return;
+          }
+          if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+          if (screenRef.current !== "play" || editorRef.current.open) return;
+          const w = worldOf(e.clientX, e.clientY);
+          if (w) useAt(w.x, w.y);
         }}
       />
 
@@ -804,7 +861,7 @@ export function AssayGame() {
                     s.life.route = [];
                     s.life.chore = "";
                   }
-                  s.message = s.auto ? "Autonomy on. He tends the farm." : "Autonomy off. He waits for you.";
+                  s.message = s.auto ? "Autonomy on. She tends the farm." : "Autonomy off. She waits for you.";
                   persist(s);
                   bump();
                 }}
@@ -927,8 +984,71 @@ export function AssayGame() {
         />
       )}
 
-      {touch && screen === "play" && (
+      {handheld && screen === "play" && (
         <>
+          <div className="touch-actions" role="toolbar" aria-label="Actions">
+            <button type="button" onClick={() => toggle("pack")}>Pack</button>
+            <button type="button" onClick={() => toggle("body")}>Body</button>
+            <button
+              type="button"
+              onClick={() => {
+                const cur = stateRef.current;
+                if (!cur) return;
+                if (Math.hypot(cur.x - 260, cur.y - 146) > 40) {
+                  cur.message = "Stand at the house.";
+                  bump();
+                  return;
+                }
+                toggle("vault");
+              }}
+            >
+              Chest
+            </button>
+            <button type="button" onClick={() => toggle("map")}>Map</button>
+            <button
+              type="button"
+              onClick={() => {
+                const cur = stateRef.current;
+                if (!cur) return;
+                cur.message = onQ(cur);
+                bump();
+              }}
+            >
+              Eat
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const cur = stateRef.current;
+                if (!cur) return;
+                cur.message = onF(cur);
+                bump();
+              }}
+            >
+              Stow
+            </button>
+            <button
+              type="button"
+              className={running ? "on" : ""}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.currentTarget.setPointerCapture(e.pointerId);
+                runHold.current = true;
+                setRunning(true);
+              }}
+              onPointerUp={() => {
+                runHold.current = false;
+                setRunning(false);
+              }}
+              onPointerCancel={() => {
+                runHold.current = false;
+                setRunning(false);
+              }}
+            >
+              Run
+            </button>
+            <button type="button" onClick={() => toggle("pause")}>Pause</button>
+          </div>
           <div
             className="stick"
             onPointerDown={(e) => {
@@ -1053,11 +1173,16 @@ export function AssayGame() {
                         }
                         bump();
                       }}
+                      onPointerDown={(e) => it && holdMenu(e, () => slotMenu(it, e.clientX, e.clientY, "pack"))}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         if (it) slotMenu(it, e.clientX, e.clientY, "pack");
                       }}
                       onClick={() => {
+                        if (skipTap.current) {
+                          skipTap.current = false;
+                          return;
+                        }
                         if (!it) {
                           setPicked(null);
                           return;
@@ -1084,11 +1209,16 @@ export function AssayGame() {
                         <button
                           key={i}
                           className="slot"
+                          onPointerDown={(e) => it && holdMenu(e, () => slotMenu(it, e.clientX, e.clientY, "inner", i))}
                           onContextMenu={(e) => {
                             e.preventDefault();
                             if (it) slotMenu(it, e.clientX, e.clientY, "inner", i);
                           }}
                           onClick={() => {
+                            if (skipTap.current) {
+                              skipTap.current = false;
+                              return;
+                            }
                             if (it) {
                               s.message = moveFromBackpack(s, i);
                               bump();
