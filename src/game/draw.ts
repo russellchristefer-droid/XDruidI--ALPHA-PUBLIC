@@ -1,6 +1,6 @@
 import { MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { DRESS, MEADOW_PROPS } from "./meadow.ts";
 import type { Sheets } from "./assets.ts";
-import { GROVE_WALKER, drawGroveWalker, groveWalkerFrameIndex, groveWalkerReady } from "../groveCrownWalker13.js";
 
 const CHAR = 0.42;
 
@@ -117,145 +117,14 @@ function feetOnPath(sheets: Sheets, x: number, y: number): boolean {
   return pathBits[iy * img.width + ix] === 1;
 }
 
-const HEADINGS = ["e", "se", "s", "sw", "w", "nw", "n", "ne"] as const;
-type Heading = (typeof HEADINGS)[number];
-
-let seenClock = -1;
-let lastX = Number.NaN;
-let lastY = Number.NaN;
-let heading: Heading = "s";
-let walkPhase = 0;
-let stepMoving = false;
-let velX = 0;
-let velY = 0;
-
-function trackMotion(s: GameState) {
-  if (s.clock === seenClock) return;
-  seenClock = s.clock;
-  if (!Number.isFinite(lastX)) {
-    lastX = s.x;
-    lastY = s.y;
-    return;
-  }
-  const dx = s.x - lastX;
-  const dy = s.y - lastY;
-  lastX = s.x;
-  lastY = s.y;
-  const dist = Math.hypot(dx, dy);
-  stepMoving = dist > 0.08;
-  if (!stepMoving) return;
-  walkPhase += dist / 2.2;
-  velX = velX * 0.45 + dx;
-  velY = velY * 0.45 + dy;
-  if (Math.hypot(velX, velY) < 0.25) return;
-  let ang = Math.atan2(velY, velX);
-  if (ang < 0) ang += Math.PI * 2;
-  const next = HEADINGS[Math.round(ang / (Math.PI / 4)) % 8] ?? heading;
-  if (next === heading) return;
-  const center = (HEADINGS.indexOf(next) * Math.PI) / 4;
-  const delta = Math.atan2(Math.sin(ang - center), Math.cos(ang - center));
-  if (Math.abs(delta) < 0.2) heading = next;
-}
-
-let walkMs = 0;
-let walkStamp = 0;
-let lastLand = -1;
-let landPulse = 0;
-
-function walkerFacing(head: Heading): "forward" | "back" | null {
-  if (head === "s" || head === "se" || head === "sw") return "forward";
-  if (head === "n" || head === "ne" || head === "nw") return "back";
-  return null;
-}
-
-function walkerIndex(moving: boolean) {
-  const now = performance.now();
-  if (!walkStamp) walkStamp = now;
-  const dt = Math.min(50, now - walkStamp);
-  walkStamp = now;
-  if (moving) walkMs += dt;
-  const i = moving ? groveWalkerFrameIndex(walkMs) : 0;
-  if (moving && (i === 0 || i === 6) && i !== lastLand) {
-    lastLand = i;
-    landPulse = 1;
-  }
-  if (!moving) lastLand = -1;
-  return i;
-}
-
-function paintWalker(ctx: CanvasRenderingContext2D, s: GameState, facing: "forward" | "back") {
-  const { frameW, frameH } = GROVE_WALKER;
-  // Same height as the side-view goddess, so turning does not resize her.
-  const scale = (46 * 0.58) / frameH;
-  const i = walkerIndex(stepMoving);
-  ctx.imageSmoothingEnabled = false;
-  drawGroveWalker(ctx, facing, i, s.x - (frameW / 2) * scale, s.y - frameH * scale, scale);
-  if (landPulse > 0 && (i === 0 || i === 6)) {
-    ctx.fillStyle = `rgba(90, 62, 36, ${landPulse})`;
-    ctx.fillRect(s.x - 4, s.y - 1, 2, 1);
-    ctx.fillRect(s.x + 2, s.y - 1, 2, 1);
-    landPulse *= 0.92;
-  }
-}
-
 function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
-  trackMotion(s);
-  const head = heading;
-  const facing = walkerFacing(head);
+  const pose = charPose(s);
+  const sheet = sheets[pose.sheet];
+  if (!sheet) return;
+  const { row, flip } = rowOf(s.dir);
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  if (facing && groveWalkerReady()) {
-    paintWalker(ctx, s, facing);
-    drawEffect(ctx, sheets, s);
-    ctx.restore();
-    return;
-  }
-  let sheet: HTMLImageElement | undefined = sheets.goddess;
-  let frameW = 64;
-  let frameH = 64;
-  let frames = 13;
-  let scale = 0.58;
-  let footX = 32;
-  let footY = 63;
-  let flip = head === "e";
-  if (!facing && sheet) {
-    const col = stepMoving ? Math.floor(walkPhase) % frames : 0;
-    blit(ctx, sheet, col * frameW, 0, frameW, frameH, s.x, s.y, scale, flip, footX, footY);
-    drawEffect(ctx, sheets, s);
-    ctx.restore();
-    return;
-  }
-  if (head === "s" || head === "se" || head === "sw") {
-    const turned = head !== "s";
-    sheet = (turned ? sheets.goddessFront3 : sheets.goddessFront) ?? sheets.goddessFront ?? sheets.goddess;
-    if (sheet && sheet !== sheets.goddess) {
-      frameW = 33;
-      frameH = 67;
-      frames = 13;
-      scale = 0.4;
-      footX = 16;
-      footY = 67;
-      flip = head === "sw";
-    }
-  } else if (head === "n" || head === "ne" || head === "nw") {
-    const turned = head !== "n";
-    sheet = (turned ? sheets.goddessBack3 : sheets.goddessBack) ?? sheets.goddessBack ?? sheets.goddess;
-    if (sheet && sheet !== sheets.goddess) {
-      frameW = 38;
-      frameH = 67;
-      frames = 13;
-      scale = 0.4;
-      footX = 17;
-      footY = 67;
-      flip = head === "nw";
-    }
-  }
-  if (!sheet) {
-    ctx.restore();
-    return;
-  }
-  const col = stepMoving ? Math.floor(walkPhase) % frames : 0;
-  blit(ctx, sheet, col * frameW, 0, frameW, frameH, s.x, s.y, scale, flip, footX, footY);
+  blit(ctx, sheet, pose.col * 80, row * 84, 80, 84, s.x, s.y, CHAR, flip, 40, 83);
   drawEffect(ctx, sheets, s);
   ctx.restore();
 }
@@ -626,7 +495,17 @@ export function drawWorld(
       });
     }
   }
-  if (sheets.goddess) {
+  const dress = sheets.meadowDress;
+  if (dress) {
+    for (const p of MEADOW_PROPS) {
+      const [sx, sy, sw, sh] = DRESS[p.id];
+      queue.push({
+        y: p.y,
+        paint: () => blit(ctx, dress, sx, sy, sw, sh, p.x, p.y, 1, false, sw / 2, sh),
+      });
+    }
+  }
+  if (sheets.idle) {
     queue.push({
       y: s.y,
       paint: () => paintPlayer(ctx, sheets, s),
@@ -635,7 +514,7 @@ export function drawWorld(
   queue.sort((a, b) => a.y - b.y);
   for (const d of queue) d.paint();
   if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0);
-  if (sheets.goddess && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
+  if (sheets.idle && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
 
   const hour = 6 + s.time * 16;
   let sky = "rgba(0,0,0,0)";

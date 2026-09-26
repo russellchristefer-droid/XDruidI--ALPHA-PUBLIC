@@ -15,7 +15,6 @@ import {
   skyLabel,
 } from "@/game/content";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
-import { loadGroveWalkerSheet } from "@/groveCrownWalker13.js";
 import { armWind, heavyWind, onSound, setVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
 import { drawWorld } from "@/game/draw";
 import {
@@ -321,18 +320,12 @@ export function AssayGame() {
 
   useEffect(() => {
     let dead = false;
-    const yard = loadSheets().then((sheets) => {
-      if (dead) return;
-      sheetsRef.current = sheets;
-      loadTileLayer();
-      if (!stateRef.current) stateRef.current = readSave() ?? createGame();
-    });
-    const walker = loadGroveWalkerSheet().catch(() => null);
-    const opened = Promise.all([yard, walker]);
-    const giveUp = new Promise((resolve) => window.setTimeout(resolve, 8000));
-    Promise.race([opened, giveUp])
-      .then(() => {
+    loadSheets()
+      .then((sheets) => {
         if (dead) return;
+        sheetsRef.current = sheets;
+        loadTileLayer();
+        if (!stateRef.current) stateRef.current = readSave() ?? createGame();
         setReady(true);
         if (new URLSearchParams(location.search).has("qa")) {
           screenRef.current = "play";
@@ -868,7 +861,7 @@ export function AssayGame() {
                     s.life.route = [];
                     s.life.chore = "";
                   }
-                  s.message = s.auto ? "Autonomy on. She tends the farm." : "Autonomy off. She waits for you.";
+                  s.message = s.auto ? "Autonomy on. He tends the farm." : "Autonomy off. He waits for you.";
                   persist(s);
                   bump();
                 }}
