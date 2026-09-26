@@ -268,6 +268,21 @@
   margin: 0 0 8px;
 }
 
+.sound-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  pointer-events: auto;
+}
+
+.sound-row input[type="range"] {
+  width: 92px;
+  height: 22px;
+  accent-color: #c4a574;
+  pointer-events: auto;
+}
+
 @media (max-width: 720px) {
   .slot {
     width: 40px;

@@ -13,6 +13,7 @@ import {
   isNight,
 } from "@/game/content";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
+import { armWind, heavyWind, onSound, setVolume, setWind, soundState, toggleMute } from "@/game/audio";
 import { drawWorld } from "@/game/draw";
 import {
   assignHotbar,
@@ -176,6 +177,33 @@ function itemLabel(it: Item): string {
   const floor = d.kind === "tool" ? ` · Q${Math.round(it.quality)} · Floor ${it.floor.toFixed(1)}` : ` · Floor ${Math.floor(it.floor * (d.stack ? it.qty : 1))}`;
   const water = d.waterMax ? ` · water ${it.water ?? 0}/${d.waterMax}` : "";
   return `${d.name}${qty}${floor}${water}. ${it.noteOf ? "Paper. No use. No weight." : d.blurb}`;
+}
+
+function SoundControls() {
+  const [snd, setSnd] = useState(soundState);
+  useEffect(() => onSound(() => setSnd(soundState())), []);
+  return (
+    <div className="sound-row" onPointerDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="slot"
+        style={{ width: "auto", padding: "4px 8px" }}
+        aria-pressed={snd.muted}
+        onClick={() => toggleMute()}
+      >
+        {snd.muted ? "Muted" : "Mute"}
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={snd.volume}
+        aria-label="Volume"
+        onChange={(e) => setVolume(Number(e.target.value))}
+      />
+    </div>
+  );
 }
 
 export function AssayGame() {
@@ -384,6 +412,7 @@ export function AssayGame() {
               run,
               frozen: panelRef.current !== null || editorRef.current.open,
             });
+            setWind(heavyWind(s.time, s.day));
             if (s.uiEvent) {
               const ev = s.uiEvent;
               s.uiEvent = undefined;
@@ -524,6 +553,7 @@ export function AssayGame() {
   };
 
   const start = (fresh: boolean) => {
+    armWind();
     if (!ready) return;
     if (fresh) {
       localStorage.removeItem(SAVE_KEY);
@@ -737,6 +767,7 @@ export function AssayGame() {
               <div style={{ color: mass >= 16 ? "#e07a5f" : "#f3e6c8" }}>
                 {mass.toFixed(1)} / {MASS_CAP.toFixed(1)} wt
               </div>
+              <SoundControls />
             </div>
           </div>
           <div className="hotbar-wrap">
@@ -897,6 +928,7 @@ export function AssayGame() {
               <button className="slot" style={{ width: "auto", padding: "8px 14px" }} onClick={() => setPanel(panel === "controls" ? null : "controls")}>
                 Options
               </button>
+              <SoundControls />
             </div>
           </div>
         </div>
@@ -906,6 +938,7 @@ export function AssayGame() {
         <div className="overlay" onClick={() => setPanel(null)}>
           <div className="panel sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
             <h2>Options</h2>
+            <SoundControls />
             <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13 }}>{CONTROLS}</pre>
             <p style={{ fontSize: 12 }}>
               Art: Farm Life by sophi-x-x. Animals: Farmstead 01 Byre and Barn. Food and crops: Farm to Table. Used inside this game only, not redistributed as a pack.
