@@ -733,6 +733,8 @@ export function placeHerd(s: GameState): void {
 
 /** Meadow fishing water. The dock on the west edge stays walkable. */
 export const FISH_WATER: Rect = { x: 74, y: 236, w: 72, h: 46 };
+/** Raised crown of the same pond, so the curved top is not walkable. */
+export const FISH_CROWN: Rect = { x: 92, y: 220, w: 36, h: 16 };
 
 export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Rocks in the meadow, south of the farm fence. The dirt path stays open. */
@@ -780,6 +782,7 @@ export function footBlocked(x: number, y: number): boolean {
     if (overlap(box, { x: r.x - w / 2, y: r.y - h, w, h })) return true;
   }
   if (overlap(box, FISH_WATER)) return true;
+  if (overlap(box, FISH_CROWN)) return true;
   return false;
 }
 
