@@ -149,24 +149,15 @@ function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
   if (!p.crop || p.stage === 0 || !sheets[p.crop]) return;
   const img = sheets[p.crop]!;
   const fw = 32;
-  const fh = p.crop === "cabbage" ? 32 : img.height;
+  const fh = img.height;
   const frames = Math.max(1, Math.floor(img.width / fw));
   const frame = p.stage < 0 ? 0 : Math.min(frames - 1, p.stage);
-  const cols = Math.max(1, Math.floor(w / 10));
-  const rows = Math.max(1, Math.floor(h / 9));
-  const scale = Math.min(0.36, (w / cols - 1) / fw);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const cx = x + ((col + 0.5) * w) / cols;
-      const cy = y + ((row + 0.85) * h) / rows;
-      blit(ctx, img, frame * fw, 0, fw, fh, cx, cy, scale, false, fw / 2, fh - 2);
-    }
+  const count = w >= 48 ? 2 : 1;
+  for (let i = 0; i < count; i++) {
+    const cx = x + ((i + 0.5) * w) / count;
+    const cy = y + h - 1;
+    blit(ctx, img, frame * fw, 0, fw, fh, cx, cy, 1, false, fw / 2, fh - 1);
   }
-  ctx.restore();
 }
 
 function drawAnimal(

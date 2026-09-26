@@ -363,6 +363,12 @@ export const BEDS = [
   { id: "bed-e", name: "East bed", x0: 155, y0: 125, w: 18, h: 22 },
 ] as const;
 
+const STARTER: Record<string, CropId> = {
+  "bed-w": "tomato",
+  "bed-c": "cabbage",
+  "bed-e": "greens",
+};
+
 export function freshPlots(): Plot[] {
   return BEDS.map((bed) => ({
     id: bed.id,
@@ -372,11 +378,11 @@ export function freshPlots(): Plot[] {
     y: bed.y0 + bed.h / 2,
     w: bed.w,
     h: bed.h,
-    crop: null,
-    stage: 0,
+    crop: STARTER[bed.id] ?? null,
+    stage: STARTER[bed.id] ? 5 : 0,
     watered: false,
     wilt: 0,
-    tilled: false,
+    tilled: true,
     revealed: true,
   }));
 }
@@ -392,6 +398,11 @@ export function lockBeds(s: GameState): void {
     old.h = plot.h;
     old.kind = "bed";
     old.name = plot.name;
+    if (!old.crop && !s.plots.some((p) => p.crop)) {
+      old.crop = plot.crop;
+      old.stage = plot.stage;
+      old.tilled = true;
+    }
     return old;
   });
 }
@@ -691,7 +702,7 @@ export function createGame(): GameState {
     rng: 0xa55a1,
     action: null,
     pending: null,
-    message: "The three beds are packed soil. The shovel opens them.",
+    message: "Tomato, cauliflower, and peas are growing on the three beds.",
     summary: false,
   };
 }
