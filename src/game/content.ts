@@ -1,5 +1,4 @@
 import { tileBlocks } from "./tiles";
-import { MEADOW_PROPS, meadowSolid } from "./meadow";
 export const WORLD_W = 347;
 export const WORLD_H = 960;
 /** The frame that fits on screen. The yard stays this size; the meadow is below it. */
@@ -759,10 +758,6 @@ export function footBlocked(x: number, y: number): boolean {
     const w = 14 * r.s;
     const h = 8 * r.s;
     if (overlap(box, { x: r.x - w / 2, y: r.y - h, w, h })) return true;
-  }
-  for (const p of MEADOW_PROPS) {
-    const solid = meadowSolid(p);
-    if (solid && overlap(box, solid)) return true;
   }
   return false;
 }

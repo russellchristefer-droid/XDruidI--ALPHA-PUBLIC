@@ -1,5 +1,4 @@
 import { MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
-import { DRESS, MEADOW_PROPS } from "./meadow.ts";
 import type { Sheets } from "./assets.ts";
 
 const CHAR = 0.42;
@@ -124,7 +123,7 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   const { row, flip } = rowOf(s.dir);
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  blit(ctx, sheet, pose.col * 80, row * 84, 80, 84, s.x, s.y, CHAR, flip, 40, 83);
+  blit(ctx, sheet, pose.col * 80, row * 112, 80, 112, s.x, s.y, CHAR, flip, 36, 96);
   drawEffect(ctx, sheets, s);
   ctx.restore();
 }
@@ -494,31 +493,6 @@ export function drawWorld(
         paint: () => blit(ctx, rocks, r.i * 48, 0, 48, 48, r.x, r.y, r.s, false, 24, 40),
       });
     }
-  }
-  const dress = sheets.meadowDress;
-  const treeSheet: Partial<Record<string, HTMLImageElement | undefined>> = {
-    oak: sheets.treeOak,
-    apple: sheets.treeApple,
-    birch: sheets.treeBirch,
-    pine: sheets.treePine,
-    stump: sheets.treeStump,
-    sapling: sheets.treeSapling,
-  };
-  for (const p of MEADOW_PROPS) {
-    const tree = treeSheet[p.id];
-    if (tree) {
-      queue.push({
-        y: p.y,
-        paint: () => blit(ctx, tree, 0, 0, tree.width, tree.height, p.x, p.y, 1, false, tree.width / 2, tree.height),
-      });
-      continue;
-    }
-    if (!dress) continue;
-    const [sx, sy, sw, sh] = DRESS[p.id];
-    queue.push({
-      y: p.y,
-      paint: () => blit(ctx, dress, sx, sy, sw, sh, p.x, p.y, 1, false, sw / 2, sh),
-    });
   }
   if (sheets.idle) {
     queue.push({
