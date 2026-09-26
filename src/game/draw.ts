@@ -523,8 +523,8 @@ export function drawWorld(
   }
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const fx = 54;
-  const fy = 52;
+  const fx = 40;
+  const fy = 80;
   const glow = ctx.createRadialGradient(fx, fy, 1, fx, fy, 22);
   glow.addColorStop(0, `rgba(255, 196, 80, ${0.55 + skyA})`);
   glow.addColorStop(0.4, `rgba(255, 120, 24, ${0.28 + skyA * 0.45})`);
