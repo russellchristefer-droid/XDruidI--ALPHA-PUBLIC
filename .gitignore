@@ -1,0 +1,11 @@
+node_modules/
+.project_id
+.github_repo
+.env
+.env.*
+.vercel/
+
+# GitHub rejects any file over 100 MB. These stay on disk, not in the repo.
+artifacts/Bare Knuckle \[Build\] v5.zip
+artifacts/Core-Framework-develop.zip
+artifacts/Sounds From The Underground.zip

@@ -1,0 +1,14 @@
+{
+  "installCommand": "npm install --omit=dev --no-audit --no-fund",
+  "headers": [
+    {
+      "source": "/game/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

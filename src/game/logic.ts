@@ -1,0 +1,1273 @@
+import {
+  DEFS,
+  MASS_CAP,
+  MASS_RUN,
+  SPOTS,
+  WORLD_W,
+  createGame,
+  defaultFlowers,
+  defOf,
+  footBlocked,
+  isNight,
+  itemMass,
+  type Animal,
+  type CropId,
+  type GameState,
+  type Item,
+  type PanelId,
+  type Plot,
+} from "./content.ts";
+
+export type Input = { mx: number; my: number; run: boolean; frozen: boolean };
+export type InteractResult = { msg?: string; panel?: PanelId; save?: boolean; summary?: boolean };
+
+export type Target = {
+  id: string;
+  name: string;
+  kind: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+const REACH = 36;
+const CONTACT_AT = 0.62;
+
+function unitRand(s: GameState): number {
+  let x = s.rng >>> 0;
+  if (!x) x = 1;
+  x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+  s.rng = x;
+  return x / 4294967296;
+}
+
+function aimPoint(s: GameState, kind: string, target: string): { x: number; y: number } | null {
+  if (kind === "sharpen") return { x: s.x, y: s.y };
+  const plot = s.plots.find((p) => p.id === target);
+  if (plot) return { x: plot.x, y: plot.y };
+  const spot = SPOTS.find((sp) => sp.id === target);
+  if (spot) return { x: spot.x + spot.w / 2, y: spot.y + spot.h / 2 };
+  const branch = s.branches.find((b) => b.id === target);
+  if (branch) return branch.left ? { x: branch.x, y: branch.y } : null;
+  const animal = s.animals.find((a) => a.id === target);
+  if (animal) return { x: animal.x, y: animal.y };
+  return { x: s.x, y: s.y };
+}
+
+export function contactFail(s: GameState): string | null {
+  const act = s.action;
+  if (!act) return null;
+  const pt = aimPoint(s, act.kind, act.target);
+  if (!pt) return "The target is gone. The swing stops.";
+  if (Math.hypot(s.x - pt.x, s.y - pt.y) > REACH + 6) return "Out of reach. The swing misses.";
+  const toolKinds: Record<string, string> = {
+    water: "water",
+    harvest: "scythe",
+    clear: "scythe",
+    till: "shovel",
+    chop: "axe",
+    repair: "hammer",
+  };
+  const need = toolKinds[act.kind];
+  if (need || act.kind === "sharpen") {
+    const tool = active(s);
+    if (!tool || defOf(tool).kind !== "tool") return "The tool left your hand.";
+    if (tool.floor <= 0) return "The tool is spent. The swing stops.";
+    if (need && defOf(tool).tool !== need) return `Requires ${need}. The swing stops.`;
+  }
+  return null;
+}
+
+export function watcherLine(s: GameState): string {
+  if (s.downed) return "Downed. Crawl to the tub.";
+  if (s.action) {
+    const verb: Record<string, string> = {
+      water: "Pouring",
+      fill: "Filling the can",
+      harvest: "Harvesting",
+      clear: "Clearing",
+      till: "Tilling",
+      plant: "Planting",
+      chop: "Chopping",
+      cook: "Cooking",
+      sharpen: "Sharpening",
+      repair: "Repairing",
+      feed: "Feeding",
+      collect: "Collecting",
+    };
+    const name = verb[s.action.kind] ?? "Working";
+    return s.action.hit ? `${name}. Contact landed.` : `${name}. Waiting on the swing.`;
+  }
+  if (s.stamina < 18) return "Too tired to swing.";
+  if (totalMass(s) >= MASS_RUN) return "Burden limit. You cannot run.";
+  const dry = s.plots.find((p) => p.kind === "bed" && p.stage > 0 && p.stage < 5 && !p.watered);
+  if (dry) return `${dry.name} wants water.`;
+  return "The yard is quiet.";
+}
+
+export function allItems(s: GameState): Item[] {
+  const out: Item[] = [];
+  const push = (it: Item | null | undefined) => {
+    if (!it) return;
+    out.push(it);
+    if (it.contents) for (const c of it.contents) push(c);
+  };
+  for (const it of s.pack) push(it);
+  for (const it of Object.values(s.body)) push(it);
+  for (const g of s.ground) push(g.item);
+  return out;
+}
+
+export function findItem(s: GameState, id: string | null | undefined): Item | null {
+  if (!id) return null;
+  return allItems(s).find((it) => it.id === id) ?? null;
+}
+
+export function totalMass(s: GameState): number {
+  let m = 0;
+  for (const it of s.pack) if (it) m += itemMass(it);
+  for (const it of Object.values(s.body)) if (it) m += itemMass(it);
+  return m;
+}
+
+export function coinCount(s: GameState): number {
+  let n = s.purse;
+  const walk = (it: Item | null | undefined) => {
+    if (!it) return;
+    if (it.defId === "coin") n += it.qty;
+    if (it.contents) for (const c of it.contents) walk(c);
+  };
+  for (const it of s.pack) walk(it);
+  walk(s.body.belt);
+  walk(s.body.container);
+  return n;
+}
+
+function uid(s: GameState): string {
+  s.nextId += 1;
+  return "i" + s.nextId;
+}
+
+export function makeItem(s: GameState, defId: string, qty = 1): Item {
+  const d = DEFS[defId];
+  const it: Item = {
+    id: uid(s),
+    defId,
+    qty,
+    quality: d.quality,
+    floor: d.floor,
+    floorMax: d.floor,
+  };
+  if (d.waterMax) it.water = 0;
+  if (d.kind === "container") it.contents = Array.from({ length: 8 }, () => null);
+  return it;
+}
+
+function unlink(s: GameState, id: string) {
+  if (s.activeId === id) s.activeId = null;
+  s.hotbar = s.hotbar.map((h) => (h === id ? null : h));
+  if (s.body.hands?.id === id) s.body.hands = null;
+}
+
+function takeFromContainer(list: (Item | null)[], id: string): Item | null {
+  for (let i = 0; i < list.length; i++) {
+    const it = list[i];
+    if (!it) continue;
+    if (it.id === id) {
+      list[i] = null;
+      return it;
+    }
+    if (it.contents) {
+      const inner = takeFromContainer(it.contents, id);
+      if (inner) return inner;
+    }
+  }
+  return null;
+}
+
+export function takeItem(s: GameState, id: string): Item | null {
+  const fromPack = takeFromContainer(s.pack, id);
+  if (fromPack) return fromPack;
+  for (const key of Object.keys(s.body) as (keyof GameState["body"])[]) {
+    const it = s.body[key];
+    if (it?.id === id) {
+      s.body[key] = null;
+      return it;
+    }
+    if (it?.contents) {
+      const inner = takeFromContainer(it.contents, id);
+      if (inner) return inner;
+    }
+  }
+  return null;
+}
+
+export function removeItem(s: GameState, id: string): Item | null {
+  const it = takeItem(s, id);
+  if (it) unlink(s, id);
+  return it;
+}
+
+function tryStack(into: (Item | null)[], it: Item): boolean {
+  const d = defOf(it);
+  if (!d.stack) return false;
+  const hit = into.find(
+    (p) => p && p.defId === it.defId && p.noteOf === it.noteOf && p.floor === it.floor,
+  );
+  if (!hit) return false;
+  hit.qty += it.qty;
+  return true;
+}
+
+export function giveItem(s: GameState, it: Item): boolean {
+  if (totalMass(s) + itemMass(it) > MASS_CAP + 0.001) return false;
+  if (tryStack(s.pack, it)) return true;
+  const slot = s.pack.findIndex((p) => p === null);
+  if (slot < 0) return false;
+  s.pack[slot] = it;
+  return true;
+}
+
+export function addCoins(s: GameState, n: number): void {
+  if (n === 0) return;
+  let stack = s.pack.find((p) => p?.defId === "coin") ?? null;
+  if (n > 0) {
+    if (stack) stack.qty += n;
+    else {
+      const it = makeItem(s, "coin", n);
+      if (!giveItem(s, it)) s.purse += n;
+    }
+    return;
+  }
+  let left = -n;
+  if (stack) {
+    const use = Math.min(stack.qty, left);
+    stack.qty -= use;
+    left -= use;
+    if (stack.qty <= 0) removeItem(s, stack.id);
+  }
+  if (left > 0) s.purse = Math.max(0, s.purse - left);
+}
+
+function hasRoom(s: GameState, it: Item): boolean {
+  if (totalMass(s) + itemMass(it) > MASS_CAP + 0.001) return false;
+  if (tryStackWould(s, it)) return true;
+  return s.pack.some((p) => p === null);
+}
+
+function active(s: GameState): Item | null {
+  return findItem(s, s.activeId);
+}
+
+function toolKind(s: GameState): string | null {
+  const it = active(s);
+  if (!it) return null;
+  return defOf(it).tool ?? null;
+}
+
+export function targets(s: GameState): Target[] {
+  const list: Target[] = SPOTS.map((sp) => ({ ...sp }));
+  for (const p of s.plots) {
+    const w = p.w || 20;
+    const h = p.h || 16;
+    list.push({ id: p.id, name: plotName(p), kind: "plot", x: p.x - w / 2, y: p.y - h / 2, w, h });
+  }
+  for (const f of s.flowers ?? []) {
+    list.push({
+      id: f.id,
+      name: f.name,
+      kind: "flower",
+      x: f.x - f.w / 2,
+      y: f.y - f.h / 2,
+      w: f.w,
+      h: f.h,
+    });
+  }
+  for (const b of s.branches) {
+    if (!b.left) continue;
+    list.push({ id: b.id, name: "Fallen branch", kind: "branch", x: b.x - 8, y: b.y - 8, w: 16, h: 14 });
+  }
+  for (const a of s.animals) {
+    list.push({ id: a.id, name: a.name, kind: "animal", x: a.x - 10, y: a.y - 12, w: 20, h: 16 });
+  }
+  list.push({ id: "cat", name: "Cat", kind: "cat", x: s.cat.x - 8, y: s.cat.y - 8, w: 16, h: 12 });
+  for (const g of s.ground) {
+    list.push({
+      id: g.id,
+      name: defOf(g.item).name,
+      kind: "ground",
+      x: g.x - 6,
+      y: g.y - 6,
+      w: 12,
+      h: 12,
+    });
+  }
+  return list;
+}
+
+function plotName(p: Plot): string {
+  if (!p.crop || p.stage === 0) return p.tilled ? "Tilled soil" : p.name;
+  if (p.stage < 0) return `Spent ${p.crop}`;
+  const stage = p.stage >= 5 ? "ready" : `stage ${p.stage}`;
+  return `${p.crop} (${stage})`;
+}
+
+function contains(t: Target, px: number, py: number): boolean {
+  return px >= t.x && px <= t.x + t.w && py >= t.y && py <= t.y + t.h;
+}
+
+export function pickTarget(s: GameState, px: number, py: number): Target | null {
+  const hits = targets(s).filter((t) => contains(t, px, py));
+  if (!hits.length) {
+    let best: Target | null = null;
+    let bestD = 10;
+    for (const t of targets(s)) {
+      const cx = Math.max(t.x, Math.min(px, t.x + t.w));
+      const cy = Math.max(t.y, Math.min(py, t.y + t.h));
+      const d = Math.hypot(px - cx, py - cy);
+      if (d < bestD) {
+        bestD = d;
+        best = t;
+      }
+    }
+    return best;
+  }
+  hits.sort((a, b) => a.w * a.h - b.w * b.h);
+  return hits[0] ?? null;
+}
+
+function inReach(s: GameState, px: number, py: number): boolean {
+  return Math.hypot(s.x - px, s.y - py) <= REACH;
+}
+
+function structure(s: GameState, id: string) {
+  return s.structures.find((st) => st.id === id);
+}
+
+function shaveStruct(s: GameState, id: string, n: number) {
+  const st = structure(s, id);
+  if (st) st.floor = Math.max(0, +(st.floor - n).toFixed(2));
+}
+
+function wear(it: Item | null, n: number) {
+  if (!it) return;
+  it.floor = Math.max(0, +(it.floor - n).toFixed(2));
+}
+
+function spent(it: Item | null): boolean {
+  return !!it && defOf(it).kind === "tool" && it.floor <= 0;
+}
+
+export function facingPoint(s: GameState): { x: number; y: number } {
+  const d = 14;
+  if (s.dir === "s") return { x: s.x, y: s.y + d };
+  if (s.dir === "n") return { x: s.x, y: s.y - d };
+  if (s.dir === "e") return { x: s.x + d, y: s.y };
+  return { x: s.x - d, y: s.y };
+}
+
+function seedItem(s: GameState): Item | null {
+  const sel = findItem(s, s.hotbar[s.selected]);
+  if (sel && defOf(sel).kind === "seed") return sel;
+  return s.pack.find((p) => p && defOf(p).kind === "seed") ?? null;
+}
+
+function produceItem(s: GameState): Item | null {
+  return s.pack.find((p) => p && defOf(p).kind === "product" && !["milk", "egg"].includes(p.defId)) ?? null;
+}
+
+function verb(s: GameState, t: Target): string {
+  if (t.kind === "ground") return `Pick up ${t.name}`;
+  if (t.kind === "plot") {
+    const p = s.plots.find((pl) => pl.id === t.id)!;
+    const tk = toolKind(s);
+    if (p.stage < 0) return "Clear spent bed";
+    if (p.stage >= 5) return `Harvest ${p.crop}`;
+    if (p.stage === 0 && !p.tilled) return "Till soil";
+    if (p.stage === 0) return "Plant seed";
+    if (tk === "water") return `Water ${p.crop}`;
+    return `Tend ${p.crop}`;
+  }
+  if (t.kind === "well") return toolKind(s) === "water" ? "Draw well" : "Wash at well";
+  if (t.kind === "pond") return "Draw pond";
+  if (t.kind === "tub") {
+    if (s.downed) return "Climb into the tub";
+    return isNight(s.time) ? "Sleep until dawn" : "Wash in the tub";
+  }
+  if (t.kind === "fire") return "Cook at campfire";
+  if (t.kind === "hearth") return "Sit by the fire";
+  if (t.kind === "shed") return isNight(s.time) ? "Sleep in the house" : "Open the house";
+  if (t.kind === "bench") return "Use workbench";
+  if (t.kind === "grind") return "Sharpen tool";
+  if (t.kind === "gate") return toolKind(s) === "hammer" ? "Repair gate" : "Check gate";
+  if (t.kind === "branch") return "Chop branch";
+  if (t.kind === "animal") {
+    const a = s.animals.find((an) => an.id === t.id)!;
+    if (a.ready && a.kind !== "goat") return a.kind === "cow" ? "Collect milk" : "Collect egg";
+    if (a.kind === "goat") return "Scratch the goat";
+    return `Feed ${a.name.toLowerCase()}`;
+  }
+  if (t.kind === "cat") return "Pet the cat";
+  if (t.kind === "flower") {
+    const f = s.flowers?.find((fl) => fl.id === t.id);
+    return f && f.bloom >= 2 ? `Pick ${f.name.toLowerCase()}` : t.name;
+  }
+  return t.name;
+}
+
+export function promptAt(s: GameState, px: number, py: number): string {
+  if (!inReach(s, px, py)) return "";
+  const t = pickTarget(s, px, py);
+  if (!t) return "";
+  return `${verb(s, t)}  [E]`;
+}
+
+export function examineAt(s: GameState, px: number, py: number): string {
+  const t = pickTarget(s, px, py);
+  if (!t) return "Dirt, grass, and the fence line.";
+  if (t.kind === "plot") {
+    const p = s.plots.find((pl) => pl.id === t.id)!;
+    if (!p.crop || p.stage === 0) {
+      return p.tilled ? "Tilled soil. It will take a seed." : "Packed soil. The shovel opens it.";
+    }
+    if (p.stage < 0) return `The ${p.crop} died of thirst. Scythe it clear.`;
+    const wet = p.watered ? "Watered." : "Dry.";
+    const wilt = p.wilt > 0 ? " Wilting." : "";
+    return `${p.crop}, ${p.stage >= 5 ? "ready to cut" : "stage " + p.stage}. ${wet}${wilt}`;
+  }
+  if (t.kind === "flower") {
+    const f = s.flowers?.find((fl) => fl.id === t.id);
+    if (!f) return "A flower bed.";
+    if (f.bloom >= 2) return `${f.name}. Open and ready. Press E to pick.`;
+    if (f.bloom === 1) return `${f.name}. A bud, not ready to cut.`;
+    return `${f.name}. Cut back. It will bud on its own.`;
+  }
+  if (t.kind === "gate" || t.kind === "shed" || t.kind === "bench") {
+    const id = t.kind === "gate" ? "gate" : t.kind === "shed" ? "shed" : "bench";
+    const st = structure(s, id)!;
+    return `${st.name}. Quality ${Math.round(st.quality)}. Floor ${st.floor.toFixed(1)} of ${st.floorMax}.`;
+  }
+  if (t.kind === "animal") {
+    const a = s.animals.find((an) => an.id === t.id)!;
+    return `${a.name}. ${a.fed ? "Fed today." : "Hungry."} ${a.ready ? "Something is ready." : ""}`.trim();
+  }
+  if (t.kind === "ground") {
+    const g = s.ground.find((gr) => gr.id === t.id)!;
+    const d = defOf(g.item);
+    return `${d.name}. Floor ${g.item.floor}. Weight ${itemMass(g.item).toFixed(1)}. Left where it fell.`;
+  }
+  return `${t.name}. ${SPOTS.find((sp) => sp.id === t.id)?.kind === "well" ? "Water, a wash, a small second wind." : ""}`.trim();
+}
+
+function startAct(s: GameState, kind: string, target: string, dur = 0.6): InteractResult {
+  if (s.action) {
+    s.pending = s.pending ?? { px: s.x, py: s.y };
+    return { msg: "Queued." };
+  }
+  const tool = active(s);
+  if (spent(tool) && ["water", "till", "harvest", "chop", "repair", "sharpen"].includes(kind)) {
+    return { msg: "The tool is spent. Repair it at the workbench." };
+  }
+  if (s.stamina < 4) return { msg: "Too tired to swing." };
+  s.action = { kind, target, elapsed: 0, dur };
+  return { msg: "Working…" };
+}
+
+export function interact(s: GameState, px: number, py: number): InteractResult {
+  if (s.downed) {
+    const tub = targets(s).find((t) => t.kind === "tub");
+    if (tub && (contains(tub, px, py) || Math.hypot(s.x - tub.x, s.y - tub.y) < 28)) {
+      s.downed = false;
+      s.stamina = Math.max(s.stamina, 55);
+      return { msg: "The tub takes the ache out. You can stand.", save: true };
+    }
+    return { msg: "Downed. Crawl to the bathtub." };
+  }
+  if (!inReach(s, px, py)) return { msg: "Too far." };
+  const t = pickTarget(s, px, py);
+  if (!t) return { msg: "Nothing to use here." };
+  if (s.action) {
+    s.pending = { px, py };
+    return { msg: "Next action queued." };
+  }
+
+  if (t.kind === "ground") return pickup(s, t.id);
+  if (t.kind === "plot") return usePlot(s, t.id);
+  if (t.kind === "well") return useWell(s);
+  if (t.kind === "pond") return usePond(s);
+  if (t.kind === "tub") return useTub(s);
+  if (t.kind === "fire") return useFire(s);
+  if (t.kind === "hearth") {
+    s.stamina = Math.min(100, s.stamina + 8);
+    return { msg: "You sit by the fire. The warmth settles in.", save: true };
+  }
+  if (t.kind === "shed") {
+    if (isNight(s.time)) return sleepNow(s);
+    shaveStruct(s, "shed", 0.2);
+    return { panel: "vault", save: true, msg: "The door opens. The ledger sits just inside." };
+  }
+  if (t.kind === "bench") {
+    shaveStruct(s, "bench", 0.3);
+    return { panel: "craft", msg: "Workbench. Quality and Floor live here." };
+  }
+  if (t.kind === "grind") return useGrind(s);
+  if (t.kind === "gate") return useGate(s);
+  if (t.kind === "branch") return useBranch(s, t.id);
+  if (t.kind === "animal") return useAnimal(s, t.id);
+  if (t.kind === "cat") return petCat(s);
+  if (t.kind === "flower") return pickFlower(s, t.id);
+  return { msg: "Nothing to use here." };
+}
+
+function usePlot(s: GameState, id: string): InteractResult {
+  const p = s.plots.find((pl) => pl.id === id);
+  if (!p) return { msg: "The bed is gone." };
+  const tk = toolKind(s);
+  if (p.stage < 0) {
+    if (tk !== "scythe") return { msg: "Requires scythe." };
+    return startAct(s, "clear", id);
+  }
+  if (p.stage >= 5) {
+    if (tk !== "scythe") return { msg: "Requires scythe." };
+    return startAct(s, "harvest", id);
+  }
+  if (p.stage === 0 && !p.tilled) {
+    if (tk !== "shovel") return { msg: "Requires shovel." };
+    return startAct(s, "till", id);
+  }
+  if (p.stage === 0) {
+    if (!seedItem(s)) return { msg: "No seeds in the pack." };
+    return startAct(s, "plant", id);
+  }
+  if (tk === "water") {
+    const can = active(s);
+    if (!can || (can.water ?? 0) <= 0) return { msg: "The can is empty." };
+    return startAct(s, "water", id);
+  }
+  if (tk === "scythe") return { msg: "Not ready to harvest." };
+  return { msg: p.watered ? "Already watered." : "Requires the watering can." };
+}
+
+function useWell(s: GameState): InteractResult {
+  const it = active(s);
+  if (it && defOf(it).tool === "water") {
+    if ((it.water ?? 0) >= (defOf(it).waterMax ?? 0)) {
+      s.stamina = Math.min(100, s.stamina + 6);
+      return { msg: "The can is full. You drink a little.", save: true };
+    }
+    return { ...startAct(s, "fill", "well"), save: true };
+  }
+  s.stamina = Math.min(100, s.stamina + 8);
+  return { msg: "You wash at the well. A little stamina returns.", save: true };
+}
+
+function usePond(s: GameState): InteractResult {
+  const it = active(s);
+  if (!it || defOf(it).tool !== "water") return { msg: "Requires the watering can." };
+  if ((it.water ?? 0) >= (defOf(it).waterMax ?? 0)) return { msg: "The can is already full." };
+  return startAct(s, "fill", "pond");
+}
+
+function useTub(s: GameState): InteractResult {
+  if (isNight(s.time)) return sleepNow(s);
+  s.stamina = Math.min(100, s.stamina + 12);
+  return { msg: "A wash in the old tub. Stamina eases back.", save: true };
+}
+
+function sleepNow(s: GameState): InteractResult {
+  applyDawn(s);
+  s.day += 1;
+  s.time = 0.05;
+  s.stamina = Math.max(s.stamina, 78);
+  s.downed = false;
+  s.stats.daysSlept += 1;
+  const summary = s.day > 14;
+  s.summary = summary;
+  const dead = s.plots.filter((p) => p.kind === "bed" && p.stage < 0).length;
+  const note = dead ? ` ${dead} bed${dead === 1 ? "" : "s"} gave out.` : " The beds held.";
+  return {
+    msg: `Dawn of day ${s.day}.${note}`,
+    save: true,
+    summary,
+    panel: summary ? "summary" : undefined,
+  };
+}
+
+function useFire(s: GameState): InteractResult {
+  if (!produceItem(s)) return { msg: "Need raw produce to cook." };
+  return startAct(s, "cook", "fire");
+}
+
+function useGrind(s: GameState): InteractResult {
+  const it = active(s);
+  if (!it || defOf(it).kind !== "tool") return { msg: "Activate a tool to sharpen." };
+  return startAct(s, "sharpen", it.id);
+}
+
+function useGate(s: GameState): InteractResult {
+  const st = structure(s, "gate")!;
+  if (toolKind(s) === "hammer") {
+    if (!s.pack.some((p) => p?.defId === "kit")) return { msg: "Requires a repair kit. Two branches at the bench." };
+    return startAct(s, "repair", "gate");
+  }
+  shaveStruct(s, "gate", 0.4);
+  return {
+    msg: `The gate is loose. Quality ${Math.round(st.quality)}. Floor ${st.floor.toFixed(1)}. Hammer and a kit will set it.`,
+  };
+}
+
+function useBranch(s: GameState, id: string): InteractResult {
+  if (toolKind(s) !== "axe") return { msg: "Requires axe. The standing trees are not for cutting." };
+  return startAct(s, "chop", id);
+}
+
+function useAnimal(s: GameState, id: string): InteractResult {
+  const a = s.animals.find((an) => an.id === id);
+  if (!a) return { msg: "It wandered off." };
+  if (a.ready && a.kind === "cow") return startAct(s, "collect", id);
+  if (a.ready && a.kind === "rooster") return startAct(s, "collect", id);
+  if (a.kind === "goat" && !produceItem(s)) {
+    s.stamina = Math.min(100, s.stamina + 3);
+    return { msg: "The goat leans in. No milk, just the company." };
+  }
+  if (!produceItem(s)) return { msg: "Need produce in the pack to feed." };
+  if (a.fed) return { msg: `${a.name} is already fed today.` };
+  return startAct(s, "feed", id);
+}
+
+function petCat(s: GameState): InteractResult {
+  if (s.cat.petCd > 0) return { msg: "The cat is busy being a cat." };
+  s.cat.petCd = 20;
+  s.stamina = Math.min(100, s.stamina + 4);
+  return { msg: "The cat allows it. A little of the day comes back." };
+}
+
+function pickFlower(s: GameState, id: string): InteractResult {
+  const f = s.flowers?.find((fl) => fl.id === id);
+  if (!f) return { msg: "The bed is empty." };
+  if (f.bloom < 2) {
+    return { msg: f.bloom === 1 ? "Still a bud." : "Cut back. Give it time." };
+  }
+  const item = makeItem(s, "flower");
+  if (!hasRoom(s, item)) return { msg: "Pack is full." };
+  giveItem(s, item);
+  f.bloom = 0;
+  f.grow = 14 + unitRand(s) * 6;
+  return { msg: `Picked the ${f.name.toLowerCase()}. It will bloom again.`, save: true };
+}
+
+function stepFlowers(s: GameState, dt: number) {
+  if (!s.flowers || !s.flowers.length) s.flowers = defaultFlowers();
+  for (const f of s.flowers) {
+    if (f.bloom >= 2) continue;
+    f.grow -= dt;
+    if (f.grow > 0) continue;
+    f.bloom += 1;
+    f.grow = f.bloom >= 2 ? 0 : 9 + unitRand(s) * 7;
+  }
+}
+
+function pickup(s: GameState, id: string): InteractResult {
+  const idx = s.ground.findIndex((g) => g.id === id);
+  if (idx < 0) return { msg: "Nothing there." };
+  const g = s.ground[idx]!;
+  if (!hasRoom(s, g.item)) {
+    if (s.pack.every((p) => p !== null)) return { msg: "Pack is full." };
+    return { msg: "Too heavy to lift." };
+  }
+  s.ground.splice(idx, 1);
+  giveItem(s, g.item);
+  return { msg: `Picked up ${defOf(g.item).name}.` };
+}
+
+export function resolveAction(s: GameState): string {
+  const act = s.action;
+  if (!act) return s.message;
+  const tool = active(s);
+  const cost = (stam: number, floorLoss: number) => {
+    s.stamina = Math.max(0, s.stamina - stam);
+    wear(tool, floorLoss);
+    if (s.stamina <= 0) down(s);
+  };
+  if (act.kind === "water") {
+    const p = s.plots.find((pl) => pl.id === act.target);
+    const can = tool;
+    if (!p || !can || (can.water ?? 0) <= 0) return "The can is empty.";
+    if (!p.crop || p.stage <= 0) return "Nothing there to water.";
+    can.water = (can.water ?? 0) - 1;
+    p.watered = true;
+    cost(5, 0.35);
+    return `Watered the ${p.crop}. Can ${can.water}/${defOf(can).waterMax}.`;
+  }
+  if (act.kind === "fill") {
+    const can = tool;
+    if (!can || defOf(can).tool !== "water") return "Requires the watering can.";
+    can.water = defOf(can).waterMax ?? 8;
+    cost(3, 0.15);
+    return act.target === "pond" ? "Filled the can at the pond." : "Filled the can at the well.";
+  }
+  if (act.kind === "harvest") {
+    const p = s.plots.find((pl) => pl.id === act.target);
+    if (!p || !p.crop || p.stage < 5) return "Not ready to harvest.";
+    const item = makeItem(s, p.crop);
+    if (!hasRoom(s, item)) return "Pack is full.";
+    giveItem(s, item);
+    p.crop = null;
+    p.stage = 0;
+    p.watered = false;
+    p.wilt = 0;
+    p.revealed = true;
+    s.stats.harvested += 1;
+    cost(6, 0.4);
+    return `Harvested ${defOf(item).name}. Floor ${item.floor}.`;
+  }
+  if (act.kind === "clear") {
+    const p = s.plots.find((pl) => pl.id === act.target);
+    if (!p) return "Nothing to clear.";
+    p.crop = null;
+    p.stage = 0;
+    p.wilt = 0;
+    p.watered = false;
+    p.revealed = true;
+    cost(4, 0.3);
+    return "Cleared the spent bed.";
+  }
+  if (act.kind === "till") {
+    const p = s.plots.find((pl) => pl.id === act.target);
+    if (!p) return "No dirt there.";
+    p.tilled = true;
+    p.revealed = true;
+    cost(7, 0.45);
+    return "Tilled a patch. It will take a seed.";
+  }
+  if (act.kind === "plant") {
+    const p = s.plots.find((pl) => pl.id === act.target);
+    const seed = seedItem(s);
+    if (!p || !seed) return "No seeds in the pack.";
+    const crop = defOf(seed).crop as CropId;
+    if (seed.qty > 1) seed.qty -= 1;
+    else removeItem(s, seed.id);
+    p.crop = crop;
+    p.stage = 1;
+    p.watered = true;
+    p.wilt = 0;
+    p.tilled = true;
+    p.revealed = true;
+    cost(4, 0);
+    return `Planted ${crop}.`;
+  }
+  if (act.kind === "chop") {
+    const b = s.branches.find((br) => br.id === act.target);
+    if (!b || !b.left) return "The branch is already taken.";
+    const item = makeItem(s, "branch");
+    if (!hasRoom(s, item)) return "Pack is full.";
+    b.left = false;
+    giveItem(s, item);
+    cost(8, 0.5);
+    return "Chopped a branch. The trees around the fence stay up.";
+  }
+  if (act.kind === "cook") {
+    const raw = produceItem(s);
+    if (!raw) return "Need raw produce to cook.";
+    if (raw.qty > 1) raw.qty -= 1;
+    else removeItem(s, raw.id);
+    const loaf = makeItem(s, "loaf");
+    if (!giveItem(s, loaf)) {
+      s.ground.push({ id: uid(s), item: loaf, x: s.x + 6, y: s.y });
+    }
+    s.stats.cooked += 1;
+    s.stamina = Math.min(100, s.stamina + 8);
+    cost(4, 0);
+    return "Cooked a hearth loaf at the campfire.";
+  }
+  if (act.kind === "sharpen") {
+    const it = findItem(s, act.target);
+    if (!it) return "The tool is gone.";
+    it.quality = Math.min(100, it.quality + 5);
+    wear(it, 1.2);
+    cost(10, 0);
+    return `Sharpened. Quality ${Math.round(it.quality)}. Floor ${it.floor.toFixed(1)}.`;
+  }
+  if (act.kind === "repair") {
+    const st = structure(s, act.target);
+    const kit = s.pack.find((p) => p?.defId === "kit");
+    if (!st || !kit) return "Requires a repair kit.";
+    removeItem(s, kit.id);
+    st.quality = Math.min(100, st.quality + 28);
+    st.floor = st.floorMax;
+    if (st.id === "gate") s.stats.gateRepaired = true;
+    cost(8, 0.5);
+    return `${st.name} repaired. Quality ${Math.round(st.quality)}. Floor restored.`;
+  }
+  if (act.kind === "feed") {
+    const a = s.animals.find((an) => an.id === act.target);
+    const raw = produceItem(s);
+    if (!a || !raw) return "Nothing to feed.";
+    if (raw.qty > 1) raw.qty -= 1;
+    else removeItem(s, raw.id);
+    a.fed = true;
+    cost(3, 0);
+    return `Fed the ${a.name.toLowerCase()}. Check back after dawn.`;
+  }
+  if (act.kind === "collect") {
+    const a = s.animals.find((an) => an.id === act.target);
+    if (!a || !a.ready) return "Nothing ready.";
+    const def = a.kind === "cow" ? "milk" : "egg";
+    const item = makeItem(s, def);
+    if (!hasRoom(s, item)) return "Pack is full.";
+    a.ready = false;
+    giveItem(s, item);
+    cost(3, 0);
+    return `Collected ${defOf(item).name}.`;
+  }
+  return "Done.";
+}
+
+function down(s: GameState) {
+  if (s.downed) return;
+  s.downed = true;
+  s.stamina = 14;
+  const idx = s.pack.findIndex((it) => it?.defId === "backpack");
+  let bag: Item | null = null;
+  if (idx >= 0) bag = s.pack[idx] ?? null;
+  else if (s.body.container?.defId === "backpack") bag = s.body.container;
+  if (bag) {
+    takeItem(s, bag.id);
+    unlink(s, bag.id);
+    s.ground.push({ id: uid(s), item: bag, x: s.x, y: s.y + 6 });
+  }
+  wear(active(s), 2);
+  s.message = "Downed. The backpack drops. Crawl to the bathtub.";
+}
+
+export function applyDawn(s: GameState) {
+  for (const p of s.plots) {
+    if (!p.crop || p.stage === 0 || p.stage < 0) continue;
+    if (p.watered) {
+      if (p.stage < 5) {
+        p.stage += 1;
+        p.revealed = true;
+      }
+      p.wilt = 0;
+    } else {
+      p.wilt += 1;
+      p.revealed = true;
+      if (p.wilt >= 2) p.stage = -1;
+    }
+    p.watered = false;
+  }
+  for (const a of s.animals) {
+    if (a.fed) {
+      a.ready = a.kind !== "goat";
+      a.fed = false;
+    } else a.ready = false;
+  }
+}
+
+export function onQ(s: GameState): string {
+  const id = s.hotbar[s.selected];
+  if (!id) {
+    s.activeId = null;
+    return "Empty hotbar slot.";
+  }
+  const it = findItem(s, id);
+  if (!it) return "That item is gone.";
+  const d = defOf(it);
+  if (d.kind === "note") return "A note is paper. You cannot use it.";
+  if (d.kind === "food" || d.kind === "product") return eat(s, it);
+  if (s.activeId === id) {
+    s.activeId = null;
+    return `Active tool off. ${d.name} stays in the pack.`;
+  }
+  s.activeId = id;
+  return `Active: ${d.name}.`;
+}
+
+function eat(s: GameState, it: Item): string {
+  const d = defOf(it);
+  s.stamina = Math.min(100, s.stamina + (d.stamina ?? 0));
+  if (d.stack && it.qty > 1) it.qty -= 1;
+  else removeItem(s, it.id);
+  return `Ate ${d.name}. Stamina ${Math.round(s.stamina)}.`;
+}
+
+export function onF(s: GameState): string {
+  if (s.body.hands) {
+    const it = s.body.hands;
+    s.body.hands = null;
+    if (!giveItem(s, it)) {
+      s.body.hands = it;
+      return "Pack is full. Cannot stow the hand item.";
+    }
+    return `Stowed ${defOf(it).name}.`;
+  }
+  if (!s.activeId) return "No active tool to draw.";
+  const it = takeItem(s, s.activeId);
+  if (!it) return "The active tool is not on you.";
+  s.body.hands = it;
+  return `Drew ${defOf(it).name} into the hand. Active tool can still differ.`;
+}
+
+export function selectHotbar(s: GameState, index: number) {
+  s.selected = (index + 8) % 8;
+}
+
+export function dropItem(s: GameState, id: string): string {
+  const it = takeItem(s, id);
+  if (!it) return "Nothing to drop.";
+  unlink(s, id);
+  s.ground.push({ id: uid(s), item: it, x: s.x + 4, y: s.y + 2 });
+  return `Dropped ${defOf(it).name}. It stays where it fell.`;
+}
+
+export function deposit(s: GameState, id: string): string {
+  if (s.body.hands?.id === id) return "Stow it into the pack before the chest takes it.";
+  const it = takeFromContainer(s.pack, id);
+  if (!it) return "Only the pack deposits. Nested goods must come out first.";
+  const slot = s.vault.findIndex((v) => v === null);
+  if (slot < 0) {
+    giveItem(s, it);
+    return "Vault is full.";
+  }
+  unlink(s, id);
+  s.vault[slot] = it;
+  return `Deposited ${defOf(it).name}.`;
+}
+
+export function withdraw(s: GameState, index: number, asNote: boolean): string {
+  const it = s.vault[index];
+  if (!it) return "Empty slot.";
+  if (asNote && it.defId !== "coin") {
+    const note = makeItem(s, "note", it.qty);
+    note.noteOf = it.defId === "note" ? it.noteOf : it.defId;
+    note.floor = it.floor;
+    note.floorMax = it.floor;
+    note.quality = it.quality;
+    if (!hasRoom(s, note)) return "Pack is full.";
+    s.vault[index] = null;
+    giveItem(s, note);
+    return `Withdrew a note of ${DEFS[note.noteOf ?? "note"]?.name ?? "goods"}. Paper, no weight, no use.`;
+  }
+  if (!hasRoom(s, it)) {
+    if (s.pack.every((p) => p !== null) && !tryStackWould(s, it)) return "Pack is full.";
+    return "Too heavy to lift.";
+  }
+  s.vault[index] = null;
+  giveItem(s, it);
+  return `Withdrew ${defOf(it).name}.`;
+}
+
+function tryStackWould(s: GameState, it: Item): boolean {
+  const d = defOf(it);
+  if (!d.stack) return false;
+  return s.pack.some((p) => p && p.defId === it.defId && p.noteOf === it.noteOf && p.floor === it.floor);
+}
+
+export function sellItem(s: GameState, id: string): string {
+  const it = findItem(s, id);
+  if (!it) return "Nothing selected.";
+  if (it.defId === "coin") return "The ledger will not buy coin.";
+  if (it.contents?.some(Boolean)) return "Empty the backpack before selling it.";
+  const value = Math.max(0, Math.floor(it.floor * (defOf(it).stack ? it.qty : 1)));
+  removeItem(s, id);
+  addCoins(s, value);
+  s.stats.floorEarned += value;
+  return `Sold for ${value} Floor.`;
+}
+
+export function buyFineCan(s: GameState): string {
+  if (s.stats.boughtTool) return "You already keep a fine can.";
+  if (coinCount(s) < 48) return "The fine can costs 48 Floor.";
+  const it = makeItem(s, "fine_can");
+  if (!hasRoom(s, it)) return "Pack is full.";
+  addCoins(s, -48);
+  giveItem(s, it);
+  s.stats.boughtTool = true;
+  const slot = s.hotbar.findIndex((h) => h === null);
+  if (slot >= 0) s.hotbar[slot] = it.id;
+  return "Bought the fine watering can. Floor paid, pack heavier by less than the old one.";
+}
+
+export function craftKit(s: GameState): string {
+  const ids = s.pack.filter((p) => p?.defId === "branch").map((p) => p!.id);
+  if (ids.length < 2) return "Need two branches in the pack.";
+  const kit = makeItem(s, "kit");
+  removeItem(s, ids[0]!);
+  removeItem(s, ids[1]!);
+  if (!giveItem(s, kit)) {
+    s.ground.push({ id: uid(s), item: kit, x: s.x, y: s.y });
+    return "Kit made, but the pack was full. It is on the ground.";
+  }
+  return "Made a repair kit.";
+}
+
+export function craftRepairTool(s: GameState): string {
+  const tool = active(s);
+  if (!tool || defOf(tool).kind !== "tool") return "Activate a tool to repair.";
+  const kit = s.pack.find((p) => p?.defId === "kit");
+  if (!kit) return "Need a repair kit in the pack.";
+  removeItem(s, kit.id);
+  tool.floor = tool.floorMax;
+  tool.quality = Math.min(100, tool.quality + 4);
+  return `${defOf(tool).name} restored to ${tool.floorMax} Floor.`;
+}
+
+export function craftSeeds(s: GameState): string {
+  if (coinCount(s) < 4) return "A seed packet costs 4 Floor.";
+  const seeds = makeItem(s, "seed_tomato", 2);
+  if (!hasRoom(s, seeds)) return "Pack is full.";
+  addCoins(s, -4);
+  giveItem(s, seeds);
+  return "Bought two tomato seeds.";
+}
+
+export function swapPack(s: GameState, from: number, to: number) {
+  const a = s.pack[from];
+  s.pack[from] = s.pack[to] ?? null;
+  s.pack[to] = a ?? null;
+}
+
+export function moveToBackpack(s: GameState, fromPack: number, toInner: number): string {
+  const bag = s.pack.find((p) => p?.defId === "backpack") ?? s.body.container;
+  if (!bag?.contents) return "No backpack.";
+  const it = s.pack[fromPack];
+  if (!it || it.id === bag.id) return "Cannot nest the backpack in itself.";
+  if (bag.contents[toInner]) return "That pocket is full.";
+  s.pack[fromPack] = null;
+  bag.contents[toInner] = it;
+  return `Packed ${defOf(it).name}.`;
+}
+
+export function moveFromBackpack(s: GameState, inner: number): string {
+  const bag = s.pack.find((p) => p?.defId === "backpack") ?? s.body.container;
+  if (!bag?.contents) return "No backpack.";
+  const it = bag.contents[inner];
+  if (!it) return "Empty pocket.";
+  bag.contents[inner] = null;
+  if (!giveItem(s, it)) {
+    bag.contents[inner] = it;
+    return "Pack is full.";
+  }
+  return `Took ${defOf(it).name}.`;
+}
+
+function moveAxis(s: GameState, dx: number, dy: number) {
+  const nx = s.x + dx;
+  const ny = s.y + dy;
+  if (!footBlocked(nx, ny)) {
+    s.x = nx;
+    s.y = ny;
+    return;
+  }
+  if (!footBlocked(nx, s.y)) s.x = nx;
+  else if (!footBlocked(s.x, ny)) s.y = ny;
+}
+
+export function step(s: GameState, dt: number, input: Input) {
+  const stepDt = Math.min(0.05, Math.max(0, dt));
+  s.clock += stepDt;
+  if (s.cat.petCd > 0) s.cat.petCd = Math.max(0, s.cat.petCd - stepDt);
+  stepFlowers(s, stepDt);
+  if (input.frozen) {
+    s.speed = 0;
+    return;
+  }
+  if (s.action) {
+    s.action.elapsed += stepDt;
+    s.speed = 0;
+    if (!s.action.hit && s.action.elapsed >= s.action.dur * CONTACT_AT) {
+      s.action.hit = true;
+      const fail = contactFail(s);
+      if (fail) {
+        s.action = null;
+        s.pending = null;
+        s.message = fail;
+      }
+    }
+    if (s.action && s.action.elapsed >= s.action.dur) {
+      const msg = resolveAction(s);
+      s.action = null;
+      s.message = msg;
+      if (s.pending) {
+        const p = s.pending;
+        s.pending = null;
+        const r = interact(s, p.px, p.py);
+        if (r.msg) s.message = r.msg;
+        s.uiEvent = r;
+      }
+    }
+  } else {
+    let mx = input.mx;
+    let my = input.my;
+    let mag = Math.hypot(mx, my);
+    if (mag > 1) {
+      mx /= mag;
+      my /= mag;
+      mag = 1;
+    }
+    const mass = totalMass(s);
+    const crawl = s.downed || mass >= MASS_CAP - 0.05;
+    const canRun = input.run && !crawl && mass < MASS_RUN && s.stamina > 8;
+    const speed = crawl ? 22 : canRun ? 64 : 42;
+    if (mag > 0.08) {
+      if (Math.abs(mx) > Math.abs(my)) s.dir = mx > 0 ? "e" : "w";
+      else s.dir = my > 0 ? "s" : "n";
+      moveAxis(s, mx * speed * stepDt, my * speed * stepDt);
+      s.x = Math.max(8, Math.min(WORLD_W - 8, s.x));
+      s.speed = speed;
+      if (canRun) s.stamina = Math.max(0, s.stamina - stepDt * (8 + mass * 0.35));
+      else s.stamina = Math.min(100, s.stamina + stepDt * 3);
+    } else {
+      s.speed = 0;
+      s.stamina = Math.min(100, s.stamina + stepDt * 8);
+    }
+    if (s.stamina <= 0) down(s);
+  }
+  s.time = Math.min(0.999, s.time + stepDt / 90);
+  stepCritters(s, stepDt);
+}
+
+function leash(a: Animal): { x: number; y: number; w: number; h: number } {
+  if (a.kind === "cow") return { x: 184, y: 128, w: 40, h: 22 };
+  if (a.kind === "goat") return { x: 200, y: 138, w: 28, h: 14 };
+  return { x: 178, y: 140, w: 24, h: 12 };
+}
+
+const WATER = { x: 188, y: 124 };
+const FEED = { x: 210, y: 146 };
+
+function openIn(s: GameState, box: { x: number; y: number; w: number; h: number }, fallback: { x: number; y: number }) {
+  for (let i = 0; i < 6; i++) {
+    const x = box.x + unitRand(s) * box.w;
+    const y = box.y + unitRand(s) * box.h;
+    if (!footBlocked(x, y)) return { x, y };
+  }
+  return fallback;
+}
+
+function stepCat(s: GameState, dt: number) {
+  if (!s.cat.mode) s.cat.mode = "sit";
+  if (s.cat.tx == null) {
+    s.cat.tx = s.cat.x;
+    s.cat.ty = s.cat.y;
+  }
+  if (s.cat.pause > 0) {
+    s.cat.pause -= dt;
+    return;
+  }
+  const home = { x: 252, y: 144, w: 34, h: 8 };
+  if (s.cat.mode === "sit") {
+    s.cat.mode = "stand";
+    s.cat.pause = 0.45;
+    return;
+  }
+  if (s.cat.mode === "stand") {
+    const dash = unitRand(s) < 0.22;
+    s.cat.mode = dash ? "run" : "walk";
+    const next = openIn(s, home, { x: s.cat.x, y: s.cat.y });
+    const dx = next.x - s.cat.x;
+    const dy = next.y - s.cat.y;
+    const d = Math.hypot(dx, dy) || 1;
+    const reach = dash ? 12 : 7;
+    s.cat.tx = s.cat.x + (dx / d) * Math.min(reach, d);
+    s.cat.ty = s.cat.y + (dy / d) * Math.min(reach, d * 0.4);
+    if (footBlocked(s.cat.tx, s.cat.ty)) {
+      s.cat.tx = s.cat.x;
+      s.cat.ty = s.cat.y;
+      s.cat.mode = "sit";
+      s.cat.pause = 1.4;
+    }
+    s.cat.face = s.cat.tx >= s.cat.x ? 1 : -1;
+    return;
+  }
+  const dx = s.cat.tx - s.cat.x;
+  const dy = s.cat.ty - s.cat.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 0.5) {
+    s.cat.x = s.cat.tx;
+    s.cat.y = s.cat.ty;
+    s.cat.mode = "sit";
+    s.cat.pause = 1.5 + unitRand(s) * 2.4;
+    return;
+  }
+  const sp = s.cat.mode === "run" ? 32 : 11;
+  const ox = s.cat.x;
+  const oy = s.cat.y;
+  s.cat.x += (dx / dist) * sp * dt;
+  s.cat.y += (dy / dist) * sp * dt;
+  if (footBlocked(s.cat.x, s.cat.y)) {
+    s.cat.x = ox;
+    s.cat.y = oy;
+    s.cat.mode = "sit";
+    s.cat.pause = 0.8;
+    return;
+  }
+  if (Math.abs(dx) > 0.15) s.cat.face = dx > 0 ? 1 : -1;
+}
+
+function stepCritters(s: GameState, dt: number) {
+  stepCat(s, dt);
+  for (const a of s.animals) {
+    if (a.pause > 0) {
+      a.pause -= dt;
+      continue;
+    }
+    const dx = a.tx - a.x;
+    const dy = a.ty - a.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1.5) {
+      const eating = Math.hypot(a.x - FEED.x, a.y - FEED.y) < 6 || Math.hypot(a.x - WATER.x, a.y - WATER.y) < 6;
+      a.pause = eating ? 1.6 : 0.7 + unitRand(s) * 0.6;
+      const roll = unitRand(s);
+      const goal = roll < 0.25 ? WATER : roll < 0.5 ? FEED : null;
+      if (goal && !footBlocked(goal.x, goal.y)) {
+        a.tx = goal.x;
+        a.ty = goal.y;
+      } else {
+        const next = openIn(s, leash(a), { x: a.x, y: a.y });
+        a.tx = next.x;
+        a.ty = next.y;
+      }
+      continue;
+    }
+    const sp = a.kind === "rooster" ? 18 : 12;
+    const ox = a.x;
+    const oy = a.y;
+    const mx = (dx / dist) * sp * dt;
+    const my = (dy / dist) * sp * dt;
+    a.x += mx;
+    a.y += my;
+    if (footBlocked(a.x, a.y)) {
+      a.x = ox + mx;
+      a.y = oy;
+      if (footBlocked(a.x, a.y)) a.x = ox;
+      a.y = oy + my;
+      if (footBlocked(a.x, a.y)) a.y = oy;
+      if (a.x === ox && a.y === oy) {
+        a.pause = 0.35;
+        const next = openIn(s, leash(a), { x: a.x, y: a.y });
+        a.tx = next.x;
+        a.ty = next.y;
+      }
+    }
+    if (Math.abs(dx) > Math.abs(dy)) a.dir = dx > 0 ? "e" : "w";
+    else a.dir = dy > 0 ? "s" : "n";
+  }
+}
+
+export function bedsAlive(s: GameState): number {
+  return s.plots.filter((p) => p.kind === "bed" && p.stage >= 0).length;
+}
+
+export function newHomestead(): GameState {
+  return createGame();
+}
+
+export function assignHotbar(s: GameState, slot: number, id: string | null) {
+  s.hotbar[slot] = id;
+  if (id) {
+    const other = s.hotbar.findIndex((h, i) => h === id && i !== slot);
+    if (other >= 0) s.hotbar[other] = null;
+  }
+}
