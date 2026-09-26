@@ -1,5 +1,6 @@
 import { MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import type { Sheets } from "./assets.ts";
+import { GROVE_WALKER, drawGroveWalker, groveWalkerFrameIndex } from "../groveCrownWalker13.js";
 
 const CHAR = 0.42;
 
@@ -156,47 +157,66 @@ function trackMotion(s: GameState) {
   if (Math.abs(delta) < 0.2) heading = next;
 }
 
+let walkMs = 0;
+let walkStamp = 0;
+let lastLand = -1;
+let landPulse = 0;
+
+function walkerFacing(head: Heading): "forward" | "back" | null {
+  if (head === "s" || head === "se" || head === "sw") return "forward";
+  if (head === "n" || head === "ne" || head === "nw") return "back";
+  return null;
+}
+
+function walkerIndex(moving: boolean) {
+  const now = performance.now();
+  if (!walkStamp) walkStamp = now;
+  const dt = Math.min(50, now - walkStamp);
+  walkStamp = now;
+  if (moving) walkMs += dt;
+  const i = moving ? groveWalkerFrameIndex(walkMs) : 0;
+  if (moving && (i === 0 || i === 6) && i !== lastLand) {
+    lastLand = i;
+    landPulse = 1;
+  }
+  if (!moving) lastLand = -1;
+  return i;
+}
+
+function paintWalker(ctx: CanvasRenderingContext2D, s: GameState, facing: "forward" | "back") {
+  const { frameW, frameH } = GROVE_WALKER;
+  // Same height as the side-view goddess, so turning does not resize her.
+  const scale = (46 * 0.58) / frameH;
+  const i = walkerIndex(stepMoving);
+  ctx.imageSmoothingEnabled = false;
+  drawGroveWalker(ctx, facing, i, s.x - (frameW / 2) * scale, s.y - frameH * scale, scale);
+  if (landPulse > 0 && (i === 0 || i === 6)) {
+    ctx.fillStyle = `rgba(90, 62, 36, ${landPulse})`;
+    ctx.fillRect(s.x - 4, s.y - 1, 2, 1);
+    ctx.fillRect(s.x + 2, s.y - 1, 2, 1);
+    landPulse *= 0.92;
+  }
+}
+
 function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
   trackMotion(s);
   const head = heading;
-  let sheet: HTMLImageElement | undefined = sheets.goddess;
-  let frameW = 64;
-  let frameH = 64;
-  let frames = 13;
-  let scale = 0.58;
-  let footX = 32;
-  let footY = 63;
-  let flip = head === "e";
-  if (head === "s" || head === "se" || head === "sw") {
-    const turned = head !== "s";
-    sheet = (turned ? sheets.goddessFront3 : sheets.goddessFront) ?? sheets.goddessFront ?? sheets.goddess;
-    if (sheet && sheet !== sheets.goddess) {
-      frameW = 33;
-      frameH = 67;
-      frames = 13;
-      scale = 0.4;
-      footX = 16;
-      footY = 67;
-      flip = head === "sw";
-    }
-  } else if (head === "n" || head === "ne" || head === "nw") {
-    const turned = head !== "n";
-    sheet = (turned ? sheets.goddessBack3 : sheets.goddessBack) ?? sheets.goddessBack ?? sheets.goddess;
-    if (sheet && sheet !== sheets.goddess) {
-      frameW = 38;
-      frameH = 67;
-      frames = 13;
-      scale = 0.4;
-      footX = 17;
-      footY = 67;
-      flip = head === "nw";
-    }
-  }
-  if (!sheet) return;
-  const col = stepMoving ? Math.floor(walkPhase) % frames : 0;
+  const facing = walkerFacing(head);
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  blit(ctx, sheet, col * frameW, 0, frameW, frameH, s.x, s.y, scale, flip, footX, footY);
+  if (facing) {
+    paintWalker(ctx, s, facing);
+    drawEffect(ctx, sheets, s);
+    ctx.restore();
+    return;
+  }
+  const sheet = sheets.goddess;
+  if (!sheet) {
+    ctx.restore();
+    return;
+  }
+  const col = stepMoving ? Math.floor(walkPhase) % 13 : 0;
+  blit(ctx, sheet, col * 64, 0, 64, 64, s.x, s.y, 0.58, head === "e", 32, 63);
   drawEffect(ctx, sheets, s);
   ctx.restore();
 }

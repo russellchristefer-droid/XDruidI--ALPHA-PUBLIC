@@ -15,6 +15,7 @@ import {
   skyLabel,
 } from "@/game/content";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
+import { loadGroveWalkerSheet } from "@/groveCrownWalker13.js";
 import { armWind, heavyWind, onSound, setVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
 import { drawWorld } from "@/game/draw";
 import {
@@ -326,6 +327,10 @@ export function AssayGame() {
         sheetsRef.current = sheets;
         loadTileLayer();
         if (!stateRef.current) stateRef.current = readSave() ?? createGame();
+        return loadGroveWalkerSheet();
+      })
+      .then(() => {
+        if (dead) return;
         setReady(true);
         if (new URLSearchParams(location.search).has("qa")) {
           screenRef.current = "play";
