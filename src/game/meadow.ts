@@ -1,4 +1,4 @@
-export type DressId = "bush-l" | "bush-m" | "bush-s" | "oak" | "apple" | "pine" | "rocks" | "fl-w" | "fl-p" | "fl-u" | "fl-y" | "weed" | "berry" | "berry0" | "stump" | "sapling" | "ditch"
+export type DressId = "bush-l" | "bush-m" | "bush-s" | "oak" | "apple" | "birch" | "pine" | "rocks" | "fl-w" | "fl-p" | "fl-u" | "fl-y" | "weed" | "berry" | "berry0" | "stump" | "sapling" | "ditch"
 export const DRESS: Record<DressId, [number, number, number, number]> = {
   "bush-l": [0, 0, 40, 30],
   "bush-m": [41, 0, 30, 22],
@@ -6,6 +6,7 @@ export const DRESS: Record<DressId, [number, number, number, number]> = {
   "oak": [91, 0, 52, 50],
   "apple": [144, 0, 52, 50],
   "pine": [197, 0, 28, 48],
+  "birch": [197, 0, 28, 48],
   "rocks": [226, 0, 22, 16],
   "fl-w": [249, 0, 14, 12],
   "fl-p": [264, 0, 14, 12],
@@ -44,7 +45,7 @@ export const MEADOW_PROPS: MeadowProp[] = [
   { id: "weed", x: 132, y: 428 },
   { id: "rocks", x: 44, y: 462 },
 
-  { id: "apple", x: 292, y: 408 },
+  { id: "apple", x: 300, y: 500 },
   { id: "bush-m", x: 236, y: 440 },
   { id: "bush-s", x: 324, y: 388 },
   { id: "fl-y", x: 216, y: 456 },
@@ -67,7 +68,7 @@ export const MEADOW_PROPS: MeadowProp[] = [
   { id: "weed", x: 228, y: 590 },
   { id: "rocks", x: 262, y: 612 },
 
-  { id: "oak", x: 68, y: 668 },
+  { id: "oak", x: 72, y: 540 },
   { id: "bush-m", x: 124, y: 700 },
   { id: "bush-s", x: 34, y: 720 },
   { id: "fl-p", x: 142, y: 656 },
@@ -77,7 +78,8 @@ export const MEADOW_PROPS: MeadowProp[] = [
 
   { id: "bush-l", x: 304, y: 680 },
   { id: "bush-m", x: 242, y: 722 },
-  { id: "pine", x: 274, y: 790 },
+  { id: "birch", x: 300, y: 830 },
+  { id: "pine", x: 78, y: 880 },
   { id: "fl-u", x: 216, y: 688 },
   { id: "fl-w", x: 324, y: 748 },
   { id: "weed", x: 230, y: 760 },
@@ -86,8 +88,8 @@ export const MEADOW_PROPS: MeadowProp[] = [
   { id: "bush-l", x: 50, y: 812 },
   { id: "bush-m", x: 114, y: 848 },
   { id: "berry", x: 78, y: 908 },
-  { id: "stump", x: 32, y: 878 },
-  { id: "sapling", x: 140, y: 868 },
+  { id: "stump", x: 36, y: 948 },
+  { id: "sapling", x: 120, y: 936 },
   { id: "fl-y", x: 136, y: 812 },
   { id: "weed", x: 24, y: 840 },
   { id: "ditch", x: 96, y: 948 },
@@ -105,14 +107,15 @@ const SOLID: Partial<Record<DressId, [number, number]>> = {
   "bush-l": [16, 8],
   "bush-m": [12, 7],
   "bush-s": [8, 6],
-  oak: [10, 8],
-  apple: [10, 8],
-  pine: [8, 8],
+  oak: [20, 16],
+  apple: [20, 16],
+  birch: [16, 16],
+  pine: [18, 14],
   rocks: [14, 8],
   berry: [14, 8],
   berry0: [14, 8],
-  stump: [12, 6],
-  sapling: [6, 6],
+  stump: [36, 14],
+  sapling: [10, 8],
   ditch: [28, 14],
 };
 

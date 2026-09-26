@@ -496,14 +496,29 @@ export function drawWorld(
     }
   }
   const dress = sheets.meadowDress;
-  if (dress) {
-    for (const p of MEADOW_PROPS) {
-      const [sx, sy, sw, sh] = DRESS[p.id];
+  const treeSheet: Partial<Record<string, HTMLImageElement | undefined>> = {
+    oak: sheets.treeOak,
+    apple: sheets.treeApple,
+    birch: sheets.treeBirch,
+    pine: sheets.treePine,
+    stump: sheets.treeStump,
+    sapling: sheets.treeSapling,
+  };
+  for (const p of MEADOW_PROPS) {
+    const tree = treeSheet[p.id];
+    if (tree) {
       queue.push({
         y: p.y,
-        paint: () => blit(ctx, dress, sx, sy, sw, sh, p.x, p.y, 1, false, sw / 2, sh),
+        paint: () => blit(ctx, tree, 0, 0, tree.width, tree.height, p.x, p.y, 1, false, tree.width / 2, tree.height),
       });
+      continue;
     }
+    if (!dress) continue;
+    const [sx, sy, sw, sh] = DRESS[p.id];
+    queue.push({
+      y: p.y,
+      paint: () => blit(ctx, dress, sx, sy, sw, sh, p.x, p.y, 1, false, sw / 2, sh),
+    });
   }
   if (sheets.idle) {
     queue.push({
