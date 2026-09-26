@@ -117,16 +117,33 @@ function feetOnPath(sheets: Sheets, x: number, y: number): boolean {
 }
 
 function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
-  const pose = charPose(s);
-  const sheet = sheets[pose.sheet];
+  const sheet = sheets.goddess;
   if (!sheet) return;
-  const { row, flip } = rowOf(s.dir);
+  const moving = s.speed > 1;
+  const col = moving || s.action ? Math.floor(s.clock * (s.action ? 12 : 8)) % 13 : Math.floor(s.clock * 1.5) % 2;
+  const flip = s.dir === "w";
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  blit(ctx, sheet, pose.col * 80, row * 112, 80, 112, s.x, s.y, CHAR, flip, 40, 96);
-  drawHat(ctx, s, pose, row, flip);
-  drawFace(ctx, sheets, s, pose, row, flip);
+  blit(ctx, sheet, col * 64, 0, 64, 64, s.x, s.y, 1, flip, 32, 63);
+  drawEffect(ctx, sheets, s);
   ctx.restore();
+}
+
+function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
+  const life = s.life;
+  let key: keyof Sheets | null = null;
+  if (s.downed || life?.face === "ill") key = "fxBlood";
+  else if (life && life.emote > 0 && life.face === "heart") key = "fxHearts";
+  else if (life && life.emote > 0 && life.face === "happy") key = "fxHeartsPink";
+  else if (life && life.emote > 0 && life.face === "tired") key = "fxTired";
+  else if (life && life.emote > 0 && life.face === "need") key = "fxDebuff";
+  else if (s.action) key = life?.errand === "wash" || s.action.kind === "fill" || s.action.kind === "water" ? "fxMagic" : "fxBuff";
+  else if (life && life.mood > 70 && Math.floor(s.clock) % 6 === 0) key = "fxStars";
+  if (!key) return;
+  const img = sheets[key];
+  if (!img) return;
+  const frame = Math.floor(s.clock * 8) % 5;
+  blit(ctx, img, frame * 80, 0, 80, 64, s.x, s.y - 18, 0.7, false, 40, 40);
 }
 
 const HAT_DARK = "#152a66";
@@ -478,9 +495,7 @@ export function drawWorld(
       });
     }
   }
-  const pose = charPose(s);
-  const sheet = sheets[pose.sheet];
-  if (sheet) {
+  if (sheets.goddess) {
     queue.push({
       y: s.y,
       paint: () => paintPlayer(ctx, sheets, s),
@@ -489,7 +504,7 @@ export function drawWorld(
   queue.sort((a, b) => a.y - b.y);
   for (const d of queue) d.paint();
   if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0);
-  if (sheet && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
+  if (sheets.goddess && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
 
   const hour = 6 + s.time * 16;
   let sky = "rgba(0,0,0,0)";

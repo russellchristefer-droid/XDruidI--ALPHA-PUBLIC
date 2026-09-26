@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260926v";
+export const ART = "20260926w";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -9,6 +9,7 @@ const URLS: Record<string, string> = {
   yard: art("/game/yard.png"),
   meadow: art("/game/the-meadow.png"),
   idle: art("/game/char/idle.png"),
+  goddess: art("/game/char/goddess.png"),
   walk: art("/game/char/walk.png"),
   water: art("/game/char/water.png"),
   shovel: art("/game/char/shovel.png"),
@@ -49,6 +50,14 @@ const URLS: Record<string, string> = {
   path: art("/game/covers/path.png"),
   rocks: art("/game/props/seam-rocks.png"),
   emoji: art("/game/ui/emoji.png"),
+  fxHearts: art("/game/fx/hearts.png"),
+  fxHeartsPink: art("/game/fx/hearts-pink.png"),
+  fxStars: art("/game/fx/stars.png"),
+  fxBuff: art("/game/fx/buff.png"),
+  fxDebuff: art("/game/fx/debuff.png"),
+  fxTired: art("/game/fx/lines-yellow.png"),
+  fxBlood: art("/game/fx/blood.png"),
+  fxMagic: art("/game/fx/curved-blue.png"),
   landGrass: art("/game/land/grass.png"),
   landSoil: art("/game/land/soil.png"),
   landTilled: art("/game/land/tilled.png"),
