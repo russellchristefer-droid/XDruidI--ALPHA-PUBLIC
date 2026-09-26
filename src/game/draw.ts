@@ -523,11 +523,16 @@ export function drawWorld(
   }
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const glow = ctx.createRadialGradient(54, 78, 2, 54, 78, 34);
-  glow.addColorStop(0, `rgba(255, 170, 60, ${0.35 + skyA})`);
-  glow.addColorStop(1, "rgba(255, 120, 20, 0)");
+  const fx = 54;
+  const fy = 52;
+  const glow = ctx.createRadialGradient(fx, fy, 1, fx, fy, 22);
+  glow.addColorStop(0, `rgba(255, 196, 80, ${0.55 + skyA})`);
+  glow.addColorStop(0.4, `rgba(255, 120, 24, ${0.28 + skyA * 0.45})`);
+  glow.addColorStop(1, "rgba(255, 80, 10, 0)");
   ctx.fillStyle = glow;
-  ctx.fillRect(20, 40, 70, 70);
+  ctx.beginPath();
+  ctx.arc(fx, fy, 22, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 
   if (s.weather === "rain" || s.weather === "storm") {
