@@ -885,7 +885,7 @@ export function AssayGame() {
         <div className="overlay">
           <div className="panel sheet" style={{ maxWidth: 560 }}>
             <p style={{ margin: 0, letterSpacing: "0.18em", fontSize: 12 }}>ONE YARD</p>
-            <h1 className="title-mark">ASSAY HOMESTEAD</h1>
+            <h1 className="title-mark">XDruid I</h1>
             <p style={{ marginTop: 0 }}>
               A fenced spring yard. Twenty-eight slots, a pack that gets heavy, and tools that spend their Floor when you use them.
             </p>
