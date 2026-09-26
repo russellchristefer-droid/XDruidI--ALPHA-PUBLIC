@@ -333,10 +333,11 @@ export function AssayGame() {
           canvas.width = w;
           canvas.height = h;
         }
-        const scale = Math.min(w / VIEW_W, h / VIEW_H);
+        const fit = Math.min(w / VIEW_W, h / VIEW_H);
+        const scale = Math.max(1, Math.floor(fit));
         let camY = 0;
         if (s.y > VIEW_H - 48) camY = s.y - (VIEW_H - 48);
-        camY = Math.max(0, Math.min(WORLD_H - VIEW_H, camY));
+        camY = Math.round(Math.max(0, Math.min(WORLD_H - VIEW_H, camY)));
         const ox = Math.floor((w - VIEW_W * scale) / 2);
         const oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
         camRef.current = { scale, ox, oy };
