@@ -19,7 +19,7 @@ function animalRow(dir: Dir): number {
 
 function blit(
   ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
+  img: CanvasImageSource,
   sx: number,
   sy: number,
   sw: number,
@@ -129,73 +129,100 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   ctx.restore();
 }
 
-const HAT_DARK = "#152656";
-const HAT_BLUE = "#2a4cb8";
-const HAT_LITE = "#8eb4f4";
+const HAT_DARK = "#152a66";
+const HAT_BLUE = "#2a4ec4";
+const HAT_LITE = "#96baff";
 const HAT_GOLD = "#e6c86a";
+const HAT_SHADOW = "#101c46";
 
-type HatPix = [number, number, string];
-
-function hatPixels(kind: "front" | "side" | "back"): HatPix[] {
-  const out: HatPix[] = [];
-  const put = (x: number, y: number, color: string) => out.push([x, y, color]);
+function paintHat(kind: "front" | "side" | "back"): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = kind === "side" ? 18 : 21;
+  canvas.height = kind === "side" ? 12 : 16;
+  const g = canvas.getContext("2d");
+  if (!g) return canvas;
+  const px = (x: number, y: number, color: string) => {
+    g.fillStyle = color;
+    g.fillRect(x, y, 1, 1);
+  };
   const band = (y: number, x0: number, x1: number, color: string) => {
-    for (let x = x0; x <= x1; x++) put(x, y, color);
+    for (let x = x0; x <= x1; x++) px(x, y, color);
   };
   if (kind === "side") {
-    put(-1, -7, HAT_GOLD);
-    band(-6, -2, -1, HAT_BLUE);
-    put(-2, -6, HAT_DARK);
-    put(0, -6, HAT_DARK);
-    band(-5, -2, 0, HAT_BLUE);
-    put(-1, -5, HAT_LITE);
-    band(-4, -2, 1, HAT_BLUE);
-    put(-2, -4, HAT_DARK);
-    put(1, -4, HAT_DARK);
-    band(-3, -1, 2, HAT_BLUE);
-    put(-1, -3, HAT_DARK);
-    put(2, -3, HAT_DARK);
-    band(-1, -2, 4, HAT_BLUE);
-    band(0, -2, 4, HAT_DARK);
-    return out;
+    px(6, 1, HAT_GOLD);
+    band(2, 5, 7, HAT_BLUE);
+    px(5, 2, HAT_DARK);
+    px(7, 2, HAT_DARK);
+    band(3, 5, 8, HAT_BLUE);
+    px(6, 3, HAT_LITE);
+    band(4, 4, 9, HAT_BLUE);
+    px(4, 4, HAT_DARK);
+    px(9, 4, HAT_DARK);
+    band(5, 4, 10, HAT_BLUE);
+    px(4, 5, HAT_DARK);
+    px(10, 5, HAT_DARK);
+    band(6, 5, 12, HAT_BLUE);
+    px(5, 6, HAT_DARK);
+    px(12, 6, HAT_DARK);
+    band(7, 3, 14, HAT_BLUE);
+    band(8, 3, 14, HAT_DARK);
+    band(9, 4, 13, HAT_SHADOW);
+    return canvas;
   }
-  const point = kind === "back" ? HAT_BLUE : HAT_GOLD;
-  put(0, -8, point);
-  put(0, -7, HAT_BLUE);
-  band(-6, -1, 1, HAT_BLUE);
-  put(-1, -6, HAT_DARK);
-  put(1, -6, HAT_DARK);
-  if (kind === "front") put(0, -6, HAT_LITE);
-  band(-5, -2, 2, HAT_BLUE);
-  put(-2, -5, HAT_DARK);
-  put(2, -5, HAT_DARK);
-  band(-4, -3, 3, HAT_BLUE);
-  put(-3, -4, HAT_DARK);
-  put(3, -4, HAT_DARK);
-  if (kind === "front") put(0, -4, HAT_LITE);
-  band(-3, -3, 3, HAT_BLUE);
-  band(-1, -5, 5, HAT_BLUE);
-  band(0, -5, 5, HAT_DARK);
-  return out;
+  const cx = 10;
+  px(cx, 0, kind === "front" ? HAT_GOLD : HAT_BLUE);
+  px(cx, 1, HAT_BLUE);
+  [1, 2, 3, 3, 4, 5, 6, 7].forEach((half, i) => {
+    const y = 2 + i;
+    for (let x = cx - half; x <= cx + half; x++) {
+      const edge = x === cx - half || x === cx + half;
+      px(x, y, edge ? HAT_DARK : kind === "front" && x === cx && (i === 1 || i === 4) ? HAT_LITE : HAT_BLUE);
+    }
+  });
+  band(11, cx - 9, cx + 9, HAT_BLUE);
+  band(12, cx - 9, cx + 9, HAT_DARK);
+  band(13, cx - 8, cx + 8, HAT_SHADOW);
+  return canvas;
+}
+
+const hats: Partial<Record<"front" | "side" | "back", HTMLCanvasElement>> = {};
+
+function hatSheet(kind: "front" | "side" | "back"): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  return (hats[kind] ??= paintHat(kind));
+}
+
+const WALK_TOP = [
+  [24, 25, 26, 25, 24, 25, 26, 25],
+  [26, 25, 24, 25, 26, 25, 24, 25],
+  [24, 25, 26, 25, 24, 25, 26, 25],
+];
+const IDLE_TOP = [
+  [24, 25],
+  [25, 26],
+  [24, 25],
+];
+
+function headTop(pose: { sheet: string; col: number }, row: number): number {
+  if (pose.sheet.endsWith("walk")) return WALK_TOP[row]?.[pose.col] ?? 24;
+  return IDLE_TOP[row]?.[pose.col % 2] ?? 24;
 }
 
 function drawHat(
   ctx: CanvasRenderingContext2D,
   s: GameState,
-  _pose: { sheet: string; col: number },
+  pose: { sheet: string; col: number },
   row: number,
   flip: boolean,
 ) {
-  const anchor = row === 1 ? { x: 38, y: 26 } : row === 2 ? { x: 36, y: 25 } : { x: 35, y: 25 };
-  const shape = hatPixels(row === 1 ? "side" : row === 2 ? "back" : "front");
-  ctx.save();
-  ctx.translate(s.x, s.y);
-  if (flip) ctx.scale(-1, 1);
-  for (const [dx, dy, color] of shape) {
-    ctx.fillStyle = color;
-    ctx.fillRect((anchor.x + dx - 40) * CHAR, (anchor.y + dy - 96) * CHAR, CHAR, CHAR);
-  }
-  ctx.restore();
+  const kind = row === 1 ? "side" : row === 2 ? "back" : "front";
+  const hat = hatSheet(kind);
+  if (!hat) return;
+  const headX = row === 1 ? 38 : row === 2 ? 36 : 35;
+  const headY = headTop(pose, row) + 2;
+  const ax = kind === "side" ? 8 : 10;
+  const ay = kind === "side" ? 8 : 12;
+  blit(ctx, hat, 0, 0, hat.width, hat.height, s.x, s.y, CHAR, flip, ax - headX + 40, ay - headY + 96);
 }
 
 const FACES = {
@@ -211,7 +238,7 @@ function drawFace(
   ctx: CanvasRenderingContext2D,
   sheets: Sheets,
   s: GameState,
-  _pose: { sheet: string; col: number },
+  pose: { sheet: string; col: number },
   row: number,
   flip: boolean,
 ) {
@@ -221,10 +248,11 @@ function drawFace(
   const show = life.emote > 0 || life.face === "need" || life.face === "ill" || life.face === "tired" || life.face === "heart" || life.face === "happy";
   if (!show) return;
   const cell = FACES[life.face] ?? FACES.ok;
-  const anchor = row === 1 ? { x: 38, y: 26 } : row === 2 ? { x: 36, y: 25 } : { x: 35, y: 25 };
-  const hx = s.x + (anchor.x - 40) * CHAR * (flip ? -1 : 1);
-  const tip = s.y + (anchor.y - 9 - 96) * CHAR - 1;
-  blit(ctx, img, cell[1] * 16 + 1, cell[0] * 16 + 7, 14, 8, hx, tip, 1, false, 7, 8);
+  const headX = row === 1 ? 38 : row === 2 ? 36 : 35;
+  const headY = headTop(pose, row) + 2;
+  const hx = s.x + (headX - 40) * CHAR * (flip ? -1 : 1);
+  const hy = s.y + (headY - 16 - 96) * CHAR;
+  blit(ctx, img, cell[1] * 16, cell[0] * 16 + 6, 16, 10, hx, hy, 1.35, false, 8, 10);
 }
 
 function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
