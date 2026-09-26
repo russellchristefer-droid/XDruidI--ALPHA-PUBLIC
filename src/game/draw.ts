@@ -1,6 +1,5 @@
 import { TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import type { Sheets } from "./assets.ts";
-import { drawTileLayer } from "./tiles";
 
 const CHAR = 0.42;
 
@@ -134,13 +133,17 @@ function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
   const x = Math.round(p.x - w / 2);
   const y = Math.round(p.y - h / 2);
   const tilled = p.tilled || (!!p.crop && p.stage !== 0);
-  if (tilled) {
+  if (tilled && sheets.landTilled) {
+    const img = sheets.landTilled;
     ctx.save();
     ctx.beginPath();
     ctx.rect(x, y, w, h);
     ctx.clip();
-    ctx.fillStyle = "rgba(42, 26, 14, 0.7)";
-    for (let row = y + 3; row < y + h; row += 4) ctx.fillRect(x, row, w, 1);
+    for (let ty = y; ty < y + h; ty += img.height) {
+      for (let tx = x; tx < x + w; tx += img.width) {
+        ctx.drawImage(img, tx, ty);
+      }
+    }
     ctx.restore();
   }
   if (!p.crop || p.stage === 0 || !sheets[p.crop]) return;
@@ -194,7 +197,6 @@ export function drawWorld(
 ) {
   const yard = sheets.yard;
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, WORLD_H);
-  drawTileLayer(ctx, sheets);
 
   ctx.save();
   ctx.beginPath();

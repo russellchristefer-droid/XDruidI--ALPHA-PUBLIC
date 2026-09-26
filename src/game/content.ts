@@ -356,6 +356,46 @@ export type Plot = {
   revealed: boolean;
 };
 
+/** The soil rectangles painted in yard.png. One list for the picture and the game. */
+export const BEDS = [
+  { id: "bed-w", name: "West bed", x0: 30, y0: 121, w: 52, h: 29 },
+  { id: "bed-c", name: "Center bed", x0: 102, y0: 121, w: 32, h: 29 },
+  { id: "bed-e", name: "East bed", x0: 155, y0: 125, w: 18, h: 22 },
+] as const;
+
+export function freshPlots(): Plot[] {
+  return BEDS.map((bed) => ({
+    id: bed.id,
+    kind: "bed" as const,
+    name: bed.name,
+    x: bed.x0 + bed.w / 2,
+    y: bed.y0 + bed.h / 2,
+    w: bed.w,
+    h: bed.h,
+    crop: null,
+    stage: 0,
+    watered: false,
+    wilt: 0,
+    tilled: false,
+    revealed: true,
+  }));
+}
+
+export function lockBeds(s: GameState): void {
+  const kept = new Map(s.plots.map((p) => [p.id, p]));
+  s.plots = freshPlots().map((plot) => {
+    const old = kept.get(plot.id);
+    if (!old) return plot;
+    old.x = plot.x;
+    old.y = plot.y;
+    old.w = plot.w;
+    old.h = plot.h;
+    old.kind = "bed";
+    old.name = plot.name;
+    return old;
+  });
+}
+
 export type Animal = {
   id: string;
   kind: "cow" | "rooster" | "goat";
@@ -631,11 +671,7 @@ export function createGame(): GameState {
     body: emptyBody(),
     vault: Array.from({ length: VAULT_SLOTS }, () => null),
     purse: 0,
-    plots: [
-      { id: "bed-w", kind: "bed", name: "West bed", x: 59, y: 136, w: 50, h: 29, crop: null, stage: 0, watered: false, wilt: 0, tilled: false, revealed: true },
-      { id: "bed-c", kind: "bed", name: "Center bed", x: 119, y: 136, w: 30, h: 27, crop: null, stage: 0, watered: false, wilt: 0, tilled: false, revealed: true },
-      { id: "bed-e", kind: "bed", name: "East bed", x: 164, y: 137, w: 16, h: 24, crop: null, stage: 0, watered: false, wilt: 0, tilled: false, revealed: true },
-    ],
+    plots: freshPlots(),
     flowers: defaultFlowers(),
     animals: [
       { id: "cow", kind: "cow", name: "Cow", x: 200, y: 136, dir: "s", fed: false, ready: false, tx: 200, ty: 136, pause: 1.2 },
