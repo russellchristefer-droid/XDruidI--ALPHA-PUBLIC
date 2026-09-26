@@ -234,6 +234,89 @@ const FACES = {
   heart: [6, 2],
 } as const;
 
+let emojiCloud: HTMLCanvasElement | null = null;
+const brightFaces = new Map<string, HTMLCanvasElement>();
+
+function cloudSheet(): HTMLCanvasElement | null {
+  if (emojiCloud) return emojiCloud;
+  if (typeof document === "undefined") return null;
+  const w = 26;
+  const h = 18;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  const cx = 12.5;
+  const cy = 6.2;
+  const filled = (x: number, y: number) => {
+    const nx = (x + 0.5 - cx) / 12;
+    const ny = (y + 0.5 - cy) / 6.2;
+    if (nx * nx + ny * ny <= 1) return true;
+    if (y >= 11 && y <= 16) return Math.abs(x + 0.5 - cx) <= 4 - ((y - 11) / 5) * 2.2;
+    return false;
+  };
+  const at = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && filled(x, y);
+  const img = g.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!filled(x, y)) continue;
+      const edge = !at(x - 1, y) || !at(x + 1, y) || !at(x, y - 1) || !at(x, y + 1);
+      const i = (y * w + x) * 4;
+      if (edge) {
+        img.data[i] = 28;
+        img.data[i + 1] = 18;
+        img.data[i + 2] = 10;
+      } else if (y < 7) {
+        img.data[i] = 255;
+        img.data[i + 1] = 252;
+        img.data[i + 2] = 236;
+      } else {
+        img.data[i] = 255;
+        img.data[i + 1] = 228;
+        img.data[i + 2] = 150;
+      }
+      img.data[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  emojiCloud = canvas;
+  return canvas;
+}
+
+function brightFace(sheet: CanvasImageSource, col: number, row: number): HTMLCanvasElement | null {
+  const key = `${col},${row}`;
+  const cached = brightFaces.get(key);
+  if (cached) return cached;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 16;
+  canvas.height = 10;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.drawImage(sheet, col * 16, row * 16 + 6, 16, 10, 0, 0, 16, 10);
+  const img = g.getImageData(0, 0, 16, 10);
+  for (let i = 0; i < img.data.length; i += 4) {
+    if (img.data[i + 3]! < 20) continue;
+    const r = img.data[i]!;
+    const gr = img.data[i + 1]!;
+    const b = img.data[i + 2]!;
+    if (r < 70 && gr < 70 && b < 70) {
+      img.data[i] = 24;
+      img.data[i + 1] = 16;
+      img.data[i + 2] = 10;
+    } else {
+      img.data[i] = Math.min(255, Math.round(r * 1.2 + 48));
+      img.data[i + 1] = Math.min(255, Math.round(gr * 1.15 + 36));
+      img.data[i + 2] = Math.min(255, Math.round(b * 1.05 + 16));
+    }
+  }
+  g.putImageData(img, 0, 0);
+  brightFaces.set(key, canvas);
+  return canvas;
+}
+
 function drawFace(
   ctx: CanvasRenderingContext2D,
   sheets: Sheets,
@@ -252,7 +335,10 @@ function drawFace(
   const headY = headTop(pose, row) + 2;
   const hx = s.x + (headX - 40) * CHAR * (flip ? -1 : 1);
   const hy = s.y + (headY - 16 - 96) * CHAR;
-  blit(ctx, img, cell[1] * 16, cell[0] * 16 + 6, 16, 10, hx, hy, 1.35, false, 8, 10);
+  const cloud = cloudSheet();
+  if (cloud) blit(ctx, cloud, 0, 0, cloud.width, cloud.height, hx, hy, 1, false, 13, 12);
+  const face = brightFace(img, cell[1], cell[0]);
+  if (face) blit(ctx, face, 0, 0, 16, 10, hx, hy - 1, 1.15, false, 8, 10);
 }
 
 function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
