@@ -11,9 +11,10 @@ import {
   createGame,
   defOf,
   isNight,
+  skyLabel,
 } from "@/game/content";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
-import { armWind, heavyWind, onSound, setVolume, setWind, soundState, toggleMute } from "@/game/audio";
+import { armWind, heavyWind, onSound, setVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
 import { drawWorld } from "@/game/draw";
 import {
   assignHotbar,
@@ -413,6 +414,7 @@ export function AssayGame() {
               frozen: panelRef.current !== null || editorRef.current.open,
             });
             setWind(heavyWind(s.time, s.day));
+            syncSky(s.weather, s.bolts);
             if (s.uiEvent) {
               const ev = s.uiEvent;
               s.uiEvent = undefined;
@@ -754,7 +756,7 @@ export function AssayGame() {
           <div className="hud-top">
             <div className="panel" style={{ padding: "6px 8px", fontSize: 13 }}>
               <div>
-                {clockLabel(s.time)} · Day {s.day}
+                {clockLabel(s.time)} · Day {s.day} · {skyLabel(s)}
               </div>
               <div>{s.season}</div>
               <div style={{ color: "#c4a574", maxWidth: 220 }}>{watcherLine(s)}</div>

@@ -197,6 +197,24 @@ test("a swing out of reach stops at the contact marker and does not water", () =
   assert.equal(contactFail(s), null);
 });
 
+test("rain waters the beds and the grove", () => {
+  const s = createGame();
+  s.plots[0]!.watered = false;
+  s.weather = "rain";
+  s.weatherLeft = 30;
+  s.wet = 0;
+  const bloom = s.flowers[0]!.bloom;
+  step(s, 1, { mx: 0, my: 0, run: false, frozen: false });
+  assert.equal(s.plots[0]!.watered, true);
+  assert.ok(s.wet > 0);
+  assert.ok(s.flowers[0]!.bloom >= bloom);
+  s.weather = "storm";
+  s.weatherLeft = 30;
+  s.bolts = 0;
+  step(s, 0.5, { mx: 0, my: 0, run: false, frozen: false });
+  assert.equal(s.plots[2]!.watered, true);
+});
+
 test("animal wander is the same for the same seed", () => {
   const a = createGame();
   const b = createGame();

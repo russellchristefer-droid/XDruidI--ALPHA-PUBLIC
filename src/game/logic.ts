@@ -7,6 +7,7 @@ import {
   createGame,
   defaultFlowers,
   defOf,
+  ensureWeather,
   footBlocked,
   isNight,
   itemMass,
@@ -1125,7 +1126,50 @@ export function step(s: GameState, dt: number, input: Input) {
     if (s.stamina <= 0) down(s);
   }
   s.time = Math.min(0.999, s.time + stepDt / 90);
+  stepWeather(s, stepDt);
   stepCritters(s, stepDt);
+}
+
+function stepWeather(s: GameState, dt: number) {
+  ensureWeather(s);
+  s.flash = Math.max(0, s.flash - dt);
+  s.weatherLeft -= dt;
+  if (s.weatherLeft <= 0) {
+    const roll = unitRand(s);
+    const hour = 6 + s.time * 16;
+    const next = roll < 0.46 ? "clear" : roll < 0.78 || hour < 8 ? "rain" : "storm";
+    if (next !== s.weather) {
+      s.message =
+        next === "storm"
+          ? "Thunder. Rain soaks the grass, the beds, the meadow, and the trees."
+          : next === "rain"
+            ? "Rain. The soil, the plants, and the trees take the water."
+            : "The rain passes. The ground stays wet.";
+    }
+    s.weather = next;
+    s.weatherLeft = 16 + unitRand(s) * 22;
+  }
+  if (s.weather === "clear") {
+    s.wet = Math.max(0, s.wet - dt * 0.012);
+    return;
+  }
+  const pour = s.weather === "storm" ? 0.14 : 0.07;
+  s.wet = Math.min(1, s.wet + dt * pour);
+  for (const p of s.plots) {
+    if (p.stage < 0) continue;
+    if (p.tilled || p.crop) p.watered = true;
+  }
+  for (const f of s.flowers) {
+    f.grow += dt * (s.weather === "storm" ? 0.22 : 0.1);
+    if (f.grow >= 1) {
+      f.grow = 0;
+      f.bloom = Math.min(4, f.bloom + 1);
+    }
+  }
+  if (s.weather === "storm" && s.flash <= 0 && unitRand(s) < dt * 0.45) {
+    s.flash = 0.16;
+    s.bolts += 1;
+  }
 }
 
 function pasture(kind: Animal["kind"]): { x: number; y: number; w: number; h: number } {

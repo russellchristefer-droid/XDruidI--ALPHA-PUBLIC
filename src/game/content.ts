@@ -448,6 +448,8 @@ export type Branch = { id: string; x: number; y: number; left: boolean };
 
 export type Structure = { id: string; name: string; quality: number; floor: number; floorMax: number };
 
+export type Sky = "clear" | "rain" | "storm";
+
 export type GameState = {
   version: 1;
   x: number;
@@ -488,6 +490,11 @@ export type GameState = {
   pending: { px: number; py: number } | null;
   message: string;
   summary: boolean;
+  weather: Sky;
+  weatherLeft: number;
+  wet: number;
+  flash: number;
+  bolts: number;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
 };
 
@@ -645,6 +652,21 @@ export function footBlocked(x: number, y: number): boolean {
   return false;
 }
 
+export function skyLabel(s: { weather?: Sky; wet?: number }): string {
+  if (s.weather === "storm") return "Thunderstorm";
+  if (s.weather === "rain") return "Rain";
+  if ((s.wet ?? 0) > 0.35) return "Wet ground";
+  return "Clear";
+}
+
+export function ensureWeather(s: GameState): void {
+  if (s.weather !== "clear" && s.weather !== "rain" && s.weather !== "storm") s.weather = "clear";
+  if (typeof s.weatherLeft !== "number") s.weatherLeft = 24;
+  if (typeof s.wet !== "number") s.wet = 0;
+  if (typeof s.flash !== "number") s.flash = 0;
+  if (typeof s.bolts !== "number") s.bolts = 0;
+}
+
 export function hourOf(time: number): number {
   return 6 + time * 16;
 }
@@ -744,5 +766,10 @@ export function createGame(): GameState {
     pending: null,
     message: "Tomato, cauliflower, and peas are growing on the three beds.",
     summary: false,
+    weather: "clear",
+    weatherLeft: 28,
+    wet: 0.15,
+    flash: 0,
+    bolts: 0,
   };
 }

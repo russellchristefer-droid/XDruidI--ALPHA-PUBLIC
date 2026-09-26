@@ -318,25 +318,61 @@ export function drawWorld(
   if (sheet && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
 
   const hour = 6 + s.time * 16;
+  let sky = "rgba(0,0,0,0)";
+  let skyA = 0;
   if (hour < 8) {
-    ctx.fillStyle = "rgba(255, 176, 90, 0.13)";
+    sky = "255, 168, 80";
+    skyA = ((8 - hour) / 2) * 0.22;
+  } else if (hour >= 17 && hour < 20) {
+    sky = "92, 54, 92";
+    skyA = ((hour - 17) / 3) * 0.28;
+  } else if (hour >= 20) {
+    sky = "8, 14, 36";
+    skyA = Math.min(0.62, 0.28 + ((hour - 20) / 2) * 0.34);
+  }
+  if (skyA > 0) {
+    ctx.fillStyle = `rgba(${sky}, ${skyA})`;
     ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   }
-  let dark = 0;
-  if (hour >= 20) dark = Math.min(0.55, ((hour - 20) / 2) * 0.55);
-  else if (hour >= 18) dark = ((hour - 18) / 2) * 0.24;
-  if (dark > 0) {
-    ctx.fillStyle = `rgba(10, 18, 42, ${dark})`;
+  if (hour >= 20) {
+    ctx.fillStyle = "rgba(255, 244, 210, 0.85)";
+    for (let i = 0; i < 28; i++) {
+      const sx = (i * 53 + 11) % WORLD_W;
+      const sy = (i * 37 + 8) % WORLD_H;
+      if ((i + Math.floor(s.clock * 2)) % 5 === 0) continue;
+      ctx.fillRect(sx, sy, 1, 1);
+    }
+  }
+  if (s.wet > 0.04) {
+    ctx.fillStyle = `rgba(28, 58, 72, ${Math.min(0.28, s.wet * 0.26)})`;
     ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   }
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   const glow = ctx.createRadialGradient(54, 78, 2, 54, 78, 34);
-  glow.addColorStop(0, `rgba(255, 170, 60, ${0.35 + dark})`);
+  glow.addColorStop(0, `rgba(255, 170, 60, ${0.35 + skyA})`);
   glow.addColorStop(1, "rgba(255, 120, 20, 0)");
   ctx.fillStyle = glow;
   ctx.fillRect(20, 40, 70, 70);
   ctx.restore();
+
+  if (s.weather === "rain" || s.weather === "storm") {
+    const drops = s.weather === "storm" ? 110 : 58;
+    ctx.strokeStyle = s.weather === "storm" ? "rgba(210, 226, 238, 0.55)" : "rgba(190, 214, 230, 0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < drops; i++) {
+      const x = (i * 47 + s.clock * (s.weather === "storm" ? 90 : 60)) % WORLD_W;
+      const y = (i * 83 + s.clock * (s.weather === "storm" ? 160 : 110)) % WORLD_H;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 2, y + (s.weather === "storm" ? 7 : 5));
+    }
+    ctx.stroke();
+  }
+  if (s.flash > 0) {
+    ctx.fillStyle = `rgba(235, 242, 255, ${Math.min(0.55, s.flash * 3.2)})`;
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+  }
 
   if (hover && hover.x >= 0 && hover.y >= 0 && hover.x < WORLD_W && hover.y < WORLD_H) {
     const tx = Math.floor(hover.x / TILE) * TILE;

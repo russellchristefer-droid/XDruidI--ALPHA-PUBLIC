@@ -2,6 +2,9 @@ const KEY = "xdruid-audio-v1";
 
 const LIGHT = [5, 6, 7, 8];
 const HEAVY = [2, 3, 4, 5, 6, 7, 8];
+const LIGHT_RAIN = [2, 3, 4];
+const HEAVY_RAIN = [1, 2, 3, 4, 5];
+const THUNDER = [1, 2, 3, 4, 5];
 
 export type SoundState = { volume: number; muted: boolean };
 
@@ -29,12 +32,22 @@ class Wind {
   private master: GainNode | null = null;
   private lightBus: GainNode | null = null;
   private heavyBus: GainNode | null = null;
+  private rainBus: GainNode | null = null;
+  private stormBus: GainNode | null = null;
   private lightSrc: AudioBufferSourceNode | null = null;
   private heavySrc: AudioBufferSourceNode | null = null;
   private lightGain: GainNode | null = null;
   private heavyGain: GainNode | null = null;
   private lightBufs: AudioBuffer[] = [];
   private heavyBufs: AudioBuffer[] = [];
+  private rainBufs: AudioBuffer[] = [];
+  private stormBufs: AudioBuffer[] = [];
+  private thunderBufs: AudioBuffer[] = [];
+  private rainSrc: AudioBufferSourceNode | null = null;
+  private stormSrc: AudioBufferSourceNode | null = null;
+  private rainGain: GainNode | null = null;
+  private stormGain: GainNode | null = null;
+  private sky: "clear" | "rain" | "storm" = "clear";
   private volume = 0.7;
   private muted = false;
   private heavy = 0;
@@ -80,8 +93,12 @@ class Wind {
       this.master = this.ctx.createGain();
       this.lightBus = this.ctx.createGain();
       this.heavyBus = this.ctx.createGain();
+      this.rainBus = this.ctx.createGain();
+      this.stormBus = this.ctx.createGain();
       this.lightBus.connect(this.master);
       this.heavyBus.connect(this.master);
+      this.rainBus.connect(this.master);
+      this.stormBus.connect(this.master);
       this.master.connect(this.ctx.destination);
       this.apply(0);
       document.addEventListener("visibilitychange", () => {
@@ -122,6 +139,36 @@ class Wind {
     this.master.gain.setTargetAtTime(master, now, Math.max(0.01, ramp));
     this.lightBus.gain.setTargetAtTime(0.35 + (1 - this.heavy) * 0.65, now, 0.4);
     this.heavyBus.gain.setTargetAtTime(this.heavy * 0.9, now, 0.45);
+    const rain = this.sky === "clear" ? 0 : this.sky === "rain" ? 0.8 : 0.35;
+    const storm = this.sky === "storm" ? 0.9 : this.sky === "rain" ? 0.12 : 0;
+    this.rainBus?.gain.setTargetAtTime(rain, now, 0.5);
+    this.stormBus?.gain.setTargetAtTime(storm, now, 0.5);
+  }
+
+  setSky(sky: "clear" | "rain" | "storm") {
+    if (this.sky === sky) return;
+    this.sky = sky;
+    this.apply(0.4);
+  }
+
+  thunder() {
+    if (!this.ctx || !this.master || this.thunderBufs.length === 0) return;
+    const buf = this.thunderBufs[Math.floor(Math.random() * this.thunderBufs.length)]!;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.95, this.ctx.currentTime);
+    gain.connect(this.master);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(gain);
+    src.start();
+    src.onended = () => {
+      try {
+        src.disconnect();
+        gain.disconnect();
+      } catch {
+        /* already gone */
+      }
+    };
   }
 
   private ext() {
@@ -165,6 +212,28 @@ class Wind {
         /* skip a missing take */
       }
     }
+    for (const n of LIGHT_RAIN) {
+      try {
+        this.rainBufs.push(await this.load(`/game/audio/rain/light-${n}.${ext}`));
+      } catch {
+        /* skip a missing take */
+      }
+    }
+    for (const n of HEAVY_RAIN) {
+      try {
+        this.stormBufs.push(await this.load(`/game/audio/rain/heavy-${n}.${ext}`));
+      } catch {
+        /* skip a missing take */
+      }
+    }
+    for (const n of THUNDER) {
+      try {
+        this.thunderBufs.push(await this.load(`/game/audio/thunder/thunder-${n}.${ext}`));
+      } catch {
+        /* skip a missing take */
+      }
+    }
+    this.startLoops();
   }
 
   private loop(buf: AudioBuffer, bus: GainNode) {
@@ -193,29 +262,47 @@ class Wind {
       this.heavyGain = node.gain;
       window.setInterval(() => this.rotate(), 50000);
     }
+    if (!this.rainSrc && this.rainBufs[0] && this.rainBus) {
+      const node = this.loop(this.rainBufs[0], this.rainBus);
+      this.rainSrc = node.src;
+      this.rainGain = node.gain;
+    }
+    if (!this.stormSrc && this.stormBufs[0] && this.stormBus) {
+      const node = this.loop(this.stormBufs[0], this.stormBus);
+      this.stormSrc = node.src;
+      this.stormGain = node.gain;
+    }
     this.apply(0.2);
   }
 
   private rotate() {
     if (!this.ctx || !this.lightBus || !this.heavyBus) return;
-    this.swap("light");
-    this.swap("heavy");
+    this.swap("light", this.lightBufs, this.lightBus);
+    this.swap("heavy", this.heavyBufs, this.heavyBus);
+    this.swap("rain", this.rainBufs, this.rainBus);
+    this.swap("storm", this.stormBufs, this.stormBus);
   }
 
-  private swap(which: "light" | "heavy") {
-    const bufs = which === "light" ? this.lightBufs : this.heavyBufs;
-    const bus = which === "light" ? this.lightBus : this.heavyBus;
+  private swap(which: "light" | "heavy" | "rain" | "storm", bufs: AudioBuffer[], bus: GainNode | null) {
     if (!this.ctx || !bus || bufs.length < 2) return;
     const buf = bufs[Math.floor(Math.random() * bufs.length)]!;
     const node = this.loop(buf, bus);
-    const prev = which === "light" ? this.lightSrc : this.heavySrc;
-    const prevGain = which === "light" ? this.lightGain : this.heavyGain;
+    const prev =
+      which === "light" ? this.lightSrc : which === "heavy" ? this.heavySrc : which === "rain" ? this.rainSrc : this.stormSrc;
+    const prevGain =
+      which === "light" ? this.lightGain : which === "heavy" ? this.heavyGain : which === "rain" ? this.rainGain : this.stormGain;
     if (which === "light") {
       this.lightSrc = node.src;
       this.lightGain = node.gain;
-    } else {
+    } else if (which === "heavy") {
       this.heavySrc = node.src;
       this.heavyGain = node.gain;
+    } else if (which === "rain") {
+      this.rainSrc = node.src;
+      this.rainGain = node.gain;
+    } else {
+      this.stormSrc = node.src;
+      this.stormGain = node.gain;
     }
     if (prevGain) prevGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.4);
     if (prev) {
@@ -260,4 +347,14 @@ export function toggleMute() {
 
 export function setWind(amount: number) {
   wind.setWind(amount);
+}
+
+let heardBolts = 0;
+
+export function syncSky(sky: "clear" | "rain" | "storm", bolts: number) {
+  wind.setSky(sky);
+  if (bolts > heardBolts) {
+    heardBolts = bolts;
+    wind.thunder();
+  }
 }
