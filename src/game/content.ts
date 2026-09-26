@@ -462,6 +462,9 @@ export type Life = {
   ty: number;
   pause: number;
   route: number[];
+  chore: string;
+  skip: string;
+  skipUntil: number;
 };
 
 export function freshLife(): Life {
@@ -477,6 +480,9 @@ export function freshLife(): Life {
     ty: 136,
     pause: 1.1,
     route: [],
+    chore: "",
+    skip: "",
+    skipUntil: 0,
   };
 }
 
@@ -494,6 +500,9 @@ export function ensureLife(s: GameState): void {
   if (typeof life.ty !== "number") life.ty = 136;
   if (typeof life.pause !== "number") life.pause = 0.4;
   if (!Array.isArray(life.route)) life.route = [];
+  if (typeof life.chore !== "string") life.chore = "";
+  if (typeof life.skip !== "string") life.skip = "";
+  if (typeof life.skipUntil !== "number") life.skipUntil = 0;
 }
 
 export type Sky = "clear" | "rain" | "storm";
@@ -544,6 +553,7 @@ export type GameState = {
   flash: number;
   bolts: number;
   life: Life;
+  auto: boolean;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
 };
 
@@ -701,6 +711,10 @@ export function footBlocked(x: number, y: number): boolean {
   return false;
 }
 
+export function ensureAuto(s: GameState): void {
+  if (typeof s.auto !== "boolean") s.auto = true;
+}
+
 export function lifeLabel(life: Life): string {
   const mood = Math.round(life.mood);
   if (life.hunger > 60) return `Mood ${mood} · Hungry`;
@@ -830,5 +844,6 @@ export function createGame(): GameState {
     flash: 0,
     bolts: 0,
     life: freshLife(),
+    auto: true,
   };
 }

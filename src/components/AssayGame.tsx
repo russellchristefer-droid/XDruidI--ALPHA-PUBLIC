@@ -761,6 +761,24 @@ export function AssayGame() {
               </div>
               <div style={{ color: "#c4a574" }}>{s.life ? lifeLabel(s.life) : ""}</div>
               <div style={{ color: "#c4a574", maxWidth: 220 }}>{watcherLine(s)}</div>
+              <button
+                type="button"
+                className="slot"
+                style={{ pointerEvents: "auto", marginTop: 6, width: "auto", padding: "4px 8px" }}
+                onClick={() => {
+                  s.auto = s.auto === false;
+                  if (!s.auto) {
+                    s.life.errand = null;
+                    s.life.route = [];
+                    s.life.chore = "";
+                  }
+                  s.message = s.auto ? "Autonomy on. He tends the farm." : "Autonomy off. He waits for you.";
+                  persist(s);
+                  bump();
+                }}
+              >
+                {s.auto === false ? "Autonomy off" : "Autonomy on"}
+              </button>
             </div>
             <div className="panel" style={{ padding: "6px 8px", fontSize: 13, textAlign: "right" }}>
               <div>Stamina {Math.round(s.stamina)}</div>

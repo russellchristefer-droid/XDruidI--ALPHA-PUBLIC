@@ -247,6 +247,37 @@ test("meadow trips stay on the path and off the walls", () => {
   }
 });
 
+test("he waters a dry bed on his own, and stops when autonomy is off", () => {
+  const idle = { mx: 0, my: 0, run: false, frozen: false };
+  const s = createGame();
+  s.life.hunger = 0;
+  s.life.thirst = 0;
+  s.life.dirt = 0;
+  for (const plot of s.plots) {
+    plot.stage = 2;
+    plot.crop = "tomato";
+    plot.watered = true;
+    plot.tilled = true;
+  }
+  const plot = s.plots[0]!;
+  plot.watered = false;
+  const can = s.pack.find((p) => p?.defId === "can")!;
+  can.water = 4;
+  s.x = plot.x;
+  s.y = plot.y;
+  step(s, 0.2, idle);
+  assert.equal(s.action?.kind, "water");
+  assert.equal(s.activeId, can.id);
+
+  const waiting = createGame();
+  waiting.auto = false;
+  waiting.life.pause = 0;
+  const x = waiting.x;
+  step(waiting, 0.5, idle);
+  assert.equal(waiting.action, null);
+  assert.equal(waiting.x, x);
+});
+
 test("he strolls the yard on his own", () => {
   const s = createGame();
   s.life.pause = 0;

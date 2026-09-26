@@ -1157,6 +1157,10 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     life.route = [];
   }
   if (steered || s.action || input.frozen || s.downed) return;
+  if (s.auto === false) {
+    s.speed = 0;
+    return;
+  }
 
   if (life.hunger > 58) {
     const food = s.pack.find((p) => p && (defOf(p).kind === "food" || defOf(p).kind === "product") && (defOf(p).stamina ?? 0) > 0);
@@ -1183,6 +1187,7 @@ function tendSelf(s: GameState, dt: number, input: Input) {
           : null;
   if (!spot) {
     life.errand = null;
+    if (tendFarm(s, dt)) return;
     stroll(s, dt);
     return;
   }
@@ -1216,6 +1221,131 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     life.route = [];
     life.pause = 0.6;
   }
+}
+
+function holdItem(s: GameState, id: string): boolean {
+  const it = findItem(s, id);
+  if (!it || it.floor <= 0) return false;
+  s.activeId = id;
+  const idx = s.hotbar.findIndex((h) => h === id);
+  if (idx >= 0) s.selected = idx;
+  return true;
+}
+
+function toolItem(s: GameState, tool: string): Item | null {
+  return s.pack.find((p) => p && defOf(p).tool === tool && p.floor > 0) ?? null;
+}
+
+type Chore = { id: string; x: number; y: number; hold: string | null; say: string };
+
+function listChores(s: GameState): Chore[] {
+  const out: Chore[] = [];
+  const can = toolItem(s, "water");
+  const dry = s.plots.find((p) => p.crop && p.stage > 0 && p.stage < 5 && !p.watered);
+  if (dry && s.weather === "clear" && can) {
+    if ((can.water ?? 0) <= 0) {
+      const well = SPOTS.find((sp) => sp.id === "well")!;
+      out.push({ id: "fill", x: well.x + well.w / 2, y: well.y + well.h / 2, hold: can.id, say: "He goes to fill the can." });
+    } else {
+      out.push({ id: `${dry.id}:water`, x: dry.x, y: dry.y, hold: can.id, say: `He waters the ${dry.name.toLowerCase()}.` });
+    }
+  }
+  const ripe = s.plots.find((p) => p.stage >= 5 && p.crop);
+  const scythe = toolItem(s, "scythe");
+  if (ripe && scythe) out.push({ id: `${ripe.id}:cut`, x: ripe.x, y: ripe.y, hold: scythe.id, say: `He harvests the ${ripe.crop}.` });
+  const dead = s.plots.find((p) => p.stage < 0);
+  if (dead && scythe) out.push({ id: `${dead.id}:clear`, x: dead.x, y: dead.y, hold: scythe.id, say: "He clears the spent bed." });
+  const packed = s.plots.find((p) => p.stage === 0 && !p.tilled);
+  const shovel = toolItem(s, "shovel");
+  if (packed && shovel) out.push({ id: `${packed.id}:till`, x: packed.x, y: packed.y, hold: shovel.id, say: `He tills the ${packed.name.toLowerCase()}.` });
+  const open = s.plots.find((p) => p.stage === 0 && p.tilled);
+  if (open && seedItem(s)) out.push({ id: `${open.id}:plant`, x: open.x, y: open.y, hold: null, say: `He plants the ${open.name.toLowerCase()}.` });
+  const ready = s.animals.find((a) => a.ready && a.kind !== "goat");
+  if (ready) out.push({ id: `${ready.id}:collect`, x: ready.x, y: ready.y, hold: null, say: `He collects from the ${ready.name.toLowerCase()}.` });
+  const hungry = s.animals.find((a) => !a.fed);
+  if (hungry && produceItem(s)) out.push({ id: `${hungry.id}:feed`, x: hungry.x, y: hungry.y, hold: null, say: `He feeds the ${hungry.name.toLowerCase()}.` });
+  const bloom = s.flowers?.find((f) => f.bloom >= 2);
+  if (bloom) out.push({ id: `${bloom.id}:pick`, x: bloom.x, y: bloom.y, hold: null, say: `He picks the ${bloom.name.toLowerCase()}.` });
+  const branch = s.branches.find((b) => b.left);
+  const axe = toolItem(s, "axe");
+  if (branch && axe && s.pack.some((p) => p === null)) {
+    out.push({ id: `${branch.id}:chop`, x: branch.x, y: branch.y, hold: axe.id, say: "He chops a branch." });
+  }
+  const gate = s.structures.find((st) => st.id === "gate");
+  const hammer = toolItem(s, "hammer");
+  const kit = s.pack.some((p) => p?.defId === "kit");
+  if (gate && hammer && kit && gate.floor < 8) {
+    const spot = SPOTS.find((sp) => sp.id === "gate")!;
+    out.push({ id: "gate:repair", x: spot.x + spot.w / 2, y: spot.y + spot.h / 2, hold: hammer.id, say: "He repairs the gate." });
+  }
+  const dull = s.pack.find((p) => p && defOf(p).kind === "tool" && p.floor > 0 && p.floor < 3);
+  if (dull) {
+    const grind = SPOTS.find((sp) => sp.id === "grind")!;
+    out.push({ id: `${dull.id}:sharpen`, x: grind.x + grind.w / 2, y: grind.y + grind.h / 2, hold: dull.id, say: `He sharpens the ${defOf(dull).name.toLowerCase()}.` });
+  }
+  return out;
+}
+
+function workSpot(x: number, y: number): { x: number; y: number } {
+  if (!footBlocked(x, y)) return { x, y };
+  for (const r of [8, 14, 22, 30]) {
+    for (const [dx, dy] of [
+      [0, 1],
+      [0, -1],
+      [1, 0],
+      [-1, 0],
+      [1, 1],
+      [-1, 1],
+      [1, -1],
+      [-1, -1],
+    ]) {
+      const px = x + dx * r;
+      const py = y + dy * r;
+      if (!footBlocked(px, py) && Math.hypot(px - x, py - y) <= REACH - 2) return { x: px, y: py };
+    }
+  }
+  return { x, y };
+}
+
+function tendFarm(s: GameState, dt: number): boolean {
+  const life = s.life;
+  const job = listChores(s).find((c) => c.id !== life.skip || s.clock >= life.skipUntil);
+  if (!job) return false;
+  if (job.hold && !holdItem(s, job.hold)) {
+    life.skip = job.id;
+    life.skipUntil = s.clock + 6;
+    return false;
+  }
+  if (life.chore !== job.id) {
+    life.chore = job.id;
+    life.route = [];
+  }
+  if (inReach(s, job.x, job.y)) {
+    const dx = job.x - s.x;
+    const dy = job.y - s.y;
+    if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
+    else if (Math.abs(dy) > 1) s.dir = dy > 0 ? "s" : "n";
+    const result = interact(s, job.x, job.y);
+    if (s.action) s.message = job.say;
+    else if (result.msg) s.message = result.msg;
+    life.route = [];
+    if (!s.action) {
+      life.skip = job.id;
+      life.skipUntil = s.clock + 5;
+    }
+    s.speed = 0;
+    return true;
+  }
+  const stand = workSpot(job.x, job.y);
+  const step = followGoal(s, dt, stand.x, stand.y, 32);
+  if (step === "stuck") {
+    life.skip = job.id;
+    life.skipUntil = s.clock + 5;
+    life.route = [];
+    life.chore = "";
+    return false;
+  }
+  return true;
 }
 
 function stroll(s: GameState, dt: number) {
