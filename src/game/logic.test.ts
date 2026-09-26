@@ -12,6 +12,7 @@ import {
   sellItem,
   step,
   totalMass,
+  autoRoute,
   watcherLine,
   withdraw,
 } from "./logic.ts";
@@ -228,6 +229,22 @@ test("he feeds himself when hungry and you are not steering", () => {
   const x = s.x;
   step(s, 0.2, { mx: 1, my: 0, run: false, frozen: false });
   assert.ok(s.x > x);
+});
+
+test("meadow trips stay on the path and off the walls", () => {
+  const yard = autoRoute(90, 130, 182, 640);
+  assert.ok(yard.length >= 4);
+  for (let i = 0; i < yard.length; i += 2) {
+    const x = yard[i]!;
+    const y = yard[i + 1]!;
+    if (y > 180) assert.ok(x >= 170 && x <= 194, `${x},${y}`);
+    assert.equal(footBlocked(x, y), false, `${x},${y}`);
+  }
+  const around = autoRoute(40, 120, 200, 140);
+  assert.ok(around.length >= 4);
+  for (let i = 0; i < around.length; i += 2) {
+    assert.equal(footBlocked(around[i]!, around[i + 1]!), false);
+  }
 });
 
 test("he strolls the yard on his own", () => {

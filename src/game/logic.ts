@@ -1148,7 +1148,10 @@ function tendSelf(s: GameState, dt: number, input: Input) {
   else life.face = faceFor(s);
 
   const steered = Math.hypot(input.mx, input.my) > 0.2;
-  if (steered) life.errand = null;
+  if (steered) {
+    life.errand = null;
+    life.route = [];
+  }
   if (steered || s.action || input.frozen || s.downed) return;
 
   if (life.hunger > 58) {
@@ -1181,9 +1184,7 @@ function tendSelf(s: GameState, dt: number, input: Input) {
   }
   life.errand = spot.kind;
   if (life.emote <= 0) life.face = spot.kind === "rest" ? "tired" : "need";
-  const dx = spot.x - s.x;
-  const dy = spot.y - s.y;
-  if (Math.hypot(dx, dy) < 12) {
+  if (Math.hypot(spot.x - s.x, spot.y - s.y) < 12) {
     if (spot.kind === "drink") {
       life.thirst = Math.max(0, life.thirst - 50);
       s.stamina = Math.min(100, s.stamina + 6);
@@ -1203,13 +1204,14 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     life.face = "heart";
     life.emote = 2.2;
     life.errand = null;
+    life.route = [];
     return;
   }
-  const mag = Math.hypot(dx, dy) || 1;
-  moveAxis(s, (dx / mag) * 36 * dt, (dy / mag) * 36 * dt);
-  s.speed = 36;
-  if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
-  else s.dir = dy > 0 ? "s" : "n";
+  const step = followGoal(s, dt, spot.x, spot.y, 32);
+  if (step === "stuck") {
+    life.route = [];
+    life.pause = 0.6;
+  }
 }
 
 function stroll(s: GameState, dt: number) {
@@ -1219,49 +1221,203 @@ function stroll(s: GameState, dt: number) {
     s.speed = 0;
     return;
   }
-  if (!life.tx || !life.ty) pickRoam(s);
-  const dx = life.tx - s.x;
-  const dy = life.ty - s.y;
-  if (Math.hypot(dx, dy) < 8) {
+  if (life.route.length < 2) {
+    if (Math.hypot(life.tx - s.x, life.ty - s.y) < 8) pickRoam(s);
+    life.route = autoRoute(s.x, s.y, life.tx, life.ty);
+    if (life.route.length < 2) {
+      pickRoam(s);
+      life.pause = 0.5;
+      return;
+    }
+  }
+  const step = followGoal(s, dt, life.tx, life.ty, 30);
+  if (step === "arrive") {
     life.pause = 1.4 + unitRand(s) * 2.4;
     life.face = life.mood > 70 ? "happy" : "ok";
     life.emote = 1.3;
+    life.route = [];
     pickRoam(s);
     s.speed = 0;
-    return;
+  } else if (step === "stuck") {
+    life.route = [];
+    life.pause = 0.5;
+    pickRoam(s);
+    s.speed = 0;
   }
-  const mag = Math.hypot(dx, dy) || 1;
-  moveAxis(s, (dx / mag) * 30 * dt, (dy / mag) * 30 * dt);
-  s.speed = 30;
-  if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
-  else s.dir = dy > 0 ? "s" : "n";
 }
 
 const ROAM: [number, number][] = [
   [78, 136],
   [200, 138],
   [248, 128],
-  [168, 146],
+  [150, 132],
   [96, 118],
-  [172, 220],
-  [88, 280],
-  [230, 310],
-  [120, 420],
-  [64, 250],
+  [182, 240],
+  [182, 420],
+  [182, 640],
+  [182, 860],
 ];
 
 function pickRoam(s: GameState) {
   const life = s.life;
   for (let i = 0; i < 6; i++) {
     const spot = ROAM[Math.floor(unitRand(s) * ROAM.length)]!;
-    if (!footBlocked(spot[0], spot[1]) && Math.hypot(spot[0] - s.x, spot[1] - s.y) > 20) {
+    if (!autoBlocked(spot[0], spot[1]) && Math.hypot(spot[0] - s.x, spot[1] - s.y) > 24) {
       life.tx = spot[0];
       life.ty = spot[1];
+      life.route = [];
       return;
     }
   }
-  life.tx = 168;
-  life.ty = 146;
+  life.tx = 182;
+  life.ty = 220;
+  life.route = [];
+}
+
+/** Meadow travel stays on the dirt path. The yard still walks around walls. */
+function autoBlocked(x: number, y: number): boolean {
+  if (y > 172 && (x < 174 || x > 190)) return true;
+  return footBlocked(x, y);
+}
+
+const PATH_G = 8;
+
+export function autoRoute(x0: number, y0: number, x1: number, y1: number): number[] {
+  const cols = Math.ceil(347 / PATH_G);
+  const rows = Math.ceil(960 / PATH_G);
+  const key = (x: number, y: number) => y * cols + x;
+  const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
+  const cellX = (x: number) => clamp(Math.round(x / PATH_G), cols - 1);
+  const cellY = (y: number) => clamp(Math.round(y / PATH_G), rows - 1);
+  const open = (x: number, y: number) => x >= 0 && y >= 0 && x < cols && y < rows && !autoBlocked(x * PATH_G, y * PATH_G);
+  const sx = cellX(x0);
+  const sy = cellY(y0);
+  let gx = cellX(x1);
+  let gy = cellY(y1);
+  if (!open(gx, gy)) {
+    let found = false;
+    for (let r = 1; r <= 3 && !found; r++) {
+      for (let dy = -r; dy <= r && !found; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (open(gx + dx, gy + dy)) {
+            gx += dx;
+            gy += dy;
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!found) return [];
+  }
+  const start = key(sx, sy);
+  const goal = key(gx, gy);
+  if (start === goal) return [x1, y1];
+  const gscore = new Map<number, number>([[start, 0]]);
+  const prev = new Map<number, number>();
+  const openSet = new Set<number>([start]);
+  const dirs = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+    [1, 1],
+    [1, -1],
+    [-1, 1],
+    [-1, -1],
+  ];
+  let guard = 0;
+  while (openSet.size > 0 && guard++ < 3000) {
+    let cur = -1;
+    let best = Infinity;
+    for (const k of openSet) {
+      const cx = k % cols;
+      const cy = (k / cols) | 0;
+      const f = (gscore.get(k) ?? 1e9) + Math.abs(cx - gx) + Math.abs(cy - gy);
+      if (f < best) {
+        best = f;
+        cur = k;
+      }
+    }
+    if (cur < 0) break;
+    if (cur === goal) break;
+    openSet.delete(cur);
+    const cx = cur % cols;
+    const cy = (cur / cols) | 0;
+    const base = gscore.get(cur) ?? 1e9;
+    for (const [dx, dy] of dirs) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (!open(nx, ny)) continue;
+      if (dx !== 0 && dy !== 0 && (!open(cx + dx, cy) || !open(cx, cy + dy))) continue;
+      const nk = key(nx, ny);
+      const cost = base + (dx !== 0 && dy !== 0 ? 1.4 : 1);
+      if (cost < (gscore.get(nk) ?? 1e9)) {
+        gscore.set(nk, cost);
+        prev.set(nk, cur);
+        openSet.add(nk);
+      }
+    }
+  }
+  if (!prev.has(goal)) return [];
+  const chain = [goal];
+  let c = goal;
+  while (prev.has(c)) {
+    c = prev.get(c)!;
+    chain.push(c);
+  }
+  chain.reverse();
+  const pts: number[] = [];
+  for (let i = 1; i < chain.length; i++) {
+    pts.push((chain[i]! % cols) * PATH_G, ((chain[i]! / cols) | 0) * PATH_G);
+  }
+  pts.push(x1, y1);
+  return thinRoute(pts);
+}
+
+function thinRoute(pts: number[]): number[] {
+  if (pts.length <= 4) return pts;
+  const out = [pts[0]!, pts[1]!];
+  for (let i = 2; i < pts.length - 2; i += 2) {
+    const x0 = out[out.length - 2]!;
+    const y0 = out[out.length - 1]!;
+    const x1 = pts[i]!;
+    const y1 = pts[i + 1]!;
+    const x2 = pts[i + 2]!;
+    const y2 = pts[i + 3]!;
+    if (Math.abs((x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)) > 12) out.push(x1, y1);
+  }
+  out.push(pts[pts.length - 2]!, pts[pts.length - 1]!);
+  return out;
+}
+
+function followGoal(s: GameState, dt: number, x: number, y: number, speed: number): "walk" | "arrive" | "stuck" {
+  const life = s.life;
+  if (life.tx !== x || life.ty !== y || life.route.length < 2) {
+    life.tx = x;
+    life.ty = y;
+    life.route = Math.hypot(x - s.x, y - s.y) < 8 ? [] : autoRoute(s.x, s.y, x, y);
+  }
+  if (life.route.length < 2) return Math.hypot(x - s.x, y - s.y) < 10 ? "arrive" : "stuck";
+  const wx = life.route[0]!;
+  const wy = life.route[1]!;
+  const dx = wx - s.x;
+  const dy = wy - s.y;
+  if (Math.hypot(dx, dy) < 5) {
+    life.route = life.route.slice(2);
+    return life.route.length < 2 ? "arrive" : "walk";
+  }
+  const mag = Math.hypot(dx, dy) || 1;
+  const step = Math.min(mag, speed * dt);
+  const nx = s.x + (dx / mag) * step;
+  const ny = s.y + (dy / mag) * step;
+  if (autoBlocked(nx, ny)) return "stuck";
+  s.x = nx;
+  s.y = ny;
+  s.speed = speed;
+  if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
+  else s.dir = dy > 0 ? "s" : "n";
+  return "walk";
 }
 
 function faceFor(s: GameState): Life["face"] {

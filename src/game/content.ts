@@ -461,6 +461,7 @@ export type Life = {
   tx: number;
   ty: number;
   pause: number;
+  route: number[];
 };
 
 export function freshLife(): Life {
@@ -475,6 +476,7 @@ export function freshLife(): Life {
     tx: 78,
     ty: 136,
     pause: 1.1,
+    route: [],
   };
 }
 
@@ -491,6 +493,7 @@ export function ensureLife(s: GameState): void {
   if (typeof life.tx !== "number") life.tx = 78;
   if (typeof life.ty !== "number") life.ty = 136;
   if (typeof life.pause !== "number") life.pause = 0.4;
+  if (!Array.isArray(life.route)) life.route = [];
 }
 
 export type Sky = "clear" | "rain" | "storm";
