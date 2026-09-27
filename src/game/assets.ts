@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260928y";
+export const ART = "20260929a";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -69,6 +69,7 @@ const URLS: Record<string, string> = {
   fxTired: art("/game/fx/lines-yellow.png"),
   fxBlood: art("/game/fx/blood.png"),
   fxMagic: art("/game/fx/curved-blue.png"),
+  campfire: art("/game/fx/campfire.png"),
   landGrass: art("/game/land/grass.png"),
   farmExtend: art("/game/land/farm-extension.png"),
   landSoil: art("/game/land/soil.png"),
@@ -83,7 +84,7 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
   { id: "covers", label: "Covers", keys: ["tree-nw", "tree-n", "tree-ne", "tree-e", "tree-sw", "tree-s", "tree-se", "bush-w", "bush-e"] },
-  { id: "fx", label: "Effects", keys: ["emoji", "fxHearts", "fxHeartsPink", "fxStars", "fxBuff", "fxDebuff", "fxTired", "fxBlood", "fxMagic", "res"] },
+  { id: "fx", label: "Effects", keys: ["emoji", "fxHearts", "fxHeartsPink", "fxStars", "fxBuff", "fxDebuff", "fxTired", "fxBlood", "fxMagic", "res", "campfire"] },
 ];
 
 export function assetIds(): string[] {

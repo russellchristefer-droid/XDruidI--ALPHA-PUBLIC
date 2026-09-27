@@ -587,6 +587,19 @@ function drawUnderside(ctx: CanvasRenderingContext2D): void {
   }
 }
 
+function drawCampfire(ctx: CanvasRenderingContext2D, sheet: HTMLImageElement, clock: number) {
+  const frame = Math.floor(clock * 6) % 4;
+  const flick = 0.5 + 0.5 * Math.sin(clock * 9);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = `rgba(255, 150, 48, ${0.05 + flick * 0.04})`;
+  ctx.beginPath();
+  ctx.arc(44, 78, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.drawImage(sheet, frame * 48, 56, 48, 40, 28, 58, 32, 27);
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   s: GameState,
@@ -742,6 +755,7 @@ export function drawWorld(
     ctx.drawImage(sheets.farmExtend, 0, 0, 160, 8, 0, 184, 160, 8);
     ctx.drawImage(sheets.farmExtend, 192, 0, WORLD_W - 192, 8, 192, 184, WORLD_W - 192, 8);
   }
+  if (sheets.campfire) drawCampfire(ctx, sheets.campfire, s.clock);
   drawSideGates(ctx, s);
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y))) paintPlayer(ctx, sheets, s);
 
@@ -766,19 +780,6 @@ export function drawWorld(
     ctx.fillStyle = `rgba(28, 58, 72, ${Math.min(0.28, s.wet * 0.26)})`;
     ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  const fx = 40;
-  const fy = 80;
-  const glow = ctx.createRadialGradient(fx, fy, 1, fx, fy, 22);
-  glow.addColorStop(0, `rgba(255, 196, 80, ${0.55 + skyA})`);
-  glow.addColorStop(0.4, `rgba(255, 120, 24, ${0.28 + skyA * 0.45})`);
-  glow.addColorStop(1, "rgba(255, 80, 10, 0)");
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(fx, fy, 22, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
 
   if (s.weather === "rain" || s.weather === "storm") {
     const storm = s.weather === "storm";
