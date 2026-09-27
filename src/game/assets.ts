@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260927loka1";
+export const ART = "20260927loka2";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -123,13 +123,20 @@ export function assetFile(id: string): string | null {
 
 export type Sheets = Record<string, HTMLImageElement>;
 
+/** One missing sprite must not freeze Play on "Loading yard…". */
 export function loadSheets(): Promise<Sheets> {
   const entries = Object.entries(URLS).map(async ([key, url]) => {
     const img = new Image();
     img.decoding = "async";
     img.src = url;
-    await img.decode();
-    return [key, img] as const;
+    try {
+      await img.decode();
+      return [key, img] as const;
+    } catch {
+      return null;
+    }
   });
-  return Promise.all(entries).then((list) => Object.fromEntries(list));
+  return Promise.all(entries).then((list) =>
+    Object.fromEntries(list.filter((row): row is readonly [string, HTMLImageElement] => row !== null)),
+  );
 }
