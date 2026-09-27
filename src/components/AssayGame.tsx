@@ -439,8 +439,8 @@ export function AssayGame() {
         }
         const fit = Math.min(w / VIEW_W, h / VIEW_H);
         const scale = Math.max(1, Math.floor(fit));
-        let camY = 0;
-        if (s.y > 150) camY = Math.min(56, (s.y - 150) * 2);
+        let camY = 6;
+        if (s.y > 150) camY = Math.min(72, 6 + (s.y - 150) * 2);
         camY = Math.round(Math.max(0, Math.min(WORLD_H - VIEW_H, camY)));
         const ox = Math.floor((w - VIEW_W * scale) / 2);
         const oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;

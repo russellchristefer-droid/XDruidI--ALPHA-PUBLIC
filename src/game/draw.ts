@@ -1,4 +1,4 @@
-import { FISH_CROWN, FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { FISH_CROWN, FISH_WATER, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 
@@ -370,52 +370,121 @@ function drawAnimal(
   blit(ctx, img, col * 72, row * 72, 72, 72, x, y, scale, false, 36, 66);
 }
 
-function drawVoid(ctx: CanvasRenderingContext2D, clock: number) {
-  ctx.fillStyle = "#070b16";
-  ctx.fillRect(MEADOW.x, MEADOW.y, MEADOW.w, MEADOW.h);
-  for (let i = 0; i < 140; i++) {
-    const x = (i * 53 + 11) % WORLD_W;
-    const y = MEADOW.y + 28 + ((i * 37) % (MEADOW.h - 40));
-    const twinkle = (i + Math.floor(clock * 2)) % 9 === 0;
-    ctx.fillStyle = i % 11 === 0 ? "#f3d48a" : i % 4 === 0 ? "#9ec7ff" : "#e7eefc";
-    ctx.fillRect(x, y, twinkle ? 2 : 1, 1);
+const ISLE_X = 173;
+const ISLE_Y = 102;
+const ISLE_RX = 152;
+const ISLE_RY = 86;
+
+function onFarm(x: number, y: number): boolean {
+  const ax = Math.abs((x - ISLE_X) / ISLE_RX);
+  const ay = Math.abs((y - ISLE_Y) / ISLE_RY);
+  return ax ** 2.15 + ay ** 2.35 <= 1;
+}
+
+const ISLE_TOP = new Int16Array(WORLD_W);
+const ISLE_BOT = new Int16Array(WORLD_W);
+let isleReady = false;
+
+function ensureIsle(): void {
+  if (isleReady) return;
+  isleReady = true;
+  for (let x = 0; x < WORLD_W; x++) {
+    let top = -1;
+    let bot = -1;
+    for (let y = 0; y < 230; y++) {
+      if (!onFarm(x, y)) continue;
+      if (top < 0) top = y;
+      bot = y;
+    }
+    ISLE_TOP[x] = top;
+    ISLE_BOT[x] = bot;
   }
-  const moonX = 78;
-  const moonY = 360;
-  ctx.fillStyle = "#d5deea";
-  for (let dy = -7; dy <= 7; dy++) {
-    const span = dy === 0 || Math.abs(dy) === 1 ? 8 : 7 - Math.floor(Math.abs(dy) / 2);
-    ctx.fillRect(moonX - span, moonY + dy, span * 2, 1);
+}
+
+function clipIsle(ctx: CanvasRenderingContext2D): void {
+  ensureIsle();
+  ctx.beginPath();
+  let moved = false;
+  for (let x = 0; x < WORLD_W; x++) {
+    if (ISLE_TOP[x] < 0) continue;
+    if (!moved) {
+      ctx.moveTo(x, ISLE_TOP[x]);
+      moved = true;
+    } else ctx.lineTo(x, ISLE_TOP[x]);
   }
-  ctx.fillStyle = "#b7c3d4";
-  ctx.fillRect(moonX - 3, moonY - 2, 2, 2);
-  ctx.fillRect(moonX + 2, moonY + 1, 3, 2);
-  ctx.fillStyle = "#243044";
-  for (let dy = -4; dy <= 4; dy++) {
-    const span = 4 - Math.floor(Math.abs(dy) / 2);
-    ctx.fillRect(260 - span, 520 + dy, span * 2, 1);
+  for (let x = WORLD_W - 1; x >= 0; x--) {
+    if (ISLE_BOT[x] < 0) continue;
+    ctx.lineTo(x, ISLE_BOT[x] + 1);
   }
-  ctx.fillStyle = "#1a2438";
-  for (let i = 0; i < 40; i++) {
-    const x = (i * 19 + 40) % WORLD_W;
-    const y = MEADOW.y + 80 + ((i * 23) % 200);
-    if ((i + x) % 3 === 0) {
-      ctx.fillStyle = i % 2 === 0 ? "#1c2744" : "#2a1a38";
-      ctx.fillRect(x, y, 2, 1);
+  ctx.closePath();
+  ctx.clip();
+}
+
+function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
+  ctx.fillStyle = "#07091a";
+  ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+  for (let i = 0; i < 520; i++) {
+    const x = (i * 47 + 13) % WORLD_W;
+    const y = (i * 29 + 5) % WORLD_H;
+    const band = (x * 3 + y) % 17;
+    if (band > 4) continue;
+    ctx.fillStyle = band === 0 ? "#3a2068" : band === 1 ? "#1a4060" : "#2a1848";
+    ctx.fillRect(x, y, band === 0 ? 3 : 2, 1);
+  }
+  for (let i = 0; i < 260; i++) {
+    const x = (i * 53 + 9) % WORLD_W;
+    const y = (i * 37 + 4) % WORLD_H;
+    const tw = (i + Math.floor(clock * 2)) % 11 === 0;
+    ctx.fillStyle = i % 9 === 0 ? "#f6d48a" : i % 4 === 0 ? "#9ecbff" : "#f4f7ff";
+    ctx.fillRect(x, y, tw ? 2 : 1, tw ? 2 : 1);
+    if (i % 23 === 0) {
+      ctx.fillRect(x - 2, y, 5, 1);
+      ctx.fillRect(x, y - 2, 1, 5);
     }
   }
+  paintOrb(ctx, 18, 18, 7, "#d5deea", "#9aabc0");
+  paintOrb(ctx, 36, 168, 11, "#c46a4a", "#7a3028");
+  paintOrb(ctx, 300, 250, 16, "#8eb8d8", "#3a5870");
+  ctx.fillStyle = "#c9d7e4";
+  ctx.fillRect(268, 250, 64, 1);
+  ctx.fillRect(274, 252, 52, 1);
+  paintOrb(ctx, 250, 420, 22, "#d8c48a", "#8a7040");
+  ctx.fillStyle = "#efe6c4";
+  ctx.fillRect(214, 418, 72, 1);
+  ctx.fillRect(206, 420, 88, 1);
+  ctx.fillRect(220, 422, 60, 1);
+}
+
+function paintOrb(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fill: string, shade: string): void {
+  for (let dy = -r; dy <= r; dy++) {
+    const span = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy)));
+    ctx.fillStyle = dy > r * 0.25 ? shade : fill;
+    ctx.fillRect(cx - span, cy + dy, span * 2, 1);
+  }
+}
+
+function drawCrust(ctx: CanvasRenderingContext2D): void {
+  ensureIsle();
   for (let x = 0; x < WORLD_W; x++) {
-    const jag = ((x * 13) ^ (x >> 1)) & 15;
-    const depth = 8 + (jag % 8);
-    ctx.fillStyle = "#6f8f3a";
-    ctx.fillRect(x, MEADOW.y, 1, 2);
-    ctx.fillStyle = jag % 4 === 0 ? "#6b4a32" : "#5a3d2a";
-    ctx.fillRect(x, MEADOW.y + 2, 1, depth);
-    ctx.fillStyle = "#2c2118";
-    ctx.fillRect(x, MEADOW.y + depth, 1, 2 + (jag % 3));
-    if (jag > 11) {
-      ctx.fillStyle = "#3d2c20";
-      ctx.fillRect(x, MEADOW.y + depth + 2, 2, 3 + (jag % 4));
+    const top = ISLE_TOP[x];
+    const bot = ISLE_BOT[x];
+    if (bot < 0 || top < 0) continue;
+    const dome = Math.sin((x / WORLD_W) * Math.PI);
+    const depth = 12 + Math.round(dome * 28) + ((x * 13) & 7);
+    const n = (x * 7) & 7;
+    if (top > 0) {
+      ctx.fillStyle = "#6f8f3a";
+      ctx.fillRect(x, top - 2, 1, 2);
+      ctx.fillStyle = n > 3 ? "#5a3c2a" : "#3e2a1c";
+      ctx.fillRect(x, top - 6, 1, 4);
+    }
+    for (let i = 0; i < depth; i++) {
+      ctx.fillStyle = i < 2 ? "#7d9a44" : i < 7 ? (n + i) % 5 === 0 ? "#7a5340" : "#5c4030" : (n + i) % 4 === 0 ? "#241810" : "#3a281c";
+      ctx.fillRect(x, bot + 1 + i, 1, 1);
+    }
+    if ((x * 11) % 17 > 13) {
+      ctx.fillStyle = "#2a1c14";
+      ctx.fillRect(x, bot + depth, 2, 3 + (n % 4));
     }
   }
 }
@@ -427,9 +496,11 @@ export function drawWorld(
   hover: { x: number; y: number } | null,
   showTill: boolean,
 ) {
+  drawSpace(ctx, s.clock);
+  ctx.save();
+  clipIsle(ctx);
   const yard = sheets.yard;
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, WORLD_H);
-  drawVoid(ctx, s.clock);
 
   ctx.save();
   ctx.beginPath();
@@ -641,4 +712,6 @@ export function drawWorld(
     ctx.lineWidth = 1;
     ctx.strokeRect(tx + 0.5, ty + 0.5, TILE - 1, TILE - 1);
   }
+  ctx.restore();
+  drawCrust(ctx);
 }
