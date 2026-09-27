@@ -390,22 +390,22 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
     const tw = (i + Math.floor(clock * 2)) % 11 === 0;
     ctx.fillStyle = i % 9 === 0 ? "#f6d48a" : i % 4 === 0 ? "#9ecbff" : "#f4f7ff";
     ctx.fillRect(x, y, tw ? 2 : 1, tw ? 2 : 1);
-    if (i % 23 === 0) {
+    if (i % 23 === 0 && y > FARM_H + 4) {
       ctx.fillRect(x - 2, y, 5, 1);
       ctx.fillRect(x, y - 2, 1, 5);
     }
   }
-  paintOrb(ctx, 48, 340, 14, "#d5deea", "#9aabc0");
-  paintOrb(ctx, 300, 300, 16, "#8eb8d8", "#3a5870");
+  paintOrb(ctx, 70, 640, 12, "#d5deea", "#9aabc0");
+  paintOrb(ctx, 290, 700, 16, "#8eb8d8", "#3a5870");
   ctx.fillStyle = "#c9d7e4";
-  ctx.fillRect(268, 300, 64, 1);
-  ctx.fillRect(274, 302, 52, 1);
-  paintOrb(ctx, 250, 460, 22, "#d8c48a", "#8a7040");
+  ctx.fillRect(258, 700, 64, 1);
+  ctx.fillRect(264, 702, 52, 1);
+  paintOrb(ctx, 180, 820, 20, "#d8c48a", "#8a7040");
   ctx.fillStyle = "#efe6c4";
-  ctx.fillRect(214, 458, 72, 1);
-  ctx.fillRect(206, 460, 88, 1);
-  ctx.fillRect(220, 462, 60, 1);
-  paintOrb(ctx, 70, 560, 11, "#c46a4a", "#7a3028");
+  ctx.fillRect(144, 818, 72, 1);
+  ctx.fillRect(136, 820, 88, 1);
+  ctx.fillRect(150, 822, 60, 1);
+  paintOrb(ctx, 40, 900, 10, "#c46a4a", "#7a3028");
 }
 
 function paintOrb(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fill: string, shade: string): void {
@@ -604,15 +604,6 @@ export function drawWorld(
     ctx.fillStyle = `rgba(${sky}, ${skyA})`;
     ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
-  if (hour >= 20) {
-    ctx.fillStyle = "rgba(255, 244, 210, 0.85)";
-    for (let i = 0; i < 28; i++) {
-      const sx = (i * 53 + 11) % WORLD_W;
-      const sy = (i * 37 + 8) % FARM_H;
-      if ((i + Math.floor(s.clock * 2)) % 5 === 0) continue;
-      ctx.fillRect(sx, sy, 1, 1);
-    }
-  }
   if (s.wet > 0.04) {
     ctx.fillStyle = `rgba(28, 58, 72, ${Math.min(0.28, s.wet * 0.26)})`;
     ctx.fillRect(0, 0, WORLD_W, FARM_H);
@@ -632,17 +623,22 @@ export function drawWorld(
   ctx.restore();
 
   if (s.weather === "rain" || s.weather === "storm") {
-    const drops = s.weather === "storm" ? 110 : 58;
-    ctx.strokeStyle = s.weather === "storm" ? "rgba(210, 226, 238, 0.55)" : "rgba(190, 214, 230, 0.4)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
+    const storm = s.weather === "storm";
+    const drops = storm ? 260 : 150;
+    const speed = storm ? 240 : 150;
+    const len = storm ? 8 : 5;
     for (let i = 0; i < drops; i++) {
-      const x = (i * 47 + s.clock * (s.weather === "storm" ? 90 : 60)) % WORLD_W;
-      const y = (i * 83 + s.clock * (s.weather === "storm" ? 160 : 110)) % (FARM_H - 8);
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - 2, y + (s.weather === "storm" ? 7 : 5));
+      const x = Math.floor((i * 53 + s.clock * (storm ? 36 : 14)) % WORLD_W);
+      const y = Math.floor((i * 97 + s.clock * speed) % (FARM_H - len - 2));
+      ctx.fillStyle = i % 6 === 0 ? "rgba(236, 244, 252, 0.9)" : "rgba(176, 204, 222, 0.62)";
+      ctx.fillRect(x, y, 1, len);
+      ctx.fillStyle = "rgba(140, 176, 198, 0.4)";
+      ctx.fillRect(x - 1, y + len - 2, 1, 2);
+      if ((i + Math.floor(s.clock * 10)) % 9 === 0) {
+        ctx.fillStyle = "rgba(220, 236, 246, 0.75)";
+        ctx.fillRect(x - 1, y + len, 3, 1);
+      }
     }
-    ctx.stroke();
   }
   if (s.flash > 0) {
     ctx.fillStyle = `rgba(235, 242, 255, ${Math.min(0.55, s.flash * 3.2)})`;
