@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260929f";
+export const ART = "20260929g";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -86,12 +86,14 @@ const URLS: Record<string, string> = {
   cherubFly: art("/game/angels/Cherub_Fly.png"),
   cherubShoot: art("/game/angels/Cherub_Shoot.png"),
   cherubArrow: art("/game/angels/Cherub_Arrow.png"),
+  demonMage: art("/game/demons/demon-mage.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "world", label: "World", keys: ["yard", "meadow", "path", "occlude", "house", "rocks", "meadowDress"] },
   { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater", "farmExtend", "svarga", "naraka"] },
   { id: "angels", label: "Angels", keys: ["seraphimIdle", "seraphimWalk", "seraphimFly", "seraphimAttack", "archangelFly", "archangelAttack", "cherubFly", "cherubShoot", "cherubArrow"] },
+  { id: "demons", label: "Demons", keys: ["demonMage"] },
   { id: "druid", label: "Druid", keys: ["idle", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },

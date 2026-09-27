@@ -771,6 +771,42 @@ function paintAngel(ctx: CanvasRenderingContext2D, sheets: Sheets, a: AngelPaint
   blit(ctx, img, a.frame * ANGEL, 0, ANGEL, ANGEL, a.x, a.y, a.scale, a.flip, 54, a.footY);
 }
 
+const DEMON_W = 160;
+const DEMON_H = 128;
+const DEMON_PATH = [
+  { x: 292, y: 248 },
+  { x: 300, y: 330 },
+  { x: 272, y: 210 },
+  { x: 188, y: 210 },
+  { x: 140, y: 250 },
+  { x: 124, y: 330 },
+  { x: 168, y: 450 },
+  { x: 96, y: 478 },
+  { x: 220, y: 490 },
+  { x: 300, y: 420 },
+];
+
+function narakaDemon(clock: number): { x: number; y: number; flip: boolean; row: number; frame: number } {
+  const cycle = 16;
+  const t = clock % cycle;
+  const laps = Math.floor(clock / cycle);
+  const pos = alongPath(laps * 10 + Math.min(t, 10), 26, DEMON_PATH);
+  const spell = laps % 4;
+  if (t < 10) return { ...pos, row: 1, frame: Math.floor(clock * 10) % 8 };
+  if (t < 12) return { ...pos, row: 0, frame: Math.floor(clock * 6) % 8 };
+  const u = t - 12;
+  if (spell === 0) return { ...pos, row: 2, frame: Math.min(23, Math.floor(u * 6)) };
+  if (spell === 1) return { ...pos, row: 3, frame: Math.min(7, Math.floor(u * 4)) };
+  if (spell === 2) return { ...pos, row: 4, frame: Math.min(15, Math.floor(u * 4)) };
+  if (u < 2) return { ...pos, row: 5, frame: Math.min(15, Math.floor(u * 8)) };
+  return { ...pos, row: 6, frame: Math.floor((u - 2) * 6) % 8 };
+}
+
+function paintDemon(ctx: CanvasRenderingContext2D, sheet: HTMLImageElement, d: { x: number; y: number; flip: boolean; row: number; frame: number }): void {
+  fillOval(ctx, d.x, d.y + 1, 9, 3, "rgba(0, 0, 0, 0.45)");
+  blit(ctx, sheet, d.frame * DEMON_W, d.row * DEMON_H, DEMON_W, DEMON_H, d.x, d.y, 0.7, d.flip, 80, 112);
+}
+
 function drawRealmGate(ctx: CanvasRenderingContext2D, s: GameState): void {
   const wing = s.wing ?? 0;
   const gold = wing === 1;
@@ -819,7 +855,10 @@ export function drawWorld(
       for (const a of angels) if (a.y > s.y) paintAngel(ctx, sheets, a);
     } else {
       drawNaraka(ctx, s.clock, sheets.naraka);
+      const demon = sheets.demonMage ? narakaDemon(s.clock) : null;
+      if (demon && demon.y <= s.y && sheets.demonMage) paintDemon(ctx, sheets.demonMage, demon);
       if (sheets.idle) paintPlayer(ctx, sheets, s);
+      if (demon && demon.y > s.y && sheets.demonMage) paintDemon(ctx, sheets.demonMage, demon);
     }
     drawRealmGate(ctx, s);
     if (sheets.idle && playerInPortal(s)) paintPlayer(ctx, sheets, s);
