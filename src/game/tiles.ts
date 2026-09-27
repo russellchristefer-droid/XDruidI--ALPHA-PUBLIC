@@ -96,16 +96,64 @@ export function pickRect(kind: "tile" | "cell" | "row" | "column", w: { x: numbe
   return { x, y: 0, w: GRID, h: WORLD_H };
 }
 
-export function editorOrder(rect: Rect, note: string): string {
+export type DevRead = {
+  x?: number;
+  y?: number;
+  wing?: -1 | 0 | 1;
+  weather?: string;
+};
+
+function landName(wing: number | undefined): string {
+  if (wing === -1) return "west land";
+  if (wing === 1) return "east land";
+  return "homestead";
+}
+
+function improvement(note: string): string {
+  const n = note.toLowerCase();
+  if (/grass|lawn|meadow/.test(n)) return "Match the farm grass already in use. No new tile, no seam, no second green.";
+  if (/path|dirt|sidewalk|courtyard|mosaic|floor/.test(n)) return "That surface is the floor. Do not leave grass, dirt, or another picture under it, and keep it walkable.";
+  if (/house|door|roof|cabin|shack/.test(n)) return "Scale it to the farmer, keep the door a real entrance, and match the warm farm around it.";
+  if (/tree|bush|foliage|canopy/.test(n)) return "Keep the silhouette whole. The farmer walks behind trunks and bushes, not through them.";
+  if (/pond|water|fish|dock/.test(n)) return "Water stays water. He can fish from the bank or the dock, and he cannot walk on it.";
+  if (/cow|goat|chicken|rooster|cat|animal/.test(n)) return "Keep the animal at farm scale, on the ground, with a side view that does not clip.";
+  if (/rain|weather|glow|light|fire|campfire/.test(n)) return "Keep the effect on the land. It must not follow the farmer, and it must not blow out the picture.";
+  if (/portal|gate|cross|east|west/.test(n)) return "The crossing has to work from the sidewalk and the courtyard, and he must not walk through the portal.";
+  return "Make this same spot clearer and more consistent with the rest of the homestead. Do not add a system he did not ask for.";
+}
+
+/** A work order the builder can paste. Written here so it does not depend on a network call. */
+export function editorOrder(rect: Rect, note: string, read?: DevRead): string {
   const x1 = rect.x + rect.w;
   const y1 = rect.y + rect.h;
-  const said = note.trim();
+  const said = note.trim().replace(/\s+/g, " ");
+  const cellsW = Math.max(1, Math.round(rect.w / GRID));
+  const cellsH = Math.max(1, Math.round(rect.h / GRID));
+  const where =
+    read && typeof read.x === "number" && typeof read.y === "number"
+      ? `Farmer is at ${Math.round(read.x)}, ${Math.round(read.y)} on the ${landName(read.wing)}${read.weather ? `, weather ${read.weather}` : ""}.`
+      : "Farmer position was not sampled.";
   return [
-    `Locked rectangle: x ${rect.x}–${x1}, y ${rect.y}–${y1} (${rect.w}×${rect.h} pixels).`,
-    `The player said: ${said}`,
-    `Elucidate that and do it. They mean this, and not a shorter version: ${said} Work only inside the rectangle unless that sentence is a system that has to be wired through the game.`,
-    `Implore the improvement. Make this part of the homestead better in the same pass: keep the warm 32×32 farm, keep objects readable against the dirt, and if the note touches a need, a tool, a crop, an animal, or a save, make that system persistent and explained. Do not redesign the rest of the map.`,
-  ].join("\n\n");
+    "XDRUIDI  DEV CONSOLE",
+    `target   x ${rect.x}–${x1}   y ${rect.y}–${y1}   ${rect.w}×${rect.h} px   ${cellsW}×${cellsH} cells`,
+    "grid     32×32 art, 8×8 placement. Work only inside the target unless the note is a system that has to be wired through the game.",
+    `scene    ${where}`,
+    "",
+    "report",
+    `  "${said}"`,
+    "",
+    "read",
+    `  The player said exactly that, about this rectangle. Do that. Do not shorten it into a pixel recipe, and do not do a different job than the one they named.`,
+    "",
+    "also",
+    `  ${improvement(said)}`,
+    "",
+    "keep",
+    "  Warm farm palette. Separate picture, collision, and use. Save anything that changes an item, a need, a crop, or an animal.",
+    "",
+    "check",
+    "  The rectangle shows the change. The rest of the map did not move. He can still walk the path and use what he could use before.",
+  ].join("\n");
 }
 
 type SheetBag = Record<string, HTMLImageElement | undefined>;

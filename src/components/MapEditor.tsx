@@ -178,7 +178,7 @@ export function MapEditor({
       {open && (
         <div className="panel map-edit-panel" role="dialog" aria-label="Developer mode">
           <canvas ref={liveRef} className="map-live" width={520} height={280} aria-label="Live game" />
-          <p className="map-edit-hint">The game keeps running. Pick a selection, say what you mean, then Write prompt.</p>
+          <p className="map-edit-hint">Selection, then a note. Write prompt copies a work order. Ctrl+Enter does the same.</p>
           <div className="map-edit-modes">
             {TOOLS.map((t) => (
               <button key={t.id} type="button" {...fire(() => onTool(t.id))}>
@@ -201,8 +201,9 @@ export function MapEditor({
           <textarea
             ref={promptRef}
             value={note}
-            placeholder="Say what you mean. The prompt will explain it."
+            placeholder="What should change in the selection."
             aria-label="What you want done"
+            onPointerDown={(e) => e.stopPropagation()}
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={(e) => {
               e.stopPropagation();
@@ -212,22 +213,12 @@ export function MapEditor({
               }
             }}
           />
-          <button
-            type="button"
-            className="send"
-            disabled={busy}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSend();
-            }}
-          >
+          <button type="button" className="send" disabled={busy} {...fire(onSend)}>
             {busy ? "Writing…" : draft ? "Rewrite" : "Write prompt"}
           </button>
-          {draft && (
-            <button type="button" className="send" onClick={(e) => { e.stopPropagation(); onCopy(); }}>
-              Copy prompt
-            </button>
-          )}
+          <button type="button" className="send" disabled={!draft} {...fire(onCopy)}>
+            Copy prompt
+          </button>
           {draft && <pre className="map-edit-order">{draft}</pre>}
           {status && <p className="map-edit-hint">{status}</p>}
           <div className="map-edit-row">

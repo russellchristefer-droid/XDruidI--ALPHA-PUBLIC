@@ -53,7 +53,6 @@ import {
 } from "@/game/logic";
 import { BAK1, BAK2, readSaveFrom, writeSave, type SaveStore } from "@/game/save";
 import { MapEditor, builderDevAllowed } from "@/components/MapEditor";
-import { draftDevPrompt } from "@/game/draft-prompt";
 import { loadDevSprites, snapSprite, devSpriteBook, placeBounds, setSpriteGhost, setSpritePick, spriteIndexAt, fitScale, SCALES, type SpriteBook, type SpritePlace } from "@/game/dev-sprites";
 import { liftDevSprite, pinDevAsset, replaceDevPlaced, saveDevSprite } from "@/game/dev-sprite-api";
 import { assetFile } from "@/game/assets";
@@ -267,7 +266,6 @@ export function AssayGame() {
   const [editNote, setEditNote] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [draft, setDraft] = useState("");
-  const [drafting, setDrafting] = useState(false);
   const [sprites, setSprites] = useState<SpriteBook>({ rev: 0, library: [], placed: [] });
   const [armed, setArmed] = useState<string | null>(null);
   const [stampIx, setStampIx] = useState(-1);
@@ -1291,26 +1289,19 @@ export function AssayGame() {
             setEditStatus(blocked ? "That square blocks walking." : "That square is open to walk.");
           }}
           onSend={() => {
-            if (drafting) return;
             if (!editSel || !editNote.trim()) {
               setEditStatus(editSel ? "Write what you want, then press Write prompt." : "Drag a rectangle, then write what you want.");
               return;
             }
-            const sel = editSel;
-            const note = editNote.trim();
-            setDrafting(true);
-            setEditStatus("Writing the prompt…");
-            draftDevPrompt({ data: { note, x: sel.x, y: sel.y, w: sel.w, h: sel.h } })
-              .then(({ prompt }) => {
-                setDraft(prompt);
-                setEditStatus(copyText(prompt) ? "Copied. Paste it into the chat." : "Prompt is ready. Press Copy.");
-              })
-              .catch(() => {
-                const plain = editorOrder(sel, note);
-                setDraft(plain);
-                setEditStatus("The writer failed. Press Copy for the plain version.");
-              })
-              .finally(() => setDrafting(false));
+            const cur = stateRef.current;
+            const order = editorOrder(editSel, editNote.trim(), {
+              x: cur?.x,
+              y: cur?.y,
+              wing: cur?.wing,
+              weather: cur?.weather,
+            });
+            setDraft(order);
+            setEditStatus(copyText(order) ? "Work order copied. Paste it into the chat." : "Work order is ready. Press Copy.");
           }}
           onCopy={() => {
             if (!draft) {
@@ -1321,7 +1312,7 @@ export function AssayGame() {
           }}
           status={editStatus}
           draft={draft}
-          busy={drafting}
+          busy={false}
         />
       )}
 

@@ -15,4 +15,5 @@ test("an order names the square and the note", () => {
   assert.match(text, /x 248–304/);
   assert.match(text, /y 88–136/);
   assert.match(text, /make the house stone/);
+  assert.match(text, /Scale it to the farmer/);
 });
