@@ -680,10 +680,19 @@ function drawRealmGate(ctx: CanvasRenderingContext2D, s: GameState): void {
     ctx.fillRect(cx - 14, cy - 8, 4, 24);
     ctx.fillRect(cx + 11, cy - 8, 4, 24);
     ctx.fillRect(cx - 16, cy + 18, 33, 4);
-    ctx.fillStyle = gold ? "#fff6c8" : "#8a7048";
+    ctx.fillStyle = gold ? "#fff6c8" : "#5a4630";
     ctx.fillRect(cx - 12, cy - 20, 25, 3);
-    ctx.fillStyle = gold ? "#fffaf0" : "#c46a3a";
-    ctx.fillRect(cx - 1, cy - 22, 3, 2);
+    ctx.fillStyle = gold ? "#fffaf0" : "#8a6840";
+    ctx.fillRect(cx - 1, cy - 24, 3, 4);
+    if (gold) {
+      ctx.fillStyle = "#e87898";
+      ctx.fillRect(cx - 15, cy - 6, 1, 10);
+      ctx.fillRect(cx + 15, cy - 4, 1, 10);
+    } else {
+      ctx.fillStyle = "#2a140c";
+      ctx.fillRect(cx - 18, cy - 22, 8, 3);
+      ctx.fillRect(cx + 11, cy - 22, 8, 3);
+    }
   }
 }
 
