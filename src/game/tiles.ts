@@ -75,7 +75,7 @@ export function blockRect(rect: Rect, blocked: boolean): void {
   persist();
 }
 
-export type SelMode = "rect" | "tile" | "cell" | "row" | "column" | "yard" | "meadow" | "world" | "here";
+export type SelMode = "rect" | "tile" | "cell" | "row" | "column" | "yard" | "meadow" | "world" | "here" | "sprite";
 
 export function pickRect(kind: "tile" | "cell" | "row" | "column", w: { x: number; y: number }): Rect {
   if (kind === "tile") {

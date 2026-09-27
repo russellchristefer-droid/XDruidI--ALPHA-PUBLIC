@@ -54,6 +54,8 @@ import {
 import { BAK1, BAK2, readSaveFrom, writeSave, type SaveStore } from "@/game/save";
 import { MapEditor, builderDevAllowed } from "@/components/MapEditor";
 import { draftDevPrompt } from "@/game/draft-prompt";
+import { loadDevSprites, snapSprite, devSpriteBook, type SpriteBook } from "@/game/dev-sprites";
+import { liftDevSprite, placeDevSprite, saveDevSprite } from "@/game/dev-sprite-api";
 import { copyText } from "@/game/copy-text";
 import type { Rect } from "@/game/content";
 import {
@@ -264,6 +266,9 @@ export function AssayGame() {
   const [editStatus, setEditStatus] = useState("");
   const [draft, setDraft] = useState("");
   const [drafting, setDrafting] = useState(false);
+  const [sprites, setSprites] = useState<SpriteBook>({ rev: 0, library: [], placed: [] });
+  const [armed, setArmed] = useState<string | null>(null);
+  const armedRef = useRef<string | null>(null);
   const editorRef = useRef({
     open: false,
     mode: "rect" as SelMode,
@@ -290,6 +295,9 @@ export function AssayGame() {
     editorRef.current.sel = editSel;
     if (!editorOpen) editorRef.current.live = null;
   }, [editorOpen, editMode, editTile, editSel]);
+  useEffect(() => {
+    armedRef.current = armed;
+  }, [armed]);
 
   useEffect(() => {
     const end = (e: PointerEvent) => {
@@ -325,6 +333,7 @@ export function AssayGame() {
         if (dead) return;
         sheetsRef.current = sheets;
         loadTileLayer();
+        loadDevSprites().then((book) => setSprites(book));
         if (!stateRef.current) stateRef.current = readSave() ?? createGame();
         setReady(true);
         if (new URLSearchParams(location.search).has("qa")) {
@@ -776,6 +785,22 @@ export function AssayGame() {
               ed.sel = box;
               ed.live = box;
               setEditSel(box);
+            } else if (ed.mode === "sprite") {
+              const id = armedRef.current;
+              if (!id) {
+                setEditStatus("Attach a sprite, then click the grid.");
+                return;
+              }
+              const at = snapSprite(w.x, w.y);
+              const def = devSpriteBook().library.find((d) => d.id === id);
+              placeDevSprite({ data: { id, x: at.x, y: at.y } })
+                .then(() => loadDevSprites())
+                .then((book) => {
+                  setSprites(book);
+                  if (def) setEditSel({ x: at.x, y: at.y, w: def.w, h: def.h });
+                  setEditStatus(`Stamped ${id} on the grid at ${at.x}, ${at.y}.`);
+                })
+                .catch(() => setEditStatus("The sprite did not attach."));
             }
             return;
           }
@@ -961,6 +986,55 @@ export function AssayGame() {
           }}
           preview={canvasRef}
           cameraRef={camRef}
+          sprites={sprites.library}
+          rev={sprites.rev}
+          armed={armed}
+          onArm={(id) => {
+            armedRef.current = id;
+            setArmed(id);
+            editorRef.current.mode = "sprite";
+            setEditMode("sprite");
+            setEditStatus("Click the yard. The sprite snaps to the 8px grid.");
+          }}
+          onUpload={(file) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const img = new Image();
+              img.onload = () => {
+                const data = String(reader.result || "");
+                const b64 = data.slice(data.indexOf(",") + 1);
+                saveDevSprite({ data: { name: file.name, mime: file.type, b64, w: img.width, h: img.height } })
+                  .then((def) => {
+                    armedRef.current = def.id;
+                    setArmed(def.id);
+                    editorRef.current.mode = "sprite";
+                    setEditMode("sprite");
+                    return loadDevSprites();
+                  })
+                  .then((book) => {
+                    setSprites(book);
+                    setEditStatus("Attached. Click the yard to stamp it on the grid.");
+                  })
+                  .catch(() => setEditStatus("That sprite did not attach."));
+              };
+              img.src = String(reader.result || "");
+            };
+            reader.readAsDataURL(file);
+          }}
+          onLift={() => {
+            const box = editSel ?? { x: 0, y: 0, w: 32, h: 32 };
+            if (!editSel) {
+              setEditStatus("Select the sprite, then Lift.");
+              return;
+            }
+            liftDevSprite({ data: { x: box.x, y: box.y, w: box.w, h: box.h } })
+              .then(() => loadDevSprites())
+              .then((book) => {
+                setSprites(book);
+                setEditStatus("Lifted sprites inside the selection.");
+              })
+              .catch(() => setEditStatus("Nothing lifted."));
+          }}
           onBlock={(blocked) => {
             if (!editSel) {
               setEditStatus("Select a place on the yard first.");

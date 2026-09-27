@@ -1,5 +1,6 @@
 import { useEffect, useRef, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import type { Rect } from "@/game/content";
+import type { SpriteDef } from "@/game/dev-sprites";
 import { editorOrder, GRID, type SelMode } from "@/game/tiles";
 
 const MODES: { id: SelMode; label: string }[] = [
@@ -12,6 +13,7 @@ const MODES: { id: SelMode; label: string }[] = [
   { id: "meadow", label: "Meadow" },
   { id: "world", label: "World" },
   { id: "here", label: "Druid" },
+  { id: "sprite", label: "Stamp" },
 ];
 
 /** This builder session only. A published build never shows it. */
@@ -36,6 +38,12 @@ export function MapEditor({
   setMode,
   preview,
   cameraRef,
+  sprites,
+  rev,
+  armed,
+  onArm,
+  onUpload,
+  onLift,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -51,10 +59,17 @@ export function MapEditor({
   setMode: (mode: SelMode) => void;
   preview: RefObject<HTMLCanvasElement | null>;
   cameraRef: RefObject<{ scale: number; ox: number; oy: number }>;
+  sprites: SpriteDef[];
+  rev: number;
+  armed: string | null;
+  onArm: (id: string) => void;
+  onUpload: (file: File) => void;
+  onLift: () => void;
 }) {
   const order = sel && note.trim() ? editorOrder(sel, note) : "";
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (open && sel) promptRef.current?.focus();
   }, [open, sel]);
@@ -158,6 +173,40 @@ export function MapEditor({
           </button>
           {draft && <pre className="map-edit-order">{draft}</pre>}
           {status && <p className="map-edit-hint">{status}</p>}
+          <div className="map-edit-row">
+            <button type="button" {...fire(() => fileRef.current?.click())}>
+              Attach sprite
+            </button>
+            <button type="button" {...fire(onLift)}>
+              Lift
+            </button>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/gif,image/webp,image/jpeg"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) onUpload(file);
+            }}
+          />
+          {sprites.length > 0 && (
+            <div className="sprite-tray">
+              {sprites.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={armed === s.id ? "on" : ""}
+                  title={`${s.id} ${s.w}×${s.h}`}
+                  {...fire(() => onArm(s.id))}
+                >
+                  <img src={`${s.file}?v=${rev}`} alt={s.id} />
+                </button>
+              ))}
+            </div>
+          )}
           <div className="map-edit-row">
             <button type="button" {...fire(() => onBlock(true))}>
               Block

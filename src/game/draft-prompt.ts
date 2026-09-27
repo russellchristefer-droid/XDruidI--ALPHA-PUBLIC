@@ -9,6 +9,27 @@ function squareLine(input: DraftInput): string {
   return `Locked rectangle: x ${input.x}–${x1}, y ${input.y}–${y1} (${input.w}×${input.h} pixels).`;
 }
 
+async function attachedSprites(x: number, y: number, w: number, h: number): Promise<string> {
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const raw = JSON.parse(await readFile("public/game/sprites/manifest.json", "utf8")) as {
+      library?: { id: string; file: string; w: number; h: number }[];
+      placed?: { id: string; x: number; y: number }[];
+    };
+    const hits: string[] = [];
+    for (const place of raw.placed ?? []) {
+      const def = raw.library?.find((d) => d.id === place.id);
+      if (!def) continue;
+      const hit = place.x < x + w && place.x + def.w > x && place.y < y + h && place.y + def.h > y;
+      if (hit) hits.push(`${def.file} at x ${place.x}, y ${place.y}, ${def.w}×${def.h}, on the 8px grid`);
+    }
+    if (!hits.length) return "";
+    return `Attached sprites, use these files and do not redraw them: ${hits.join("; ")}.\n`;
+  } catch {
+    return "";
+  }
+}
+
 export const draftDevPrompt = createServerFn({ method: "POST" })
   .validator((data: DraftInput) => {
     const note = String(data?.note ?? "").trim().slice(0, 4000);
@@ -21,6 +42,7 @@ export const draftDevPrompt = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ prompt: string }> => {
     const key = process.env.XAI_API_KEY;
     const locked = squareLine(data);
+    const attached = await attachedSprites(data.x, data.y, data.w, data.h);
     if (!key) throw new Error("The writer is not available.");
     const res = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
@@ -40,7 +62,7 @@ export const draftDevPrompt = createServerFn({ method: "POST" })
           },
           {
             role: "user",
-            content: `${locked}\nThe player said exactly this. Elucidate it. Do not shorten it into a pixel recipe:\n${data.note}\nThen implore one improvement of that same place so the homestead gets better without leaving the rectangle.`,
+            content: `${locked}\n${attached}The player said exactly this. Elucidate it. Do not shorten it into a pixel recipe:\n${data.note}\nThen implore one improvement of that same place so the homestead gets better without leaving the rectangle. If sprites are attached, use those files on the 8px grid and do not redraw them.`,
           },
         ],
       }),

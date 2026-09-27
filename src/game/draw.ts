@@ -1,4 +1,5 @@
 import { FISH_CROWN, FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 
 const CHAR = 0.42;
@@ -513,6 +514,9 @@ export function drawWorld(
       y: s.y,
       paint: () => paintPlayer(ctx, sheets, s),
     });
+  }
+  for (const layer of devSpriteLayers()) {
+    queue.push({ y: layer.y, paint: () => layer.paint(ctx) });
   }
   queue.sort((a, b) => a.y - b.y);
   for (const d of queue) d.paint();
