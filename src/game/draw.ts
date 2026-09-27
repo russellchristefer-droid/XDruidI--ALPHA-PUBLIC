@@ -782,10 +782,12 @@ export function drawWorld(
     const drops = storm ? 160 : 100;
     const landH = FARM_H;
     for (let i = 0; i < drops; i++) {
-      const n = (i * 1103515245 + 12345) >>> 0;
-      const speed = (storm ? 220 : 150) + ((n >>> 16) % 40);
+      const period = (storm ? 0.36 : 0.52) + (i % 9) * 0.025;
+      const turns = s.clock / period;
+      const cycle = Math.floor(turns);
+      const t = turns - cycle;
+      const n = (Math.imul(i + cycle * 13 + 1, 1103515245) + 12345) >>> 0;
       const fallPx = storm ? 72 : 52;
-      const t = ((s.clock * speed) / fallPx + ((n >>> 8) % 1000) / 1000) % 1;
       const x = n % WORLD_W;
       const ground = 12 + ((n >>> 12) % Math.max(1, landH - 16));
       const falling = t < 0.82;
