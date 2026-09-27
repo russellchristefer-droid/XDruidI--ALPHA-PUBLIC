@@ -427,31 +427,54 @@ function fillOval(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: num
   }
 }
 
-function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
-  const wing = s.wing ?? 0;
+function gateXs(wing: number): number[] {
   const gates: number[] = [];
   if (wing !== -1) gates.push(40);
   if (wing !== 1) gates.push(308);
+  return gates;
+}
+
+function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
   const pulse = 0.55 + 0.45 * Math.sin(s.clock * 3);
-  for (const cx of gates) {
+  for (const cx of gateXs(s.wing ?? 0)) {
     const cy = 202;
-    fillOval(ctx, cx, cy, 16, 26, `rgba(28, 120, 64, ${0.22 + pulse * 0.12})`);
-    fillOval(ctx, cx, cy, 13, 23, "#0c3a22");
-    fillOval(ctx, cx, cy, 11, 20, `rgba(18, 92, 48, ${0.95})`);
-    fillOval(ctx, cx, cy, 9, 18, `rgba(46, 186, 86, ${0.72 + pulse * 0.2})`);
-    fillOval(ctx, cx, cy + 1, 5, 12, `rgba(198, 255, 176, ${0.45 + pulse * 0.35})`);
-    ctx.fillStyle = `rgba(230, 255, 210, ${0.55 + pulse * 0.4})`;
-    for (let i = 0; i < 4; i++) {
-      const a = s.clock * 2.2 + i * 1.57;
-      const px = Math.round(cx + Math.cos(a) * 6);
-      const py = Math.round(cy + Math.sin(a) * 14);
-      ctx.fillRect(px, py, 1, 2);
+    fillOval(ctx, cx, cy + 22, 12, 3, "rgba(10, 28, 14, 0.5)");
+    fillOval(ctx, cx, cy, 16, 26, `rgba(36, 130, 68, ${0.14 + pulse * 0.1})`);
+    fillOval(ctx, cx, cy, 13, 23, "#163628");
+    fillOval(ctx, cx, cy, 12, 22, "#3d7a4c");
+    fillOval(ctx, cx, cy - 1, 12, 21, "#245636");
+    fillOval(ctx, cx, cy, 10, 19, "#04180e");
+    fillOval(ctx, cx, cy + 1, 8, 16, `rgba(28, 150, 68, ${0.82 + pulse * 0.12})`);
+    fillOval(ctx, cx + 1, cy + 2, 4, 11, `rgba(214, 255, 196, ${0.28 + pulse * 0.4})`);
+    ctx.fillStyle = "#d8ffc4";
+    ctx.fillRect(cx - 1, cy - 23, 3, 2);
+    ctx.fillStyle = "#10281c";
+    ctx.fillRect(cx - 12, cy - 4, 2, 18);
+    ctx.fillRect(cx + 11, cy - 4, 2, 18);
+    ctx.fillStyle = "#8ed98a";
+    ctx.fillRect(cx - 11, cy - 2, 1, 10);
+    ctx.fillStyle = `rgba(230, 255, 200, ${0.45 + pulse * 0.5})`;
+    for (const [dx, dy] of [[-9, -10], [-9, -2], [-9, 6], [8, -8], [8, 0], [8, 8]] as const) {
+      ctx.fillRect(cx + dx, cy + dy, 1, 1);
     }
-    ctx.fillStyle = "#145c34";
-    ctx.fillRect(cx - 14, cy + 22, 29, 2);
-    ctx.fillStyle = "#0c3a22";
-    ctx.fillRect(cx - 12, cy + 24, 25, 1);
+    for (let i = 0; i < 6; i++) {
+      const a = s.clock * 2.4 + i * 1.05;
+      const px = Math.round(cx + Math.cos(a) * (3 + (i % 3)));
+      const py = Math.round(cy + Math.sin(a) * (11 - (i % 2) * 2));
+      ctx.fillRect(px, py, 1, 1);
+    }
+    ctx.fillStyle = "#1a4630";
+    ctx.fillRect(cx - 15, cy + 21, 31, 3);
+    ctx.fillStyle = "#4e9a62";
+    ctx.fillRect(cx - 13, cy + 21, 26, 1);
   }
+}
+
+function playerInPortal(s: GameState): boolean {
+  for (const cx of gateXs(s.wing ?? 0)) {
+    if (Math.abs(s.x - cx) < 20 && s.y > 168 && s.y < 236) return true;
+  }
+  return false;
 }
 
 function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
@@ -527,7 +550,6 @@ export function drawWorld(
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   if (sheets.farmExtend) ctx.drawImage(sheets.farmExtend, 0, PLATE);
   drawCourtLife(ctx, s);
-  drawSideGates(ctx, s);
 
   ctx.save();
   ctx.beginPath();
@@ -668,7 +690,8 @@ export function drawWorld(
   queue.sort((a, b) => a.y - b.y);
   for (const d of queue) d.paint();
   if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
-  if (sheets.idle && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
+  drawSideGates(ctx, s);
+  if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y))) paintPlayer(ctx, sheets, s);
 
   const hour = 6 + s.time * 16;
   let sky = "rgba(0,0,0,0)";
