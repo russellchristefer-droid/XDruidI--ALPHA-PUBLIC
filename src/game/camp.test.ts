@@ -35,20 +35,14 @@ test("the original painting is back on the house square", () => {
   assert.equal(footBlocked(260, 110), true);
 });
 
-test("the south path walks onto the meadow", () => {
-  assert.equal(MEADOW.x, 0);
+test("the meadow is void and the farm is the rock", () => {
   assert.equal(MEADOW.y, 192);
-  assert.equal(MEADOW.w, 347);
-  assert.equal(MEADOW.h, 768);
   assert.equal(footBlocked(172, 160), false);
-  assert.equal(footBlocked(180, 300), false);
-  assert.equal(footBlocked(40, 300), false);
-  assert.equal(footBlocked(300, 300), false);
-  assert.equal(footBlocked(2, 300), true);
-  assert.equal(footBlocked(180, 200), false);
-  assert.equal(footBlocked(210, 210), true);
-  assert.equal(footBlocked(100, 256), true);
-  assert.equal(footBlocked(56, 256), false);
-  assert.ok(canWalk({ x: 172, y: 160 }, { x: 180, y: 900 }));
-  assert.ok(canWalk({ x: 172, y: 160 }, { x: 80, y: 320 }));
+  assert.equal(footBlocked(180, 300), true);
+  assert.equal(footBlocked(40, 300), true);
+  assert.equal(footBlocked(80, 112), false);
+  assert.equal(footBlocked(188, 136), false);
+  assert.equal(footBlocked(304, 112), false);
+  assert.equal(canWalk({ x: 172, y: 160 }, { x: 180, y: 900 }), false);
+  assert.equal(canWalk({ x: 172, y: 148 }, { x: 64, y: 108 }), true);
 });

@@ -438,7 +438,7 @@ export function AssayGame() {
         const fit = Math.min(w / VIEW_W, h / VIEW_H);
         const scale = Math.max(1, Math.floor(fit));
         let camY = 0;
-        if (s.y > VIEW_H - 48) camY = s.y - (VIEW_H - 48);
+        if (s.y > 150) camY = Math.min(56, (s.y - 150) * 2);
         camY = Math.round(Math.max(0, Math.min(WORLD_H - VIEW_H, camY)));
         const ox = Math.floor((w - VIEW_W * scale) / 2);
         const oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
@@ -446,8 +446,15 @@ export function AssayGame() {
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.fillStyle = "#172014";
+          ctx.fillStyle = "#070b16";
           ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = "#d7e4ff";
+          for (let i = 0; i < 36; i++) {
+            const sx = (i * 97 + 13) % w;
+            const sy = (i * 53 + 7) % h;
+            if ((i + Math.floor(performance.now() / 500)) % 8 === 0) continue;
+            ctx.fillRect(sx, sy, 1, 1);
+          }
           ctx.setTransform(scale, 0, 0, scale, ox, oy);
           ctx.imageSmoothingEnabled = false;
           const keys = keysRef.current;

@@ -234,19 +234,14 @@ test("he feeds himself when hungry and you are not steering", () => {
   assert.ok(s.x > x);
 });
 
-test("meadow trips stay on the path and off the walls", () => {
-  const yard = autoRoute(90, 130, 182, 640);
+test("farm trips stay on the rock", () => {
+  const yard = autoRoute(90, 130, 150, 132);
   assert.ok(yard.length >= 4);
   for (let i = 0; i < yard.length; i += 2) {
     const x = yard[i]!;
     const y = yard[i + 1]!;
-    if (y > 180) assert.ok(x >= 170 && x <= 194, `${x},${y}`);
+    assert.ok(y < 192, `${x},${y}`);
     assert.equal(footBlocked(x, y), false, `${x},${y}`);
-  }
-  const around = autoRoute(40, 120, 200, 140);
-  assert.ok(around.length >= 4);
-  for (let i = 0; i < around.length; i += 2) {
-    assert.equal(footBlocked(around[i]!, around[i + 1]!), false);
   }
 });
 
@@ -335,18 +330,18 @@ test("starting pack ids resolve, and the watcher names a dry bed", () => {
   assert.match(watcherLine(s), /tired/);
 });
 
-test("the dock is walkable, the pond is not, and a rod catches a fish", () => {
+test("the farm pond is not walkable, and a rod catches a fish from the bank", () => {
   const s = createGame();
-  assert.equal(footBlocked(56, 256), false);
-  assert.equal(footBlocked(100, 256), true);
-  s.x = 56;
-  s.y = 256;
-  const bare = interact(s, 58, 256);
+  assert.equal(footBlocked(128, 84), true);
+  assert.equal(footBlocked(100, 96), false);
+  s.x = 100;
+  s.y = 96;
+  const bare = interact(s, 124, 84);
   assert.match(bare.msg ?? "", /rod/);
   const rod = s.pack.find((p) => p?.defId === "rod")!;
   s.activeId = rod.id;
   s.selected = 5;
-  const cast = interact(s, 58, 256);
+  const cast = interact(s, 124, 84);
   assert.equal(cast.msg, "Working…");
   const idle = { mx: 0, my: 0, run: false, frozen: false };
   for (let i = 0; i < 40; i++) step(s, 0.05, idle);

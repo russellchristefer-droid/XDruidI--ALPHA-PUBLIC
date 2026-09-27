@@ -4,7 +4,7 @@ export const WORLD_H = 960;
 /** The frame that fits on screen. The yard stays this size; the meadow is below it. */
 export const VIEW_W = 347;
 export const VIEW_H = 194;
-/** South meadow, drawn from the-meadow.png. */
+/** South of the farm. The meadow is gone. This is the void under the rock. */
 export const MEADOW = { x: 0, y: 192, w: 347, h: 768 } as const;
 export const TILE = 8;
 export const PACK_SLOTS = 28;
@@ -647,9 +647,7 @@ export const SOLIDS: Rect[] = [
 export const SPOTS: { id: string; name: string; kind: string; x: number; y: number; w: number; h: number }[] = [
   { id: "well", name: "Well", kind: "well", x: 158, y: 58, w: 42, h: 50 },
   { id: "pond", name: "Pond", kind: "pond", x: 110, y: 68, w: 50, h: 34 },
-  { id: "fishdock", name: "Fishing dock", kind: "fish", x: 42, y: 238, w: 32, h: 44 },
-  { id: "fishnorth", name: "North bank", kind: "fish", x: 88, y: 218, w: 36, h: 14 },
-  { id: "fishsouth", name: "South bank", kind: "fish", x: 96, y: 284, w: 36, h: 14 },
+  { id: "fishdock", name: "Fishing dock", kind: "fish", x: 118, y: 78, w: 28, h: 16 },
   { id: "tub", name: "Bathtub", kind: "tub", x: 92, y: 32, w: 52, h: 26 },
   { id: "fire", name: "Campfire", kind: "fire", x: 38, y: 64, w: 30, h: 26 },
   { id: "shed", name: "Shed chest", kind: "shed", x: 236, y: 134, w: 48, h: 24 },
@@ -716,43 +714,36 @@ export function itemMass(it: Item): number {
 
 export function placeHerd(s: GameState): void {
   const home = {
-    cow: { x: 36, y: 340 },
-    rooster: { x: 108, y: 330 },
-    goat: { x: 268, y: 340 },
+    cow: { x: 80, y: 112 },
+    rooster: { x: 188, y: 136 },
+    goat: { x: 304, y: 112 },
   } as const;
   for (const a of s.animals) {
     const spot = home[a.kind];
-    if (!spot || a.y >= MEADOW.y + 8) continue;
+    if (!spot || a.y < MEADOW.y - 12) continue;
     a.x = spot.x;
     a.y = spot.y;
     a.tx = spot.x;
     a.ty = spot.y;
     a.pause = a.kind === "cow" ? 1.4 : 0.5;
   }
+  if (s.cat && s.cat.y >= MEADOW.y - 12) {
+    s.cat.x = 274;
+    s.cat.y = 148;
+    s.cat.tx = 274;
+    s.cat.ty = 148;
+    s.cat.mode = "sit";
+    s.cat.pause = 1.2;
+  }
 }
 
-/** Meadow fishing water. The dock on the west edge stays walkable. */
-export const FISH_WATER: Rect = { x: 74, y: 236, w: 72, h: 46 };
-/** Raised crown of the same pond, so the curved top is not walkable. */
-export const FISH_CROWN: Rect = { x: 96, y: 220, w: 40, h: 16 };
+/** Farm pond. The meadow dock is gone with the meadow. */
+export const FISH_WATER: Rect = { x: 118, y: 76, w: 30, h: 16 };
+export const FISH_CROWN: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
 export type SeamRock = { x: number; y: number; i: number; s: number };
-/** Rocks in the meadow, south of the farm fence. The dirt path stays open. */
-export const SEAM_ROCKS: SeamRock[] = [
-  { x: 36, y: 204, i: 1, s: 0.68 },
-  { x: 78, y: 208, i: 2, s: 0.62 },
-  { x: 58, y: 204, i: 0, s: 0.66 },
-  { x: 236, y: 206, i: 3, s: 0.64 },
-  { x: 278, y: 202, i: 1, s: 0.7 },
-  { x: 318, y: 208, i: 2, s: 0.62 },
-  { x: 20, y: 218, i: 0, s: 0.84 },
-  { x: 210, y: 214, i: 3, s: 0.88 },
-  { x: 230, y: 268, i: 2, s: 0.8 },
-  { x: 292, y: 272, i: 1, s: 0.82 },
-  { x: 232, y: 218, i: 0, s: 0.86 },
-  { x: 272, y: 222, i: 2, s: 0.88 },
-  { x: 312, y: 216, i: 3, s: 0.8 },
-];
+/** Nothing sits in the void. */
+export const SEAM_ROCKS: SeamRock[] = [];
 
 export function overlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
@@ -760,19 +751,11 @@ export function overlap(a: Rect, b: Rect): boolean {
 
 export function footBlocked(x: number, y: number): boolean {
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
-  const inMeadow =
-    box.x >= MEADOW.x &&
-    box.x + box.w <= MEADOW.x + MEADOW.w &&
-    box.y + box.h > MEADOW.y &&
-    box.y < MEADOW.y + MEADOW.h &&
-    box.y + box.h <= MEADOW.y + MEADOW.h;
+  if (box.y + box.h > MEADOW.y) return true;
+  if (box.x < 22 || box.x + box.w > 330) return true;
+  if (box.y < 36) return true;
   const onSouthPath = x > 156 && x < 186 && y > 150;
-  if (!inMeadow) {
-    if (box.x < 22 || box.x + box.w > 330) return true;
-    if (box.y < 36) return true;
-    if (box.y + box.h > WORLD_H - 2 && !onSouthPath) return true;
-    if (box.y > 170 && !onSouthPath) return true;
-  }
+  if (box.y > 170 && !onSouthPath) return true;
   for (const s of SOLIDS) if (overlap(box, s)) return true;
   for (const s of PROP_SOLIDS) if (overlap(box, s)) return true;
   for (const s of tileBlocks()) if (overlap(box, s)) return true;
@@ -908,9 +891,9 @@ export function createGame(): GameState {
     plots: freshPlots(),
     flowers: defaultFlowers(),
     animals: [
-      { id: "cow", kind: "cow", name: "Cow", x: 36, y: 340, dir: "s", fed: false, ready: false, tx: 36, ty: 340, pause: 1.4 },
-      { id: "rooster", kind: "rooster", name: "Rooster", x: 108, y: 330, dir: "e", fed: false, ready: false, tx: 108, ty: 330, pause: 0.4 },
-      { id: "goat", kind: "goat", name: "Goat", x: 268, y: 340, dir: "w", fed: false, ready: false, tx: 268, ty: 340, pause: 0.6 },
+      { id: "cow", kind: "cow", name: "Cow", x: 80, y: 112, dir: "s", fed: false, ready: false, tx: 80, ty: 112, pause: 1.4 },
+      { id: "rooster", kind: "rooster", name: "Rooster", x: 188, y: 136, dir: "e", fed: false, ready: false, tx: 188, ty: 136, pause: 0.4 },
+      { id: "goat", kind: "goat", name: "Goat", x: 304, y: 112, dir: "w", fed: false, ready: false, tx: 304, ty: 112, pause: 0.6 },
     ],
     branches: [],
     structures: [

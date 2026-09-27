@@ -1493,10 +1493,8 @@ const ROAM: [number, number][] = [
   [248, 128],
   [150, 132],
   [96, 118],
-  [182, 240],
-  [182, 420],
-  [182, 640],
-  [182, 860],
+  [80, 112],
+  [188, 136],
 ];
 
 function pickRoam(s: GameState) {
@@ -1681,7 +1679,7 @@ function stepWeather(s: GameState, dt: number) {
     if (next !== s.weather) {
       s.message =
         next === "storm"
-          ? "Thunder. Rain soaks the grass, the beds, the meadow, and the trees."
+          ? "Thunder. Rain soaks the grass, the beds, and the trees."
           : next === "rain"
             ? "Rain. The soil, the plants, and the trees take the water."
             : "The rain passes. The ground stays wet.";
@@ -1713,9 +1711,9 @@ function stepWeather(s: GameState, dt: number) {
 }
 
 function pasture(kind: Animal["kind"]): { x: number; y: number; w: number; h: number } {
-  if (kind === "cow") return { x: 36, y: 230, w: 120, h: 340 };
-  if (kind === "goat") return { x: 200, y: 240, w: 112, h: 360 };
-  return { x: 96, y: 214, w: 60, h: 200 };
+  if (kind === "cow") return { x: 48, y: 104, w: 70, h: 16 };
+  if (kind === "goat") return { x: 286, y: 96, w: 36, h: 36 };
+  return { x: 170, y: 124, w: 36, h: 22 };
 }
 
 function clamp(n: number, lo: number, hi: number) {
@@ -1743,8 +1741,7 @@ function roam(s: GameState, box: { x: number; y: number; w: number; h: number },
 function stepCat(s: GameState, dt: number) {
   const yards = [
     { x: 40, y: 104, w: 150, h: 44 },
-    { x: 214, y: 146, w: 62, h: 4 },
-    { x: 48, y: 210, w: 250, h: 200 },
+    { x: 214, y: 100, w: 70, h: 36 },
   ];
   if (!s.cat.mode) s.cat.mode = "sit";
   if (s.cat.tx == null) {

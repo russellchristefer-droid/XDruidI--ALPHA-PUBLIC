@@ -370,6 +370,56 @@ function drawAnimal(
   blit(ctx, img, col * 72, row * 72, 72, 72, x, y, scale, false, 36, 66);
 }
 
+function drawVoid(ctx: CanvasRenderingContext2D, clock: number) {
+  ctx.fillStyle = "#070b16";
+  ctx.fillRect(MEADOW.x, MEADOW.y, MEADOW.w, MEADOW.h);
+  for (let i = 0; i < 140; i++) {
+    const x = (i * 53 + 11) % WORLD_W;
+    const y = MEADOW.y + 28 + ((i * 37) % (MEADOW.h - 40));
+    const twinkle = (i + Math.floor(clock * 2)) % 9 === 0;
+    ctx.fillStyle = i % 11 === 0 ? "#f3d48a" : i % 4 === 0 ? "#9ec7ff" : "#e7eefc";
+    ctx.fillRect(x, y, twinkle ? 2 : 1, 1);
+  }
+  const moonX = 78;
+  const moonY = 360;
+  ctx.fillStyle = "#d5deea";
+  for (let dy = -7; dy <= 7; dy++) {
+    const span = dy === 0 || Math.abs(dy) === 1 ? 8 : 7 - Math.floor(Math.abs(dy) / 2);
+    ctx.fillRect(moonX - span, moonY + dy, span * 2, 1);
+  }
+  ctx.fillStyle = "#b7c3d4";
+  ctx.fillRect(moonX - 3, moonY - 2, 2, 2);
+  ctx.fillRect(moonX + 2, moonY + 1, 3, 2);
+  ctx.fillStyle = "#243044";
+  for (let dy = -4; dy <= 4; dy++) {
+    const span = 4 - Math.floor(Math.abs(dy) / 2);
+    ctx.fillRect(260 - span, 520 + dy, span * 2, 1);
+  }
+  ctx.fillStyle = "#1a2438";
+  for (let i = 0; i < 40; i++) {
+    const x = (i * 19 + 40) % WORLD_W;
+    const y = MEADOW.y + 80 + ((i * 23) % 200);
+    if ((i + x) % 3 === 0) {
+      ctx.fillStyle = i % 2 === 0 ? "#1c2744" : "#2a1a38";
+      ctx.fillRect(x, y, 2, 1);
+    }
+  }
+  for (let x = 0; x < WORLD_W; x++) {
+    const jag = ((x * 13) ^ (x >> 1)) & 15;
+    const depth = 8 + (jag % 8);
+    ctx.fillStyle = "#6f8f3a";
+    ctx.fillRect(x, MEADOW.y, 1, 2);
+    ctx.fillStyle = jag % 4 === 0 ? "#6b4a32" : "#5a3d2a";
+    ctx.fillRect(x, MEADOW.y + 2, 1, depth);
+    ctx.fillStyle = "#2c2118";
+    ctx.fillRect(x, MEADOW.y + depth, 1, 2 + (jag % 3));
+    if (jag > 11) {
+      ctx.fillStyle = "#3d2c20";
+      ctx.fillRect(x, MEADOW.y + depth + 2, 2, 3 + (jag % 4));
+    }
+  }
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   s: GameState,
@@ -379,8 +429,7 @@ export function drawWorld(
 ) {
   const yard = sheets.yard;
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, WORLD_H);
-  const meadow = sheets.meadow;
-  if (meadow) ctx.drawImage(meadow, MEADOW.x, MEADOW.y);
+  drawVoid(ctx, s.clock);
 
   ctx.save();
   ctx.beginPath();
