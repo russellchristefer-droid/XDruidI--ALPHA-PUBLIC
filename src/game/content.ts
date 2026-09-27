@@ -7,7 +7,16 @@ export const VIEW_H = 194;
 /** South of the new field. Under this line is the void. */
 export const MEADOW = { x: 0, y: 528, w: 347, h: 432 } as const;
 /** Courtyard starts. Spread so the herd, the cat, and the farmer do not share a tile. */
-export const FARMER_HOME = { x: 168, y: 260 } as const;
+/** Center of the courtyard, on the seal. */
+export const FARMER_HOME = { x: 172, y: 380 } as const;
+
+/** The courtyard stone. This is the only plot where magic skill is trained. */
+export const MAGIC_PLOT = { x: 16, y: 232, w: 316, h: 288 } as const;
+
+export function onMagicPlot(x: number, y: number, wing: number): boolean {
+  if (wing !== 0) return false;
+  return x >= MAGIC_PLOT.x && x < MAGIC_PLOT.x + MAGIC_PLOT.w && y >= MAGIC_PLOT.y && y < MAGIC_PLOT.y + MAGIC_PLOT.h;
+}
 export const HERD_HOME = {
   cow: { x: 56, y: 288 },
   rooster: { x: 112, y: 344 },
@@ -925,6 +934,7 @@ export type GameState = {
   auto: boolean;
   /** Successful casts into the farm pond. */
   fishing: number;
+  catchFlash?: number;
   /** Spellcraft skill. 100 is a full working set of casts. */
   magic: number;
   /** Pool spent by casts. Recovers while he stands or walks, same idea as stamina. */
@@ -949,8 +959,8 @@ export type GameState = {
     moved: boolean;
   } | null;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
-  /** Set once the courtyard spawn has been applied. Old saves move once, then stay put. */
-  courtSpawn?: boolean;
+  /** 3 = courtyard center, scythe in hand. Older saves move once, then stay put. */
+  courtSpawn?: boolean | 2 | 3;
 };
 
 export type PanelId = "pack" | "body" | "vault" | "craft" | "map" | "pause" | "summary" | "controls" | "backpack" | "skills";
@@ -1003,7 +1013,7 @@ export const SKILL_NOTE: Record<SkillId, string> = {
   construction: "Repair the gate, the door, and the tools.",
   tracking: "Find the herd, the pond, and the way through.",
   healing: "Eat, wash, and sleep the hurt off.",
-  magic: "Practice a working until it sits in the hand.",
+  magic: "The courtyard is the magic plot. Practice on the seal.",
   ritual: "Cast where the loka can answer.",
   survival: "Last the weather, the night, and an empty belly.",
   exploration: "Step off the homestead into another land.",
@@ -1166,10 +1176,13 @@ export function placeHerd(s: GameState): void {
   placeFarmer(s);
 }
 
-/** First load of an older save: stand them in the courtyard, apart, then leave them alone. */
+/** Stand him on the courtyard seal. A save that left him in Svarga or Naraka comes back here. */
 export function placeCourtSpawn(s: GameState): void {
-  if (s.courtSpawn) return;
-  s.courtSpawn = true;
+  const away = (s.wing ?? 0) !== 0 || !!s.cross;
+  if (s.courtSpawn === 3 && !away) return;
+  const first = s.courtSpawn !== 3;
+  s.courtSpawn = 3;
+  setRealm(0);
   s.wing = 0;
   s.cross = null;
   s.x = FARMER_HOME.x;
@@ -1181,7 +1194,25 @@ export function placeCourtSpawn(s: GameState): void {
     s.life.ty = FARMER_HOME.y;
     s.life.route = [];
     s.life.pause = 0.8;
+    if (s.life.chore === "svarga" || s.life.errand === "svarga") {
+      s.life.chore = "";
+      s.life.errand = null;
+    }
+    s.life.skip = "svarga";
+    s.life.skipUntil = s.clock + 20;
   }
+  const worn = s.body.hands;
+  const scythe = worn && defOf(worn).tool === "scythe" ? worn : s.pack.find((p) => p && p.defId === "scythe");
+  if (scythe) {
+    s.activeId = scythe.id;
+    let idx = s.hotbar.indexOf(scythe.id);
+    if (idx < 0) {
+      s.hotbar[2] = scythe.id;
+      idx = 2;
+    }
+    s.selected = idx;
+  }
+  if (!first) return;
   for (const a of s.animals) {
     const spot = HERD_HOME[a.kind];
     if (!spot) continue;
@@ -1418,8 +1449,8 @@ export function createGame(): GameState {
     clock: 0,
     pack,
     hotbar: [can.id, shovel.id, scythe.id, axe.id, hammer.id, rod.id, loaf.id, null],
-    selected: 0,
-    activeId: can.id,
+    selected: 2,
+    activeId: scythe.id,
     body: emptyBody(),
     vault: Array.from({ length: VAULT_SLOTS }, () => null),
     purse: 0,
@@ -1463,6 +1494,6 @@ export function createGame(): GameState {
     cast: null,
     wing: 0,
     cross: null,
-    courtSpawn: true,
+    courtSpawn: 3,
   };
 }

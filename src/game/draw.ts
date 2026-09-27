@@ -1,4 +1,4 @@
-import { CHAR_FOOT_Y, CHAR_H, CHAR_W, DEFS, FISH_WATER, MEADOW, POND_FISH, REAPER_FRAMES, ROD_FRAMES, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { CHAR_FOOT_Y, CHAR_H, CHAR_W, DEFS, FISH_WATER, MEADOW, REAPER_FRAMES, ROD_FRAMES, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
@@ -174,9 +174,6 @@ function paintTackle(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   if (!fishing && !rodItem) return;
   const icon = rodItem ? defOf(rodItem).icon : ROD_FRAMES[0];
   if (!icon) return;
-  const t = fishing && act ? Math.max(0, Math.min(1, act.elapsed / Math.max(0.05, act.dur))) : 0;
-  const reach = fishing ? Math.sin(t * Math.PI) * 4 : 0;
-  const bob = !fishing && s.speed > 1 ? Math.sin(s.clock * 10) : 0;
   const face = s.dir === "w" ? -1 : 1;
   const hand =
     s.dir === "n"
@@ -184,15 +181,13 @@ function paintTackle(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
       : s.dir === "s"
         ? { x: 5, y: -13 }
         : { x: face * 3, y: -14 };
-  const hx = s.x + hand.x + face * reach;
-  const hy = s.y + hand.y + bob - reach * 0.5;
-  const sc = 0.9;
-  blit(ctx, img, icon.x, icon.y, icon.w, icon.h, hx, hy, sc, face < 0, 5, icon.h - 4);
-  if (!fishing || t < 0.62) return;
-  const caught = POND_FISH[Math.abs(Math.floor(s.x + s.y)) % POND_FISH.length] ?? "fish";
-  const fish = DEFS[caught]?.icon ?? DEFS.fish?.icon;
-  if (!fish) return;
-  blit(ctx, img, fish.x, fish.y, fish.w, fish.h, hx + face * 14, hy - 14, 0.45, false, fish.w / 2, fish.h);
+  const hx = s.x + hand.x;
+  const hy = s.y + hand.y;
+  blit(ctx, img, icon.x, icon.y, icon.w, icon.h, hx, hy, 0.9, face < 0, 5, icon.h - 4);
+  if ((s.catchFlash ?? 0) <= 0) return;
+  ctx.fillStyle = "#3dba4a";
+  ctx.fillRect(hx + face * 8, hy - 18, 1, 5);
+  ctx.fillRect(hx + face * 8 - 2, hy - 16, 5, 1);
 }
 
 const SPELL_KIND: Record<SpellId, "bolt" | "burst" | "strike" | "drip"> = {
@@ -216,206 +211,802 @@ function riteRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: num
   }
 }
 
-function drawCastRite(ctx: CanvasRenderingContext2D, s: GameState): void {
-  const cast = s.cast;
-  if (!cast) return;
-  const t = Math.max(0, Math.min(1, cast.t));
-  const cx = Math.round(s.x);
-  const cy = Math.round(s.y) - 1;
-  const holy = cast.spell === "holy";
-  const ink = cast.spell === "ice" || cast.spell === "iceball"
-    ? { gold: "#d7e4ee", pale: "#f7fbff", deep: "#6a8498" }
-    : cast.spell === "spark" || cast.spell === "bolt"
-      ? { gold: "#e6c86a", pale: "#fff4d2", deep: "#8a6830" }
-      : cast.spell === "poison" || cast.spell === "drip"
-        ? { gold: "#a08060", pale: "#e4d2b4", deep: "#4a2818" }
-        : holy
-          ? { gold: "#f6e7c0", pale: "#fff8ea", deep: "#b89048" }
-          : { gold: "#e2b657", pale: "#fff1c8", deep: "#785018" };
-  const gold = ink.gold;
-  const pale = ink.pale;
-  const deep = ink.deep;
-  const blue = "#1e3470";
-  const rx = 10 + t * 12;
-  riteRing(ctx, cx, cy, rx, rx * 0.42, gold);
-  riteRing(ctx, cx, cy, Math.max(5, rx - 3), Math.max(2, rx - 3) * 0.42, pale);
-  riteRing(ctx, cx, cy, Math.max(3, rx - 6), Math.max(2, rx - 6) * 0.42, blue);
-  const box = 7 + Math.round(t * 6);
-  ctx.fillStyle = deep;
-  ctx.fillRect(cx - box, cy - Math.round(box * 0.4), box * 2, 1);
-  ctx.fillRect(cx - box, cy + Math.round(box * 0.4), box * 2, 1);
-  ctx.fillRect(cx - box, cy - Math.round(box * 0.4), 1, Math.round(box * 0.8));
-  ctx.fillRect(cx + box, cy - Math.round(box * 0.4), 1, Math.round(box * 0.8));
-  const R = 6 + t * 8;
-  for (let pass = 0; pass < 2; pass++) {
-    const pts: Array<[number, number]> = [];
-    for (let i = 0; i < 3; i++) {
-      const a = (pass === 0 ? -Math.PI / 2 : Math.PI / 2) + (i * Math.PI * 2) / 3;
-      pts.push([cx + Math.cos(a) * R, cy + Math.sin(a) * R * 0.42]);
-    }
-    ctx.fillStyle = pass === 0 ? pale : deep;
-    for (let i = 0; i < 3; i++) {
-      const a = pts[i]!;
-      const b = pts[(i + 1) % 3]!;
-      for (let k = 0; k <= 8; k++) {
-        const u = k / 8;
-        ctx.fillRect(Math.round(a[0] + (b[0] - a[0]) * u), Math.round(a[1] + (b[1] - a[1]) * u), 1, 1);
-      }
-    }
+function paintPool(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, color: string, alpha: number, deep?: string): void {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1, ry / Math.max(1, rx));
+  ctx.lineWidth = 1;
+  if (rx < 2.2) {
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.arc(0, 0, Math.max(1.1, rx), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
   }
-  for (let i = 0; i < 8; i++) {
-    const a = -Math.PI / 2 + (i * Math.PI) / 4 + t;
-    ctx.fillStyle = i % 2 === 0 ? pale : gold;
-    ctx.fillRect(Math.round(cx + Math.cos(a) * (R + 3)), Math.round(cy + Math.sin(a) * (R + 3) * 0.42), 1, 1);
-  }
-  ctx.fillStyle = "#fffaf0";
-  ctx.fillRect(cx, cy, 1, 1);
-  ctx.fillStyle = holy ? "#fff6e4" : gold;
-  ctx.fillRect(cx - 1, cy, 1, 1);
-  ctx.fillRect(cx + 1, cy, 1, 1);
-  for (const [dx, dy] of [
-    [0, -1],
-    [0, 1],
-    [-1, 0],
-    [1, 0],
-  ] as const) {
-    const qx = cx + dx * (box + 3);
-    const qy = cy + Math.round(dy * (box + 3) * 0.42);
-    ctx.fillStyle = pale;
-    ctx.fillRect(qx, qy, 1, 1);
-    ctx.fillStyle = deep;
-    ctx.fillRect(qx + dx, qy + (dy === 0 ? 0 : dy), 1, 1);
-  }
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2 + t * 0.4;
-    ctx.fillStyle = i % 3 === 0 ? pale : gold;
-    ctx.fillRect(Math.round(cx + Math.cos(a) * (rx + 2)), Math.round(cy + Math.sin(a) * (rx + 2) * 0.42), 1, 1);
-  }
-  for (let i = 0; i < 8; i++) {
-    const p = (t * 0.9 + i / 8) % 1;
-    const mote = (s.wing ?? 0) === 1 ? "#e87898" : (s.wing ?? 0) === -1 ? "#c46a4a" : "#e7b8bc";
-    ctx.fillStyle = i % 2 === 0 ? pale : mote;
-    ctx.fillRect(cx - 8 + i * 2, Math.round(cy - 2 - p * 18), 1, 1);
-  }
-  if ((s.wing ?? 0) === 1) {
-    ctx.fillStyle = "#c9a24a";
-    ctx.fillRect(cx - 2, cy + 2, 2, 1);
-    ctx.fillRect(cx + 1, cy + 2, 2, 1);
-    ctx.fillStyle = "#7ec8c3";
-    ctx.fillRect(cx + 4, cy + 1, 1, 1);
-  } else if ((s.wing ?? 0) === -1) {
-    ctx.fillStyle = "#4a1016";
-    ctx.fillRect(cx - 2, cy + 2, 5, 1);
-    ctx.fillStyle = "#c46a4a";
-    ctx.fillRect(cx, cy + 1, 1, 1);
+  ctx.globalAlpha = alpha * 0.8;
+  const glow = ctx.createRadialGradient(0, 0, rx * 0.28, 0, 0, rx);
+  glow.addColorStop(0, "rgba(0,0,0,0)");
+  glow.addColorStop(0.42, deep ?? color);
+  glow.addColorStop(0.7, color);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = Math.min(0.95, alpha + 0.2);
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx * 0.58, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = alpha * 0.7;
+  ctx.strokeStyle = deep ?? color;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx * 0.8, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function spellInk(spell: SpellId): { deep: string; core: string; pale: string; scale: number } {
+  switch (spell) {
+    case "fireball":
+      return { deep: "#4a0810", core: "#c81828", pale: "#e84048", scale: 0.95 };
+    case "nova":
+      return { deep: "#6a2208", core: "#e25810", pale: "#f07828", scale: 1.12 };
+    case "holy":
+      return { deep: "#3a1468", core: "#7a38c8", pale: "#b070e8", scale: 1 };
+    case "ice":
+      return { deep: "#0c3058", core: "#1878c8", pale: "#38a0e0", scale: 1 };
+    case "iceball":
+      return { deep: "#124868", core: "#2890c0", pale: "#40b0d4", scale: 0.78 };
+    case "spark":
+      return { deep: "#6a4808", core: "#d89810", pale: "#f0c040", scale: 0.64 };
+    case "bolt":
+      return { deep: "#1a1048", core: "#4030c8", pale: "#7060e0", scale: 1 };
+    case "poison":
+      return { deep: "#0c3018", core: "#188838", pale: "#30b858", scale: 0.86 };
+    case "drip":
+      return { deep: "#102010", core: "#146028", pale: "#2a8040", scale: 0.58 };
   }
 }
 
-function paintWorking(ctx: CanvasRenderingContext2D, spell: SpellId, x: number, y: number, spin: number, wide: boolean): void {
-  const hx = Math.round(x);
-  const hy = Math.round(y);
-  const r = wide ? 7 : 4;
-  const ring = (radius: number, color: string, n: number) => {
-    ctx.fillStyle = color;
-    for (let i = 0; i < n; i++) {
-      const a = spin + (i / n) * Math.PI * 2;
-      ctx.fillRect(Math.round(hx + Math.cos(a) * radius), Math.round(hy + Math.sin(a) * radius * 0.72), 1, 1);
+function strokeMark(ctx: CanvasRenderingContext2D, color: string, alpha: number, draw: () => void, shadow?: string): void {
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  if (shadow) {
+    ctx.save();
+    ctx.translate(0.7, 1);
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.strokeStyle = shadow;
+    ctx.fillStyle = shadow;
+    ctx.lineWidth = 2.6;
+    draw();
+    ctx.restore();
+  }
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.15;
+  draw();
+  ctx.restore();
+}
+
+function paintHealSeal(ctx: CanvasRenderingContext2D, color: string, deep: string, big: boolean): void {
+  const k = big ? 1.25 : 0.72;
+  strokeMark(ctx, color, 0.92, () => {
+    ctx.beginPath();
+    ctx.moveTo(0, -6 * k);
+    ctx.lineTo(0, 5.5 * k);
+    ctx.moveTo(-3.4 * k, -0.4 * k);
+    ctx.lineTo(3.4 * k, -0.4 * k);
+    ctx.moveTo(0, -4 * k);
+    ctx.bezierCurveTo(-5 * k, -1.5 * k, -4.5 * k, 3.2 * k, 0, 4.2 * k);
+    ctx.moveTo(0, -4 * k);
+    ctx.bezierCurveTo(5 * k, -1.5 * k, 4.5 * k, 3.2 * k, 0, 4.2 * k);
+    ctx.moveTo(-1.4 * k, -6 * k);
+    ctx.bezierCurveTo(-3.2 * k, -9 * k, 3.2 * k, -9 * k, 1.4 * k, -6 * k);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, 1.35 * k, 0, Math.PI * 2);
+    ctx.stroke();
+  }, deep);
+}
+
+function paintWord(ctx: CanvasRenderingContext2D, spell: SpellId, color: string, deep: string): void {
+  const word: Record<SpellId, ReadonlyArray<readonly [number, number, number]>> = {
+    fireball: [
+      [0, -8, 1],
+      [-6, 2, -1],
+      [6, 3, 1],
+    ],
+    nova: [
+      [-7, -4, -1],
+      [7, -4, 1],
+      [-5, 5, 1],
+      [5, 5, -1],
+    ],
+    holy: [
+      [-7, 0, -1],
+      [7, 0, 1],
+      [0, 7, 1],
+    ],
+    ice: [
+      [-6, -5, -1],
+      [6, -5, 1],
+      [0, 6, 1],
+    ],
+    iceball: [
+      [-5, -3, -1],
+      [6, 1, 1],
+    ],
+    spark: [
+      [0, -6, 1],
+      [5, 4, -1],
+    ],
+    bolt: [
+      [-5, -6, -1],
+      [5, -6, 1],
+      [0, 7, 1],
+    ],
+    poison: [
+      [-6, -2, -1],
+      [6, -2, 1],
+      [0, 6, -1],
+    ],
+    drip: [
+      [0, 6, 1],
+      [4, -4, 1],
+    ],
+  };
+  strokeMark(ctx, color, 0.8, () => {
+    ctx.beginPath();
+    for (const [x, y, s] of word[spell]) {
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + 3.2 * s, y - 2.4, x + 1.6 * s, y + 3.2, x + 0.4 * s, y + 0.8);
+    }
+    ctx.stroke();
+  }, deep);
+}
+
+function tracePoly(ctx: CanvasRenderingContext2D, r: number, n: number, rot: number): void {
+  ctx.beginPath();
+  for (let i = 0; i <= n; i++) {
+    const a = rot + (i / n) * Math.PI * 2;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+}
+
+function traceStar(ctx: CanvasRenderingContext2D, r: number, n: number, rot: number): void {
+  ctx.beginPath();
+  for (let i = 0; i <= n; i++) {
+    const a = rot + i * ((Math.PI * 4) / n);
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function paintLattice(ctx: CanvasRenderingContext2D, color: string, deep: string, spin: number): void {
+  strokeMark(ctx, deep, 0.5, () => {
+    ctx.beginPath();
+    ctx.arc(0, 0, 3.6, 0, Math.PI * 2);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + spin * 0.15;
+      const cx = Math.cos(a) * 3.6;
+      const cy = Math.sin(a) * 3.6;
+      ctx.moveTo(cx + 3.6, cy);
+      ctx.arc(cx, cy, 3.6, 0, Math.PI * 2);
+    }
+    ctx.stroke();
+  });
+  strokeMark(ctx, color, 0.38, () => {
+    ctx.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const a = spin * 0.2 + (i / 12) * Math.PI * 2;
+      const b = a + (5 / 12) * Math.PI * 2;
+      ctx.moveTo(Math.cos(a) * 9, Math.sin(a) * 9);
+      ctx.lineTo(Math.cos(b) * 9, Math.sin(b) * 9);
+    }
+    ctx.stroke();
+    tracePoly(ctx, 10.4, 12, -spin * 0.2);
+    ctx.stroke();
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.moveTo(Math.cos(a) * 6.2, Math.sin(a) * 6.2);
+      ctx.quadraticCurveTo(Math.cos(a + 0.4) * 10.6, Math.sin(a + 0.4) * 10.6, Math.cos(a + 0.78) * 6.2, Math.sin(a + 0.78) * 6.2);
+    }
+    ctx.stroke();
+  });
+}
+
+function kochLine(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, depth: number): void {
+  if (depth <= 0) {
+    ctx.lineTo(x1, y1);
+    return;
+  }
+  const dx = (x1 - x0) / 3;
+  const dy = (y1 - y0) / 3;
+  const ax = x0 + dx;
+  const ay = y0 + dy;
+  const bx = x0 + dx * 2;
+  const by = y0 + dy * 2;
+  const px = ax + dx * 0.5 - dy * 0.866;
+  const py = ay + dx * 0.866 + dy * 0.5;
+  kochLine(ctx, x0, y0, ax, ay, depth - 1);
+  kochLine(ctx, ax, ay, px, py, depth - 1);
+  kochLine(ctx, px, py, bx, by, depth - 1);
+  kochLine(ctx, bx, by, x1, y1, depth - 1);
+}
+
+function paintFractal(ctx: CanvasRenderingContext2D, color: string, deep: string, spin: number): void {
+  strokeMark(ctx, color, 0.62, () => {
+    const r = 11;
+    const pts: Array<[number, number]> = [];
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + spin * 0.08 + (i / 6) * Math.PI * 2;
+      pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    const first = pts[0]!;
+    ctx.beginPath();
+    ctx.moveTo(first[0], first[1]);
+    for (let i = 0; i < 6; i++) {
+      const a = pts[i]!;
+      const b = pts[(i + 1) % 6]!;
+      kochLine(ctx, a[0], a[1], b[0], b[1], 2);
+    }
+    ctx.stroke();
+  }, deep);
+  const bubble = (x: number, y: number, r: number, depth: number) => {
+    if (r < 1.15) return;
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    if (depth <= 0) return;
+    for (let i = 0; i < 3; i++) {
+      const a = -Math.PI / 2 + spin + (i / 3) * Math.PI * 2;
+      bubble(x + Math.cos(a) * r * 0.52, y + Math.sin(a) * r * 0.52, r * 0.4, depth - 1);
     }
   };
-  if (spell === "poison" || spell === "drip") {
-    ring(r, "#6a4030", 8);
-    ring(r - 2, "#e2c48a", 6);
-    ctx.fillStyle = "#f3e2c0";
-    ctx.fillRect(hx, hy - r - 1, 1, 1);
-    ctx.fillStyle = "#4a2818";
-    ctx.fillRect(hx - 1, hy + 2, 1, 2);
-    return;
-  }
-  if (spell === "ice" || spell === "iceball") {
-    ctx.fillStyle = "#f7fbff";
+  strokeMark(ctx, deep, 0.5, () => {
+    ctx.beginPath();
+    bubble(0, 0, 5.2, 2);
+    ctx.stroke();
+  });
+}
+
+function paintTriangles(ctx: CanvasRenderingContext2D, pale: string, core: string, deep: string, spin: number): void {
+  strokeMark(ctx, pale, 0.82, () => {
+    tracePoly(ctx, 10, 3, -Math.PI / 2 + spin * 0.12);
+    ctx.stroke();
+    tracePoly(ctx, 10, 3, Math.PI / 2 - spin * 0.12);
+    ctx.stroke();
+    tracePoly(ctx, 6.4, 3, -Math.PI / 2 - spin * 0.2);
+    ctx.stroke();
+    tracePoly(ctx, 6.4, 3, Math.PI / 2 + spin * 0.2);
+    ctx.stroke();
+    tracePoly(ctx, 3.3, 3, -Math.PI / 2);
+    ctx.stroke();
+    tracePoly(ctx, 3.3, 3, Math.PI / 2);
+    ctx.stroke();
+  }, deep);
+  strokeMark(ctx, core, 0.5, () => {
+    ctx.beginPath();
     for (let i = 0; i < 6; i++) {
-      const a = spin * 0.4 + (i * Math.PI) / 3;
-      const x0 = hx + Math.cos(a) * 2;
-      const y0 = hy + Math.sin(a) * 1;
-      ctx.fillRect(Math.round(x0), Math.round(y0), 1, 1);
-      ctx.fillStyle = i % 2 === 0 ? "#d5e6f0" : "#8aa4b4";
-      ctx.fillRect(Math.round(hx + Math.cos(a) * r), Math.round(hy + Math.sin(a) * (r * 0.7)), 1, 2);
-      ctx.fillStyle = "#f7fbff";
+      const a = -Math.PI / 2 + (i / 6) * Math.PI * 2;
+      const b = a + Math.PI / 3;
+      const mx = (Math.cos(a) * 10 + Math.cos(b) * 10) / 2;
+      const my = (Math.sin(a) * 10 + Math.sin(b) * 10) / 2;
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * 10, Math.sin(a) * 10);
+      ctx.moveTo(mx, my);
+      ctx.lineTo(Math.cos((a + b) / 2) * 5, Math.sin((a + b) / 2) * 5);
     }
-    ctx.fillRect(hx, hy, 1, 1);
-    return;
+    ctx.stroke();
+  });
+}
+
+function paintSigil(ctx: CanvasRenderingContext2D, spell: SpellId, x: number, y: number, clock: number): void {
+  const ink = spellInk(spell);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.scale(ink.scale, ink.scale * 0.82);
+  const spin = clock * 0.35;
+  paintPool(ctx, 0, 1, 13, 13, ink.core, 0.42, ink.deep);
+  paintLattice(ctx, ink.core, ink.deep, spin);
+  paintFractal(ctx, ink.pale, ink.deep, spin);
+  paintTriangles(ctx, ink.pale, ink.core, ink.deep, spin);
+  strokeMark(ctx, ink.pale, 0.75, () => {
+    ctx.beginPath();
+    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
+    ctx.stroke();
+  }, ink.deep);
+  strokeMark(ctx, ink.core, 0.55, () => {
+    tracePoly(ctx, 9, 6, spin);
+    ctx.stroke();
+    tracePoly(ctx, 5.5, 6, spin + Math.PI / 6);
+    ctx.stroke();
+  }, ink.deep);
+  if (spell === "fireball") {
+    strokeMark(ctx, ink.core, 0.95, () => {
+      tracePoly(ctx, 8, 3, -Math.PI / 2);
+      ctx.stroke();
+      tracePoly(ctx, 4.5, 3, Math.PI / 2);
+      ctx.stroke();
+      traceStar(ctx, 6, 5, spin);
+      ctx.stroke();
+    }, ink.deep);
+    paintPool(ctx, 0, -9, 2.2, 3.2, ink.pale, 0.8, ink.core);
+    paintPool(ctx, 0, 0, 2.2, 2.2, ink.core, 0.85, ink.deep);
+  } else if (spell === "nova") {
+    strokeMark(ctx, ink.pale, 0.9, () => {
+      ctx.beginPath();
+      for (let i = 0; i < 16; i++) {
+        const a = spin + (i / 16) * Math.PI * 2;
+        const inner = i % 2 === 0 ? 3 : 5;
+        const outer = i % 2 === 0 ? 12 : 8;
+        ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+        ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+      }
+      ctx.stroke();
+      traceStar(ctx, 7, 8, -spin);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+      ctx.stroke();
+    }, ink.deep);
+    paintPool(ctx, 0, 0, 3.2, 3.2, ink.core, 0.85, ink.deep);
+  } else if (spell === "holy") {
+    strokeMark(ctx, ink.pale, 0.92, () => {
+      ctx.beginPath();
+      ctx.arc(-2.2, 0, 4.2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(2.2, 0, 4.2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -12);
+      ctx.lineTo(0, 8);
+      ctx.moveTo(-6, -1);
+      ctx.lineTo(6, -1);
+      ctx.stroke();
+      tracePoly(ctx, 4, 3, -Math.PI / 2 + spin * 0.4);
+      ctx.stroke();
+      tracePoly(ctx, 4, 3, Math.PI / 2 + spin * 0.4);
+      ctx.stroke();
+    }, ink.deep);
+    paintPool(ctx, 0, -1, 2.4, 2.4, ink.pale, 0.75, ink.core);
+  } else if (spell === "ice") {
+    strokeMark(ctx, ink.pale, 0.92, () => {
+      tracePoly(ctx, 9, 6, -Math.PI / 2);
+      ctx.stroke();
+      tracePoly(ctx, 6, 6, Math.PI / 6 + spin * 0.3);
+      ctx.stroke();
+      traceStar(ctx, 5, 6, spin);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
+      ctx.stroke();
+    }, ink.deep);
+    paintPool(ctx, 0, 0, 2.4, 2.4, ink.pale, 0.45, ink.core);
+  } else if (spell === "iceball") {
+    strokeMark(ctx, ink.pale, 0.55, () => {
+      tracePoly(ctx, 7, 6, spin);
+      ctx.stroke();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        ctx.moveTo(Math.cos(a) * 2, Math.sin(a) * 2);
+        ctx.lineTo(Math.cos(a) * 6, Math.sin(a) * 6);
+      }
+      ctx.stroke();
+    }, ink.deep);
+    strokeMark(ctx, ink.pale, 0.95, () => {
+      ctx.beginPath();
+      ctx.arc(-1, 0, 6, 0.55, Math.PI * 2 - 0.35);
+      ctx.arc(2.1, 0, 4.5, Math.PI * 2 - 0.45, 0.65, true);
+      ctx.fill();
+    });
+  } else if (spell === "spark") {
+    strokeMark(ctx, ink.pale, 0.95, () => {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI * 2) / 3 + clock;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(a) * 7, Math.sin(a) * 7);
+      }
+      ctx.stroke();
+      tracePoly(ctx, 6, 3, -Math.PI / 2 + clock);
+      ctx.stroke();
+      tracePoly(ctx, 3, 3, Math.PI / 2 - clock);
+      ctx.stroke();
+    }, ink.deep);
+    paintPool(ctx, 0, 0, 1.8, 1.8, ink.core, 0.9, ink.deep);
+  } else if (spell === "bolt") {
+    strokeMark(ctx, ink.pale, 0.95, () => {
+      ctx.beginPath();
+      ctx.moveTo(0, -11);
+      ctx.lineTo(0, 11);
+      ctx.moveTo(-4.5, -7);
+      ctx.lineTo(0, -13);
+      ctx.lineTo(4.5, -7);
+      ctx.moveTo(-4.5, 7);
+      ctx.lineTo(0, 13);
+      ctx.lineTo(4.5, 7);
+      ctx.moveTo(-3, -8);
+      ctx.lineTo(3, -6);
+      ctx.moveTo(-3, 8);
+      ctx.lineTo(3, 6);
+      ctx.stroke();
+      tracePoly(ctx, 3.5, 4, Math.PI / 4 + spin);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.1, 0, Math.PI * 2);
+      ctx.stroke();
+    }, ink.deep);
+    paintPool(ctx, 0, 0, 2.2, 2.2, ink.pale, 0.7, ink.core);
+  } else if (spell === "poison") {
+    strokeMark(ctx, ink.core, 0.92, () => {
+      tracePoly(ctx, 8, 3, Math.PI / 2);
+      ctx.stroke();
+      tracePoly(ctx, 5, 3, -Math.PI / 2 + spin * 0.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 1, 2.4, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const a = Math.PI / 2 + (i * Math.PI * 2) / 3;
+        ctx.moveTo(0, 1);
+        ctx.lineTo(Math.cos(a) * 7, 1 + Math.sin(a) * 7);
+      }
+      ctx.stroke();
+    }, ink.deep);
+    paintPool(ctx, 0, 1, 2, 2, ink.pale, 0.75, ink.core);
+  } else {
+    strokeMark(ctx, ink.core, 0.55, () => {
+      tracePoly(ctx, 5, 3, Math.PI / 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 2, 3.2, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+    }, ink.deep);
+    strokeMark(ctx, ink.pale, 0.92, () => {
+      ctx.beginPath();
+      ctx.moveTo(0, -7);
+      ctx.bezierCurveTo(4.2, -1, 3.2, 5, 0, 7);
+      ctx.bezierCurveTo(-3.2, 5, -4.2, -1, 0, -7);
+      ctx.fill();
+    }, ink.deep);
+    paintPool(ctx, 0, -2, 1.6, 2, ink.pale, 0.7, ink.core);
   }
-  if (spell === "spark" || spell === "bolt") {
-    ctx.fillStyle = "#e6c86a";
-    const pts = [
-      [0, -r],
-      [2, -1],
-      [-1, 0],
-      [2, 2],
-      [0, r],
-    ];
-    for (const [px, py] of pts) ctx.fillRect(hx + px, hy + py, 1, 1);
-    ctx.fillStyle = "#fff6d4";
-    ctx.fillRect(hx, hy, 1, 1);
-    return;
+  paintHealSeal(ctx, ink.pale, ink.deep, spell === "holy");
+  paintWord(ctx, spell, ink.core, ink.deep);
+  paintGrain(ctx, ink.pale, ink.core, ink.deep);
+  paintRough(ctx, spell, ink.pale, ink.core, ink.deep);
+  for (let i = 0; i < 8; i++) {
+    const a = clock * 1.3 + (i / 8) * Math.PI * 2;
+    paintPool(ctx, Math.cos(a) * 10, Math.sin(a) * 10, 0.9, 0.9, i % 2 ? ink.pale : ink.core, 0.5, ink.deep);
   }
-  if (spell === "holy") {
-    ring(r, "#f0ddb0", 10);
-    ring(Math.max(2, r - 3), "#fffaf0", 6);
-    ctx.fillStyle = "#fffaf0";
-    ctx.fillRect(hx, hy, 1, 1);
-    return;
+  ctx.restore();
+}
+
+function paintRough(ctx: CanvasRenderingContext2D, spell: SpellId, pale: string, core: string, deep: string): void {
+  const wob = (n: number) => {
+    const s = Math.sin(n * 12.9898) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.lineJoin = "bevel";
+  ctx.lineCap = "round";
+  ctx.strokeStyle = deep;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  for (let i = 0; i <= 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    const r = 11 + (wob(i + 2) - 0.5) * 1.8;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
   }
-  ring(r, "#c47828", 8);
-  ring(Math.max(2, r - 2), "#ffe7a4", 6);
-  ctx.fillStyle = "#fff6d4";
-  ctx.fillRect(hx, hy, 1, 1);
-  ctx.fillStyle = "#e09040";
-  ctx.fillRect(hx, hy - 1, 1, 1);
-  ctx.fillRect(hx + 1, hy + 1, 1, 1);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.strokeStyle = pale;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = wob(i + 4) * Math.PI * 2;
+    const r0 = 2.2 + wob(i) * 2.4;
+    const r1 = r0 + 1.8 + wob(i + 1) * 3;
+    const bend = (wob(i + 8) - 0.5) * 0.55;
+    ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+    ctx.lineTo(Math.cos(a + bend) * r1, Math.sin(a + bend) * r1);
+    if (wob(i + 6) > 0.45) {
+      const fork = a + bend + (wob(i + 9) - 0.5) * 0.8;
+      ctx.moveTo(Math.cos(a + bend) * r1, Math.sin(a + bend) * r1);
+      ctx.lineTo(Math.cos(fork) * (r1 + 1.6), Math.sin(fork) * (r1 + 1.6));
+    }
+  }
+  ctx.stroke();
+  ctx.strokeStyle = core;
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  if (spell === "fireball" || spell === "nova") {
+    for (let i = 0; i < 5; i++) {
+      const lean = (i - 2) * 0.7;
+      ctx.moveTo(lean * 0.4, -3);
+      ctx.lineTo(lean + (i % 2 ? 0.8 : -0.8), -7 - (i % 3));
+    }
+  } else if (spell === "ice" || spell === "iceball") {
+    ctx.moveTo(-2, 1);
+    ctx.lineTo(-5, -1);
+    ctx.lineTo(-6, -4);
+    ctx.moveTo(-5, -1);
+    ctx.lineTo(-3, -3);
+    ctx.moveTo(2, 2);
+    ctx.lineTo(5, 4);
+    ctx.lineTo(4, 7);
+  } else if (spell === "bolt" || spell === "spark") {
+    ctx.moveTo(-1, -6);
+    ctx.lineTo(2, -2);
+    ctx.lineTo(-1, 1);
+    ctx.lineTo(2, 6);
+    ctx.moveTo(2, -2);
+    ctx.lineTo(5, -1);
+  } else if (spell === "poison" || spell === "drip") {
+    ctx.moveTo(0, 2);
+    ctx.lineTo(1, 5);
+    ctx.lineTo(-1, 8);
+    ctx.moveTo(1, 5);
+    ctx.lineTo(3, 7);
+  } else {
+    ctx.moveTo(0, -6);
+    ctx.lineTo(1, -2);
+    ctx.lineTo(-1, 2);
+    ctx.lineTo(1, 6);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function paintGrain(ctx: CanvasRenderingContext2D, pale: string, core: string, deep: string): void {
+  ctx.save();
+  ctx.lineWidth = 1;
+  ctx.lineCap = "butt";
+  ctx.strokeStyle = core;
+  ctx.globalAlpha = 0.32;
+  ctx.beginPath();
+  for (let i = 0; i < 32; i++) {
+    const a = (i / 32) * Math.PI * 2;
+    const inner = 2.2 + (i % 4) * 0.45;
+    const outer = 6.4 + (i % 5) * 0.85;
+    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = deep;
+  ctx.globalAlpha = 0.4;
+  ctx.beginPath();
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2 + 0.08;
+    const r = 9.2;
+    const t = a + Math.PI / 2;
+    ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    ctx.lineTo(Math.cos(a) * r + Math.cos(t) * 1.6, Math.sin(a) * r + Math.sin(t) * 1.6);
+  }
+  ctx.stroke();
+  ctx.fillStyle = pale;
+  ctx.globalAlpha = 0.55;
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    const r = i % 2 === 0 ? 7.6 : 4.6;
+    ctx.fillRect(Math.cos(a) * r - 0.5, Math.sin(a) * r - 0.5, 1, 1);
+  }
+  ctx.strokeStyle = pale;
+  ctx.globalAlpha = 0.28;
+  ctx.beginPath();
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2 + 0.13;
+    const r0 = 3.4 + (i % 3) * 1.7;
+    const r1 = r0 + 2.1;
+    const b = a + 0.22;
+    ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+    ctx.lineTo(Math.cos(b) * r1, Math.sin(b) * r1);
+    ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+    ctx.lineTo(Math.cos(b) * r0, Math.sin(b) * r0);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = core;
+  ctx.globalAlpha = 0.34;
+  ctx.beginPath();
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    ctx.arc(Math.cos(a) * 8.4, Math.sin(a) * 8.4, 1.15, a, a + 1.1);
+  }
+  ctx.stroke();
+  ctx.fillStyle = deep;
+  ctx.globalAlpha = 0.45;
+  for (let i = 0; i < 36; i++) {
+    const a = (i * 2.399) % (Math.PI * 2);
+    const r = 1.8 + (i % 7) * 1.15;
+    ctx.fillRect(Math.cos(a) * r - 0.5, Math.sin(a) * r - 0.5, 1, 1);
+  }
+  ctx.restore();
+}
+
+function paintPetal(ctx: CanvasRenderingContext2D, x: number, y: number, a: number, fill: string, pale: string): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(a);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 0.7;
+  ctx.strokeStyle = fill;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(1, 0);
+  ctx.bezierCurveTo(4, -2.2, 9, -1.6, 11, 0);
+  ctx.bezierCurveTo(9, 1.6, 4, 2.2, 1, 0);
+  ctx.stroke();
+  ctx.globalAlpha = 0.85;
+  ctx.strokeStyle = pale;
+  ctx.beginPath();
+  ctx.moveTo(3, 0);
+  ctx.lineTo(10, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function paintCircleRite(ctx: CanvasRenderingContext2D, cx: number, cy: number, deep: string, core: string, pale: string, clock: number): void {
+  const breath = 1 + 0.035 * Math.sin(clock * 2.2);
+  const rx = 26 * breath;
+  const ry = 15 * breath;
+  paintPool(ctx, cx, cy + 2, rx + 8, ry + 5, core, 0.34, deep);
+  paintPool(ctx, cx, cy + 1, rx * 0.55, ry * 0.55, pale, 0.28, core);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(1, ry / rx);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = deep;
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.35;
+  ctx.strokeStyle = pale;
+  ctx.globalAlpha = 0.92;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = core;
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, rx * 0.68, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.save();
+  ctx.rotate(clock * 0.15);
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = deep;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const b = a + (5 / 12) * Math.PI * 2;
+    ctx.moveTo(Math.cos(a) * rx * 0.84, Math.sin(a) * rx * 0.84);
+    ctx.lineTo(Math.cos(b) * rx * 0.84, Math.sin(b) * rx * 0.84);
+  }
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.rotate(clock * 0.4);
+  ctx.globalAlpha = 0.75;
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = pale;
+  tracePoly(ctx, rx * 0.5, 3, -Math.PI / 2);
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.rotate(clock * 0.22);
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = pale;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < 12; i++) {
+    const a = -Math.PI / 2 + (i / 12) * Math.PI * 2;
+    const r = rx * 0.72;
+    const tip = r + rx * 0.1;
+    ctx.moveTo(Math.cos(a) * tip, Math.sin(a) * tip);
+    ctx.lineTo(Math.cos(a + 0.16) * r, Math.sin(a + 0.16) * r);
+    ctx.lineTo(Math.cos(a - 0.16) * r, Math.sin(a - 0.16) * r);
+    ctx.closePath();
+  }
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.rotate(-clock * 0.28);
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = core;
+  tracePoly(ctx, rx * 0.34, 3, Math.PI / 2);
+  ctx.stroke();
+  ctx.restore();
+  ctx.strokeStyle = core;
+  ctx.globalAlpha = 0.26;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * Math.PI * 2;
+    const inner = rx * (0.28 + (i % 4) * 0.03);
+    const outer = rx * (0.62 + (i % 3) * 0.06);
+    ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+    ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = pale;
+  ctx.globalAlpha = 0.2;
+  ctx.beginPath();
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * Math.PI * 2 + 0.1;
+    const r0 = rx * 0.4;
+    const r1 = rx * 0.78;
+    const b = a + 0.16;
+    ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+    ctx.lineTo(Math.cos(b) * r1, Math.sin(b) * r1);
+    ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+    ctx.lineTo(Math.cos(b) * r0, Math.sin(b) * r0);
+  }
+  ctx.stroke();
+  ctx.restore();
+  for (let i = 0; i < 8; i++) {
+    const a = -Math.PI / 2 + (i / 8) * Math.PI * 2 + clock * 0.2;
+    paintPetal(ctx, cx + Math.cos(a) * rx * 0.92, cy + Math.sin(a) * ry * 0.92, a, i % 2 ? core : pale, pale);
+  }
+  for (let i = 0; i < 12; i++) {
+    const a = clock * 0.75 + (i / 12) * Math.PI * 2;
+    paintPool(ctx, cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, 1.3, 1.3, i % 3 === 0 ? pale : core, 0.55, deep);
+  }
+}
+
+function drawCastRite(ctx: CanvasRenderingContext2D, s: GameState): void {
+  const cast = s.cast;
+  if (!cast) return;
+  const ink = spellInk(cast.spell);
+  paintCircleRite(ctx, Math.round(s.x), Math.round(s.y), ink.deep, ink.core, ink.pale, s.clock);
 }
 
 function drawSpell(ctx: CanvasRenderingContext2D, _sheets: Sheets, s: GameState): void {
   const cast = s.cast;
   if (!cast) return;
   const kind = SPELL_KIND[cast.spell];
+  const ink = spellInk(cast.spell);
   const dx = s.dir === "e" ? 1 : s.dir === "w" ? -1 : 0;
   const dy = s.dir === "s" ? 1 : s.dir === "n" ? -1 : 0;
   const t = Math.max(0, Math.min(1, cast.t));
+  paintSigil(ctx, cast.spell, s.x, s.y + 12, s.clock);
   let reach = 0;
-  if (kind === "bolt") {
-    const flying = t < 0.68;
-    reach = flying ? 8 + (t / 0.68) * 28 : 36;
-  } else if (kind === "strike") reach = 12;
-  else if (kind === "drip") reach = 6;
-  const handX = s.x + dx * 5;
-  const handY = s.y - 12;
-  const x = handX + dx * reach;
-  const y = handY + dy * (kind === "bolt" ? reach : kind === "strike" ? 4 : 0);
-  paintWorking(ctx, cast.spell, x, y, s.clock + t, kind === "burst");
-  const ink =
-    cast.spell === "ice" || cast.spell === "iceball"
-      ? ["#f7fbff", "#b9d4e6", "#4e7088"]
-      : cast.spell === "spark" || cast.spell === "bolt"
-        ? ["#fff6d4", "#e4c56a", "#7a5828"]
-        : cast.spell === "poison" || cast.spell === "drip"
-          ? ["#efe0c4", "#8a6240", "#3a2414"]
-          : cast.spell === "holy"
-            ? ["#fffaf0", "#f0ddb0", "#a88440"]
-            : ["#fff1d0", "#e09040", "#7a3014"];
-  const hx = Math.round(x);
-  const hy = Math.round(y);
-  const ox = Math.round(handX);
-  const oy = Math.round(handY);
-  for (let i = 1; i <= 6; i++) {
-    const u = i / 7;
-    ctx.fillStyle = ink[i % 3]!;
-    ctx.fillRect(Math.round(ox + (hx - ox) * u), Math.round(oy + (hy - oy) * u), 1, 1);
+  if (kind === "bolt") reach = t < 0.68 ? 8 + (t / 0.68) * 14 : 22;
+  else if (kind === "strike") reach = 8;
+  else if (kind === "drip") reach = 5;
+  else return;
+  const ox = s.x + dx * 6;
+  const oy = s.y - 12;
+  const hx = ox + dx * reach;
+  const hy = oy + dy * reach;
+  for (let i = 1; i <= 3; i++) {
+    const u = i / 4;
+    paintPool(ctx, ox + (hx - ox) * u, oy + (hy - oy) * u, 2, 2, ink.core, 0.32 * u, ink.deep);
   }
-  ctx.fillStyle = ink[1]!;
-  ctx.fillRect(ox, oy, 1, 1);
-  ctx.fillStyle = ink[0]!;
-  ctx.fillRect(ox, oy - 1, 1, 1);
+  paintSigil(ctx, cast.spell, hx, hy, s.clock + 1);
 }
 
 function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {

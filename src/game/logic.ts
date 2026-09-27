@@ -33,6 +33,7 @@ import {
   SPELL_COST,
   MANA_MAX,
   MAGIC_MAX,
+  onMagicPlot,
   type Animal,
   type Bird,
   type Reaper,
@@ -926,6 +927,7 @@ export function resolveAction(s: GameState): string {
     giveItem(s, fish);
     ensureFishing(s);
     s.fishing += 1;
+    s.catchFlash = 0.8;
     cost(6, 0.2);
     return `Caught a ${defOf(fish).name.toLowerCase()}. Fishing ${s.fishing}.${grant(s, "fishing", 14)}`;
   }
@@ -1300,6 +1302,7 @@ function moveAxis(s: GameState, dx: number, dy: number) {
 export function step(s: GameState, dt: number, input: Input) {
   const stepDt = Math.min(0.05, Math.max(0, dt));
   s.clock += stepDt;
+  if (s.catchFlash) s.catchFlash = Math.max(0, s.catchFlash - stepDt);
   ensureMagic(s);
   ensureSkills(s);
   ensureHealth(s);
@@ -1371,17 +1374,17 @@ export function step(s: GameState, dt: number, input: Input) {
     }
     const mass = totalMass(s);
     const crawl = s.downed || mass >= MASS_CAP - 0.05;
-    const canRun = input.run && !crawl && mass < MASS_RUN && s.stamina > 8;
+    const jogging = input.run && !crawl;
     const onCourt = s.y >= 232 && s.y < 528 && s.x >= 8 && s.x < 344;
     const wetDrag = onCourt && s.wet > 0.12 ? 1 - Math.min(0.22, s.wet * 0.22) : 1;
-    const speed = (crawl ? 22 : canRun ? 64 : 42) * wetDrag;
+    const speed = (crawl ? 22 : jogging ? 54 : 42) * wetDrag;
     if (mag > 0.08) {
       if (Math.abs(mx) > Math.abs(my)) s.dir = mx > 0 ? "e" : "w";
       else s.dir = my > 0 ? "s" : "n";
       moveAxis(s, mx * speed * stepDt, my * speed * stepDt);
       s.x = Math.max(8, Math.min(WORLD_W - 8, s.x));
       s.speed = speed;
-      if (canRun) s.stamina = Math.max(0, s.stamina - stepDt * (8 + mass * 0.35));
+      if (jogging) s.stamina = Math.max(8, s.stamina - stepDt * 2);
       else s.stamina = Math.min(100, s.stamina + stepDt * 3);
     } else {
       s.speed = 0;
@@ -1460,6 +1463,10 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     life.face = "need";
   }
 
+  if ((s.wing ?? 0) === 1) {
+    returnFromSvarga(s, dt);
+    return;
+  }
   if ((s.wing ?? 0) !== 0) {
     life.errand = null;
     life.route = [];
@@ -1539,7 +1546,7 @@ function walkToSvarga(s: GameState, dt: number): boolean {
     life.errand = null;
     life.chore = "";
     life.skip = "svarga";
-    life.skipUntil = s.clock + 8;
+    life.skipUntil = s.clock + 18;
     s.cross = { t: 0, wing: 1, x: 86, y: 212, dir: "e", name: "Svarga", moved: false };
     s.message = "He walks through the east gate into Svarga.";
     return true;
@@ -1549,8 +1556,45 @@ function walkToSvarga(s: GameState, dt: number): boolean {
   return true;
 }
 
+const HOME_GATE = { x: 40, y: 202 };
+
+function returnFromSvarga(s: GameState, dt: number): void {
+  const life = s.life;
+  if (life.skip === "svarga" && s.clock < life.skipUntil) {
+    s.speed = 0;
+    return;
+  }
+  if (life.chore !== "home") {
+    life.chore = "home";
+    life.route = [];
+    s.message = "He turns back toward the home land.";
+  }
+  const atGate = s.x < 110 && s.y > 170 && s.y < 260 && Math.hypot(s.x - HOME_GATE.x, s.y - HOME_GATE.y) <= 52;
+  if (atGate) {
+    s.speed = 0;
+    life.route = [];
+    life.chore = "";
+    life.errand = null;
+    life.skip = "svarga";
+    life.skipUntil = s.clock + 30;
+    s.cross = { t: 0, wing: 0, x: 266, y: 212, dir: "w", name: "the home land", moved: false };
+    s.message = "He walks back through the gate to the home land.";
+    return;
+  }
+  const step = followGoal(s, dt, 78, 208, 36);
+  if (step === "stuck") life.route = [];
+}
+
 function practiceMagic(s: GameState, dt: number): boolean {
   const life = s.life;
+  if ((s.wing ?? 0) !== 0) {
+    if (life.chore === "magic" || s.cast) {
+      life.chore = "";
+      life.route = [];
+      s.cast = null;
+    }
+    return false;
+  }
   if (s.cast || life.chore === "magic") {
     if (trainMagic(s, dt)) return true;
   }
@@ -1605,7 +1649,7 @@ function beginCast(s: GameState): void {
 const SEAL = { x: 172, y: 380 };
 
 function standOnSeal(s: GameState, dt: number): boolean {
-  if ((s.wing ?? 0) !== 0) return true;
+  if ((s.wing ?? 0) !== 0) return false;
   if (footBlocked(SEAL.x, SEAL.y)) return true;
   const life = s.life;
   if (Math.hypot(s.x - SEAL.x, s.y - SEAL.y) <= 4) {
@@ -1642,12 +1686,15 @@ function trainMagic(s: GameState, dt: number): boolean {
     if (s.cast.t < 1) return true;
     const name = liturgyName(s.cast.spell, s.wing ?? 0);
     s.magic = MAGIC_MAX;
-    const learned = grant(s, "magic", 10) + ((s.wing ?? 0) !== 0 ? grant(s, "ritual", 10) : "");
+    const onPlot = onMagicPlot(s.x, s.y, s.wing ?? 0);
+    const learned = onPlot ? grant(s, "magic", 10) : "";
     s.cast = null;
     life.face = "happy";
     life.emote = 1.3;
     life.pause = 0.12;
-    s.message = `He practices ${name}, for the fun of it. Magic ${s.magic}. Mana ${Math.round(s.mana)}.${learned}`;
+    s.message = onPlot
+      ? `He practices ${name} on the courtyard, the magic plot. Magic ${s.magic}. Mana ${Math.round(s.mana)}.${learned}`
+      : `The working fades. Magic is only trained on the courtyard.`;
     return true;
   }
   if (life.chore !== "magic") return false;
@@ -2148,18 +2195,17 @@ function stepWeather(s: GameState, dt: number) {
   s.weatherLeft -= dt;
   if (s.weatherLeft <= 0) {
     const roll = unitRand(s);
-    const hour = 6 + s.time * 16;
-    const next = roll < 0.46 ? "clear" : roll < 0.78 || hour < 8 ? "rain" : "storm";
+    const next = roll < 0.8 ? "clear" : roll < 0.95 ? "rain" : "storm";
     if (next !== s.weather) {
       s.message =
         next === "storm"
           ? "Thunder. Rain soaks the grass, the beds, and the trees."
           : next === "rain"
             ? "Rain. The soil, the plants, and the trees take the water."
-            : "The rain passes. The ground stays wet.";
+            : "The rain passes. The sun is back.";
     }
     s.weather = next;
-    s.weatherLeft = 16 + unitRand(s) * 22;
+    s.weatherLeft = next === "clear" ? 48 + unitRand(s) * 36 : 8 + unitRand(s) * 8;
   }
   if (s.weather === "clear") {
     s.wet = Math.max(0, s.wet - dt * 0.012);

@@ -127,7 +127,7 @@ function placeName(s: GameState): string {
   if (wing === -1) return "Naraka";
   if (Math.abs(s.x - 40) < 40 && s.y > 150 && s.y < 250) return "Naraka gate";
   if (Math.abs(s.x - 308) < 40 && s.y > 150 && s.y < 250) return "Svarga gate";
-  if (Math.hypot(s.x - 172, s.y - 380) < 30) return "Courtyard seal";
+  if (Math.hypot(s.x - 172, s.y - 380) < 30) return "Courtyard, magic plot";
   if (s.y < 168) return "Farm";
   if (s.y < 528) return "Courtyard";
   return "Below the yard";
@@ -1600,19 +1600,9 @@ export function AssayGame() {
             <button
               type="button"
               className={running ? "on" : ""}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.currentTarget.setPointerCapture(e.pointerId);
-                runHold.current = true;
-                setRunning(true);
-              }}
-              onPointerUp={() => {
-                runHold.current = false;
-                setRunning(false);
-              }}
-              onPointerCancel={() => {
-                runHold.current = false;
-                setRunning(false);
+              onClick={() => {
+                runHold.current = !runHold.current;
+                setRunning(runHold.current);
               }}
             >
               Run
@@ -1997,7 +1987,7 @@ export function AssayGame() {
                 <>
                   <span className="pin naraka" style={{ left: `${(40 / WORLD_W) * 100}%`, top: `${(210 / 528) * 100}%` }}>Naraka</span>
                   <span className="pin svarga" style={{ left: `${(308 / WORLD_W) * 100}%`, top: `${(210 / 528) * 100}%` }}>Svarga</span>
-                  <span className="pin seal" style={{ left: `${(172 / WORLD_W) * 100}%`, top: `${(380 / 528) * 100}%` }}>Seal</span>
+                  <span className="pin seal" style={{ left: `${(172 / WORLD_W) * 100}%`, top: `${(380 / 528) * 100}%` }}>Magic</span>
                   <span className="pin spot" style={{ left: `${(134 / WORLD_W) * 100}%`, top: `${(84 / 528) * 100}%` }}>Pond</span>
                   <span className="pin spot" style={{ left: `${(250 / WORLD_W) * 100}%`, top: `${(140 / 528) * 100}%` }}>House</span>
                 </>
@@ -2026,8 +2016,18 @@ export function AssayGame() {
                   <li>The seal in the courtyard is where he trains.</li>
                 </>
               )}
-              {s.wing === 1 && <li>The gate on the left of Svarga returns to the yard.</li>}
-              {s.wing === -1 && <li>The gate on the right of Naraka returns to the yard.</li>}
+              {s.wing === 1 && (
+                <>
+                  <li>The gate on the left of Svarga returns to the yard.</li>
+                  <li>Under the cliff is the home land, seen from heaven. The house, the pond lotus, the fields, and the seal mark it. A shaft of light falls from Svarga onto that seal.</li>
+                </>
+              )}
+              {s.wing === -1 && (
+                <>
+                  <li>The gate on the right of Naraka returns to the yard.</li>
+                  <li>Under the cliff is the ash court. The fire channel and the two posts mark it.</li>
+                </>
+              )}
             </ul>
             <button className="slot" style={{ width: "auto", padding: "6px 10px" }} onClick={() => { panelRef.current = null; setPanel(null); }}>
               Close
