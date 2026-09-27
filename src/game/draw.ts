@@ -648,12 +648,36 @@ export function drawWorld(
         }
       } else if ((n & 3) === 0) {
         const frame = Math.min(3, Math.floor(((t - 0.78) / 0.22) * 4));
-        const w = 1 + frame * 2;
-        ctx.fillStyle = `rgba(214, 232, 244, ${0.8 - frame * 0.18})`;
-        ctx.fillRect(x - (w >> 1), ground, w, 1);
-        if (frame > 0) ctx.fillRect(x, ground - 1, 1, 1);
-        if (frame > 1) ctx.fillRect(x - (w >> 1) - 1, ground + 1, 1, 1);
-        if (frame > 1) ctx.fillRect(x + (w >> 1) + 1, ground + 1, 1, 1);
+        const blot = (dx: number, dy: number, a: number, bright: boolean) => {
+          const px = x + dx;
+          const py = ground + dy;
+          if (px < 0 || py < 0 || px >= WORLD_W || py >= FARM_H) return;
+          ctx.fillStyle = bright ? `rgba(244, 250, 255, ${a})` : `rgba(176, 208, 224, ${a})`;
+          ctx.fillRect(px, py, 1, 1);
+        };
+        if (frame === 0) {
+          blot(0, 0, 0.95, true);
+          blot(-1, 0, 0.7, true);
+          blot(1, 0, 0.7, true);
+          blot(0, -1, 0.9, true);
+        } else if (frame === 1) {
+          blot(-2, -1, 0.8, true);
+          blot(2, -1, 0.8, true);
+          blot(0, -2, 0.85, true);
+          blot(-1, 0, 0.4, false);
+          blot(1, 0, 0.4, false);
+        } else if (frame === 2) {
+          blot(-3, 0, 0.45, false);
+          blot(3, 0, 0.45, false);
+          blot(-2, -1, 0.55, true);
+          blot(2, -1, 0.55, true);
+          blot(0, -1, 0.25, false);
+        } else {
+          blot(-4, 0, 0.22, false);
+          blot(4, 0, 0.22, false);
+          blot(-2, 0, 0.16, false);
+          blot(2, 0, 0.16, false);
+        }
       }
     }
   }
