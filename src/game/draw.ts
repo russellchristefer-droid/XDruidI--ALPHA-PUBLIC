@@ -373,6 +373,45 @@ function drawAnimal(
 const PLATE = 192;
 const FARM_H = MEADOW.y;
 
+function courtMagic(tx: number, ty: number): boolean {
+  const cx = 21;
+  const cy = 18;
+  if (ty <= 1 || ty >= 35 || tx <= 1 || tx >= 41) return false;
+  const dx = Math.abs(tx - cx);
+  const dy = Math.abs(ty - cy);
+  const man = dx + dy;
+  if (man === 0 || man === 4 || man === 9 || Math.max(dx, dy) === 3 || Math.max(dx, dy) === 7) return true;
+  if (dx === 6 && dy === 6) return true;
+  if ((dy === 0 && dx <= 11) || (dx === 0 && dy <= 11)) return true;
+  return false;
+}
+
+function drawCourtLife(ctx: CanvasRenderingContext2D, s: GameState): void {
+  const top = 232;
+  const pulse = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(s.clock * 2.4));
+  for (let ty = 0; ty < 37; ty++) {
+    for (let tx = 0; tx < 43; tx++) {
+      const x = tx * 8;
+      const y = top + ty * 8;
+      if (courtMagic(tx, ty)) {
+        ctx.fillStyle = `rgba(255, 214, 120, ${0.2 + pulse * 0.65})`;
+        ctx.fillRect(x + 3, y + 3, 2, 1);
+        ctx.fillStyle = `rgba(255, 236, 180, ${pulse * 0.8})`;
+        ctx.fillRect(x + 3, y + 2, 1, 1);
+        ctx.fillRect(x + 3, y + 4, 1, 1);
+        continue;
+      }
+      if (s.wet < 0.08 || ty <= 1 || tx <= 1) continue;
+      if (((tx * 13 + ty * 7) % 9) !== 0) continue;
+      if (((tx * 3 + ty) % 6) / 6 > s.wet) continue;
+      ctx.fillStyle = `rgba(64, 92, 108, ${0.22 + s.wet * 0.45})`;
+      ctx.fillRect(x + 2, y + 4, 4, 2);
+      ctx.fillStyle = `rgba(186, 206, 214, ${0.15 + s.wet * 0.25})`;
+      ctx.fillRect(x + 3, y + 4, 1, 1);
+    }
+  }
+}
+
 function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
   ctx.fillStyle = "#07091a";
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
@@ -445,6 +484,7 @@ export function drawWorld(
   const yard = sheets.yard;
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   if (sheets.farmExtend) ctx.drawImage(sheets.farmExtend, 0, PLATE);
+  drawCourtLife(ctx, s);
 
   ctx.save();
   ctx.beginPath();

@@ -1218,7 +1218,9 @@ export function step(s: GameState, dt: number, input: Input) {
     const mass = totalMass(s);
     const crawl = s.downed || mass >= MASS_CAP - 0.05;
     const canRun = input.run && !crawl && mass < MASS_RUN && s.stamina > 8;
-    const speed = crawl ? 22 : canRun ? 64 : 42;
+    const onCourt = s.y >= 232 && s.y < 528 && s.x >= 8 && s.x < 344;
+    const wetDrag = onCourt && s.wet > 0.12 ? 1 - Math.min(0.22, s.wet * 0.22) : 1;
+    const speed = (crawl ? 22 : canRun ? 64 : 42) * wetDrag;
     if (mag > 0.08) {
       if (Math.abs(mx) > Math.abs(my)) s.dir = mx > 0 ? "e" : "w";
       else s.dir = my > 0 ? "s" : "n";
