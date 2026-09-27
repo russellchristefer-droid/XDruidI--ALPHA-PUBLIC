@@ -440,9 +440,13 @@ function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
     [-14, -14], [-15, -8], [-14, -2], [-15, 6], [-13, 12],
     [14, -12], [15, -4], [14, 4], [15, 10],
   ];
-  const runes: Array<[number, number]> = [
-    [-10, -12], [-10, -4], [-10, 4], [-10, 12],
-    [9, -10], [9, -1], [9, 7], [9, 13],
+  const runes: Array<{ dx: number; dy: number; mark: Array<[number, number]> }> = [
+    { dx: -13, dy: -12, mark: [[1, 0], [0, 1], [2, 1], [1, 2]] },
+    { dx: -13, dy: -2, mark: [[0, 0], [1, 0], [2, 0], [1, 1]] },
+    { dx: -13, dy: 8, mark: [[0, 0], [2, 0], [1, 1], [1, 2]] },
+    { dx: 11, dy: -10, mark: [[0, 1], [1, 0], [2, 1], [1, 2]] },
+    { dx: 11, dy: 0, mark: [[1, 0], [0, 1], [2, 1], [1, 2]] },
+    { dx: 11, dy: 10, mark: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]] },
   ];
   for (const cx of gateXs(s.wing ?? 0)) {
     const cy = 202;
@@ -478,8 +482,16 @@ function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
     ctx.fillStyle = "#143024";
     ctx.fillRect(cx - 15, cy - 16, 2, 2);
     ctx.fillRect(cx + 13, cy - 14, 2, 2);
-    ctx.fillStyle = `rgba(236, 255, 210, ${0.4 + pulse * 0.55})`;
-    for (const [dx, dy] of runes) ctx.fillRect(cx + dx, cy + dy, 1, 1);
+    for (let i = 0; i < runes.length; i++) {
+      const rune = runes[i];
+      const glow = 0.45 + 0.55 * Math.sin(s.clock * 3 + i * 1.1);
+      const x = cx + rune.dx;
+      const y = cy + rune.dy;
+      ctx.fillStyle = `rgba(120, 255, 150, ${0.18 + glow * 0.28})`;
+      ctx.fillRect(x - 1, y - 1, 5, 5);
+      ctx.fillStyle = `rgba(236, 255, 214, ${0.55 + glow * 0.45})`;
+      for (const [dx, dy] of rune.mark) ctx.fillRect(x + dx, y + dy, 1, 1);
+    }
     for (let i = 0; i < 7; i++) {
       const a = s.clock * 2.2 + i * 0.9;
       ctx.fillStyle = i % 2 === 0 ? "#f4ffe8" : "#9ae6a0";
