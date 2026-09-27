@@ -1,4 +1,4 @@
-import { FISH_CROWN, FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Dir, type GameState, type Plot } from "./content.ts";
+import { FISH_CROWN, FISH_WATER, MEADOW, SEAM_ROCKS, TILE, VIEW_H, VIEW_W, WORLD_H, WORLD_W, defOf, type Dir, type GameState, type Plot } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { TOOL_ANIM, findItem } from "./logic.ts";
@@ -689,34 +689,34 @@ export function drawWorld(
 
   if (s.weather === "rain" || s.weather === "storm") {
     const storm = s.weather === "storm";
-    const drops = storm ? 150 : 90;
-    const landTop = 36;
-    const landH = Math.max(1, FARM_H - landTop);
+    const drops = storm ? 140 : 90;
+    const camY = Math.max(0, Math.min(WORLD_H - VIEW_H, Math.round(s.y - VIEW_H / 2)));
+    const span = VIEW_H - 8;
     for (let i = 0; i < drops; i++) {
       const n = (i * 1103515245 + 12345) >>> 0;
-      const cycle = (storm ? 0.45 : 0.7) + ((n >>> 16) % 16) / 100;
+      const cycle = (storm ? 0.38 : 0.55) + ((n >>> 16) % 12) / 100;
       const t = ((s.clock / cycle) + ((n >>> 8) % 1000) / 1000) % 1;
-      const x = n % WORLD_W;
-      const ground = landTop + ((n >>> 12) % landH);
+      const x = n % VIEW_W;
+      const ground = camY + 6 + ((n >>> 12) % Math.max(1, span));
       const fall = t < 0.78;
       if (fall) {
         const u = t / 0.78;
-        const y = Math.floor(ground - (1 - u) * (storm ? 36 : 26));
+        const y = Math.floor(ground - (1 - u) * (storm ? 28 : 20));
         const len = 2 + Math.floor(u * (storm ? 8 : 5));
         const fade = 0.55 + ((n >>> 24) % 30) / 100;
         for (let k = 0; k < len; k++) {
           const py = y - k;
           const px = x + (k >> 1);
-          if (py < 0 || py >= FARM_H || px < 0 || px >= WORLD_W) continue;
+          if (py < camY || py >= camY + VIEW_H || py >= FARM_H || px < 0 || px >= WORLD_W) continue;
           ctx.fillStyle = k < 2 ? `rgba(236, 244, 252, ${fade})` : `rgba(150, 186, 208, ${fade * 0.35})`;
           ctx.fillRect(px, py, 1, 1);
         }
-      } else if ((n & 3) === 0) {
+      } else if ((n & 3) === 0 && ground < FARM_H) {
         const frame = Math.min(3, Math.floor(((t - 0.78) / 0.22) * 4));
         const blot = (dx: number, dy: number, a: number, bright: boolean) => {
           const px = x + dx;
           const py = ground + dy;
-          if (px < 0 || py < 0 || px >= WORLD_W || py >= FARM_H) return;
+          if (px < 0 || py < camY || py >= camY + VIEW_H || py >= FARM_H || px >= WORLD_W) return;
           ctx.fillStyle = bright ? `rgba(244, 250, 255, ${a})` : `rgba(176, 208, 224, ${a})`;
           ctx.fillRect(px, py, 1, 1);
         };
