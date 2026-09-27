@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { MEADOW, SPOTS, footBlocked } from "./content.ts";
+import { FARMER_HOME, MEADOW, SPOTS, createGame, footBlocked, placeFarmer } from "./content.ts";
 
 function canWalk(from: { x: number; y: number }, to: { x: number; y: number }): boolean {
   const key = (p: { x: number; y: number }) => `${p.x},${p.y}`;
@@ -33,6 +33,20 @@ test("the original painting is back on the house square", () => {
   assert.ok(shed);
   assert.equal(shed.x, 236);
   assert.equal(footBlocked(260, 110), true);
+});
+
+test("a farmer in the void is put back on the farm", () => {
+  const s = createGame();
+  assert.equal(s.x, FARMER_HOME.x);
+  assert.equal(s.y, FARMER_HOME.y);
+  assert.equal(footBlocked(s.x, s.y), false);
+  s.x = 180;
+  s.y = 640;
+  s.life.ty = 640;
+  placeFarmer(s);
+  assert.equal(s.x, FARMER_HOME.x);
+  assert.equal(s.y, FARMER_HOME.y);
+  assert.ok(s.y < MEADOW.y);
 });
 
 test("the meadow is void and the farm is the rock", () => {

@@ -13,6 +13,7 @@ import {
   footBlocked,
   isNight,
   itemMass,
+  placeFarmer,
   type Animal,
   type CropId,
   type GameState,
@@ -1174,6 +1175,7 @@ function moveAxis(s: GameState, dx: number, dy: number) {
 export function step(s: GameState, dt: number, input: Input) {
   const stepDt = Math.min(0.05, Math.max(0, dt));
   s.clock += stepDt;
+  placeFarmer(s);
   if (s.cat.petCd > 0) s.cat.petCd = Math.max(0, s.cat.petCd - stepDt);
   stepFlowers(s, stepDt);
   if (input.frozen) {

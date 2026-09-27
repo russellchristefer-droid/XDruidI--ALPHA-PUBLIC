@@ -712,6 +712,27 @@ export function itemMass(it: Item): number {
   return m;
 }
 
+export const FARMER_HOME = { x: 172, y: 132 } as const;
+
+export function placeFarmer(s: GameState): void {
+  if (s.y >= MEADOW.y - 16) {
+    s.x = FARMER_HOME.x;
+    s.y = FARMER_HOME.y;
+    if (s.life) {
+      s.life.tx = FARMER_HOME.x;
+      s.life.ty = FARMER_HOME.y;
+      s.life.route = [];
+      s.life.pause = 0.4;
+    }
+    return;
+  }
+  if (s.life && s.life.ty >= MEADOW.y - 16) {
+    s.life.tx = s.x;
+    s.life.ty = s.y;
+    s.life.route = [];
+  }
+}
+
 export function placeHerd(s: GameState): void {
   const home = {
     cow: { x: 80, y: 112 },
@@ -735,6 +756,7 @@ export function placeHerd(s: GameState): void {
     s.cat.mode = "sit";
     s.cat.pause = 1.2;
   }
+  placeFarmer(s);
 }
 
 /** Farm pond. The meadow dock is gone with the meadow. */
@@ -878,8 +900,8 @@ export function createGame(): GameState {
   pack[16] = boots;
   return {
     version: 1,
-    x: 180,
-    y: 148,
+    x: FARMER_HOME.x,
+    y: FARMER_HOME.y,
     dir: "s",
     speed: 0,
     stamina: 100,
