@@ -1,6 +1,7 @@
-import { useEffect, useRef, type MouseEvent, type PointerEvent, type RefObject } from "react";
+import { useEffect, useState, useRef, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import type { Rect } from "@/game/content";
 import type { SpriteDef } from "@/game/dev-sprites";
+import { ASSET_GROUPS, ART, assetFile } from "@/game/assets";
 import { editorOrder, GRID, type SelMode } from "@/game/tiles";
 
 const MODES: { id: SelMode; label: string }[] = [
@@ -31,7 +32,9 @@ const TOOLS: { id: string; label: string }[] = [
   { id: "back", label: "Back" },
 ];
 
-/** This builder session only. A published build never shows it. */
+function assetLabel(id: string): string {
+  return id.replace(/[-_]/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+}
 export function builderDevAllowed(): boolean {
   if (typeof window === "undefined") return false;
   if (!import.meta.env.DEV) return false;
@@ -60,6 +63,14 @@ export function MapEditor({
   onUpload,
   onLift,
   onTool,
+  placed,
+  picked,
+  onArmAsset,
+  onPickPlaced,
+  onScale,
+  onRole,
+  onReplace,
+  onNote,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -82,11 +93,26 @@ export function MapEditor({
   onUpload: (file: File) => void;
   onLift: () => void;
   onTool: (id: string) => void;
+  placed: { id: string; x: number; y: number; role?: string; note?: string }[];
+  picked: number;
+  onArmAsset: (id: string, w: number, h: number) => void;
+  onPickPlaced: (index: number) => void;
+  onScale: (dir: 1 | -1) => void;
+  onRole: () => void;
+  onReplace: () => void;
+  onNote: (text: string) => void;
 }) {
   const order = sel && note.trim() ? editorOrder(sel, note) : "";
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const liveRef = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const sizes = useRef<Record<string, { w: number; h: number }>>({});
+  const [group, setGroup] = useState("animals");
+  const [query, setQuery] = useState("");
+  const [assetNote, setAssetNote] = useState("");
+  useEffect(() => {
+    setAssetNote(placed[picked]?.note ?? "");
+  }, [picked, placed]);
   useEffect(() => {
     if (open && sel) promptRef.current?.focus();
   }, [open, sel]);
@@ -227,6 +253,83 @@ export function MapEditor({
                   {...fire(() => onArm(s.id))}
                 >
                   <img src={`${s.file}?v=${rev}`} alt={s.id} />
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="map-edit-hint">Assets. Pick one, then Stamp it on the grid.</p>
+          <select className="asset-find" value={group} aria-label="Asset group" onChange={(e) => setGroup(e.target.value)}>
+            <option value="all">All</option>
+            {ASSET_GROUPS.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+          <input
+            className="asset-find"
+            value={query}
+            placeholder="Find an asset"
+            aria-label="Find an asset"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+          <div className="sprite-tray asset-tray">
+            {(group === "all" ? ASSET_GROUPS.flatMap((g) => g.keys) : (ASSET_GROUPS.find((g) => g.id === group)?.keys ?? []))
+              .filter((id) => assetLabel(id).toLowerCase().includes(query.trim().toLowerCase()))
+              .map((id) => {
+                const file = assetFile(id);
+                if (!file) return null;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={armed === id ? "on" : ""}
+                    title={assetLabel(id)}
+                    {...fire(() => {
+                      const size = sizes.current[id] ?? { w: 32, h: 32 };
+                      onArmAsset(id, size.w, size.h);
+                    })}
+                  >
+                    <img
+                      src={`${file}?v=${ART}`}
+                      alt={assetLabel(id)}
+                      onLoad={(e) => {
+                        sizes.current[id] = { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight };
+                      }}
+                    />
+                  </button>
+                );
+              })}
+          </div>
+          <div className="map-edit-row">
+            <button type="button" {...fire(() => onScale(1))}>
+              Bigger
+            </button>
+            <button type="button" {...fire(() => onScale(-1))}>
+              Smaller
+            </button>
+            <button type="button" {...fire(onReplace)}>
+              Replace
+            </button>
+            <button type="button" {...fire(onRole)}>
+              {placed[picked]?.role === "solid" ? "Solid" : placed[picked]?.role === "use" ? "Use" : "Decor"}
+            </button>
+          </div>
+          <input
+            className="asset-find"
+            value={assetNote}
+            placeholder="What this placed asset does"
+            aria-label="Asset note"
+            onChange={(e) => setAssetNote(e.target.value)}
+            onBlur={() => onNote(assetNote)}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+          {placed.length > 0 && (
+            <div className="asset-list">
+              {placed.map((p, i) => (
+                <button key={`${p.id}-${i}`} type="button" className={picked === i ? "on" : ""} {...fire(() => onPickPlaced(i))}>
+                  {assetLabel(p.id)} · {p.x},{p.y} · {p.role || "decor"}
                 </button>
               ))}
             </div>

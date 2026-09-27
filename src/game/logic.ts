@@ -22,6 +22,7 @@ import {
   type PanelId,
   type Plot,
 } from "./content.ts";
+import { assetUseAt } from "./dev-sprites.ts";
 
 export type Input = { mx: number; my: number; run: boolean; frozen: boolean };
 export type InteractResult = { msg?: string; panel?: PanelId; save?: boolean; summary?: boolean };
@@ -501,8 +502,9 @@ export function promptAt(s: GameState, px: number, py: number): string {
 }
 
 export function examineAt(s: GameState, px: number, py: number): string {
+  const used = assetUseAt(px, py);
   const t = pickTarget(s, px, py);
-  if (!t) return "Dirt, grass, and the fence line.";
+  if (!t) return used ?? "Dirt, grass, and the fence line.";
   if (t.kind === "plot") {
     const p = s.plots.find((pl) => pl.id === t.id)!;
     if (!p.crop || p.stage === 0) {

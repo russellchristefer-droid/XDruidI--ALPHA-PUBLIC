@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { placeBounds, type SpriteBook, type SpriteDef, type SpritePlace } from "@/game/dev-sprites";
+import { placeBounds, SCALES, type SpriteBook, type SpriteDef, type SpritePlace, type SpriteRole } from "@/game/dev-sprites";
 
 const FILE = "public/game/sprites/manifest.json";
 
@@ -69,6 +69,31 @@ export const saveDevSprite = createServerFn({ method: "POST" })
     return def;
   });
 
+export const pinDevAsset = createServerFn({ method: "POST" })
+  .validator((data: { id?: string; file?: string; w?: number; h?: number }) => {
+    const id = String(data?.id ?? "");
+    const file = String(data?.file ?? "");
+    const w = Math.round(Number(data?.w));
+    const h = Math.round(Number(data?.h));
+    if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new Error("That asset name is not usable.");
+    if (!/^\/game\/[a-zA-Z0-9_./-]+$/.test(file)) throw new Error("That file is not in the game.");
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w < 1 || h < 1 || w > 2000 || h > 2000) throw new Error("That asset has no size.");
+    return { id, file, w, h };
+  })
+  .handler(async ({ data }): Promise<SpriteDef> => {
+    const book = await readBook();
+    const def: SpriteDef = { id: data.id, file: data.file, w: data.w, h: data.h };
+    const prev = book.library.find((d) => d.id === data.id);
+    if (prev) {
+      prev.file = def.file;
+      prev.w = def.w;
+      prev.h = def.h;
+    } else book.library.push(def);
+    book.rev += 1;
+    await writeBook(book);
+    return def;
+  });
+
 export const placeDevSprite = createServerFn({ method: "POST" })
   .validator((data: { id?: string; x?: number; y?: number }) => {
     const id = String(data?.id ?? "");
@@ -118,7 +143,10 @@ function cleanPlace(place: SpritePlace): SpritePlace | null {
   const x = Math.round(Number(place?.x));
   const y = Math.round(Number(place?.y));
   const rot = Number(place?.rot);
+  const scale = Number(place?.scale);
+  const role = place?.role;
   if (!id || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  const kept: SpriteRole = role === "solid" || role === "use" ? role : "decor";
   return {
     id,
     x,
@@ -126,6 +154,9 @@ function cleanPlace(place: SpritePlace): SpritePlace | null {
     flipX: !!place.flipX,
     flipY: !!place.flipY,
     rot: rot === 90 || rot === 180 || rot === 270 ? rot : 0,
+    scale: SCALES.includes(scale as (typeof SCALES)[number]) ? scale : 1,
+    role: kept,
+    note: String(place?.note ?? "").slice(0, 140),
   };
 }
 

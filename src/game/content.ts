@@ -745,6 +745,12 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
+let extraFeet: (x: number, y: number) => boolean = () => false;
+
+export function setExtraFeet(fn: (x: number, y: number) => boolean): void {
+  extraFeet = fn;
+}
+
 export function overlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
@@ -766,6 +772,7 @@ export function footBlocked(x: number, y: number): boolean {
   }
   if (overlap(box, FISH_WATER)) return true;
   if (overlap(box, FISH_CROWN)) return true;
+  if (extraFeet(x, y)) return true;
   return false;
 }
 

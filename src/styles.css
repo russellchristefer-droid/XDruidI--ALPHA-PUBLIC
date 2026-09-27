@@ -649,6 +649,43 @@
   image-rendering: pixelated;
 }
 
+.asset-find {
+  width: 100%;
+  box-sizing: border-box;
+  background: #1c1612;
+  color: #f3e6cf;
+  border: 2px solid #c4a574;
+  padding: 4px 6px;
+  font: inherit;
+}
+
+.asset-tray {
+  max-height: 132px;
+  overflow: auto;
+}
+
+.asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 96px;
+  overflow: auto;
+}
+
+.asset-list button {
+  text-align: left;
+  font-size: 11px;
+  background: #1c1612;
+  border: 2px solid #c4a574;
+  color: #f3e6cf;
+  padding: 3px 6px;
+}
+
+.asset-list button.on {
+  border-color: #ffe14a;
+  color: #ffe14a;
+}
+
 .map-edit-row {
   display: flex;
   gap: 6px;

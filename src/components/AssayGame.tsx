@@ -54,8 +54,9 @@ import {
 import { BAK1, BAK2, readSaveFrom, writeSave, type SaveStore } from "@/game/save";
 import { MapEditor, builderDevAllowed } from "@/components/MapEditor";
 import { draftDevPrompt } from "@/game/draft-prompt";
-import { loadDevSprites, snapSprite, devSpriteBook, placeBounds, setSpriteGhost, setSpritePick, spriteIndexAt, type SpriteBook, type SpritePlace } from "@/game/dev-sprites";
-import { liftDevSprite, replaceDevPlaced, saveDevSprite } from "@/game/dev-sprite-api";
+import { loadDevSprites, snapSprite, devSpriteBook, placeBounds, setSpriteGhost, setSpritePick, spriteIndexAt, fitScale, SCALES, type SpriteBook, type SpritePlace } from "@/game/dev-sprites";
+import { liftDevSprite, pinDevAsset, replaceDevPlaced, saveDevSprite } from "@/game/dev-sprite-api";
+import { assetFile } from "@/game/assets";
 import { copyText } from "@/game/copy-text";
 import type { Rect } from "@/game/content";
 import {
@@ -269,6 +270,7 @@ export function AssayGame() {
   const [drafting, setDrafting] = useState(false);
   const [sprites, setSprites] = useState<SpriteBook>({ rev: 0, library: [], placed: [] });
   const [armed, setArmed] = useState<string | null>(null);
+  const [stampIx, setStampIx] = useState(-1);
   const armedRef = useRef<string | null>(null);
   const stampRef = useRef(-1);
   const histRef = useRef<SpritePlace[][]>([]);
@@ -852,14 +854,84 @@ export function AssayGame() {
       const [item] = all.splice(i, 1);
       all.push(item);
       stampRef.current = all.length - 1;
+      setStampIx(all.length - 1);
       setSpritePick(all.length - 1);
     } else if (id === "back") {
       const [item] = all.splice(i, 1);
       all.unshift(item);
       stampRef.current = 0;
+      setStampIx(0);
       setSpritePick(0);
     } else return;
     void editApi.current.commit(all, "Updated the sprite.");
+  };
+  const editPlaced = (change: (place: SpritePlace, all: SpritePlace[]) => void, msg: string) => {
+    const all = devSpriteBook().placed.map((p) => ({ ...p }));
+    const i = stampRef.current;
+    if (i < 0 || !all[i]) {
+      setEditStatus("Select a placed asset first.");
+      return;
+    }
+    change(all[i], all);
+    void editApi.current.commit(all, msg);
+  };
+  const onArmAsset = (id: string, w: number, h: number) => {
+    const file = assetFile(id);
+    if (!file) {
+      setEditStatus("That asset is missing.");
+      return;
+    }
+    setEditStatus(`Loading ${id}…`);
+    pinDevAsset({ data: { id, file, w, h } })
+      .then(() => loadDevSprites())
+      .then((book) => {
+        setSprites(book);
+        armedRef.current = id;
+        setArmed(id);
+        editorRef.current.mode = "sprite";
+        setEditMode("sprite");
+        setEditStatus(`${id} is ready. Click the yard to place it.`);
+      })
+      .catch(() => setEditStatus("That asset did not load."));
+  };
+  const onScale = (dir: 1 | -1) => {
+    editPlaced((place) => {
+      const cur = SCALES.indexOf((place.scale ?? 1) as (typeof SCALES)[number]);
+      const next = SCALES[Math.max(0, Math.min(SCALES.length - 1, (cur < 0 ? 2 : cur) + dir))];
+      place.scale = next;
+    }, dir > 0 ? "Made it bigger." : "Made it smaller.");
+  };
+  const onRole = () => {
+    const order = ["decor", "solid", "use"] as const;
+    editPlaced((place) => {
+      const cur = order.indexOf(place.role === "solid" || place.role === "use" ? place.role : "decor");
+      place.role = order[(cur + 1) % order.length];
+    }, "Changed what the asset does.");
+  };
+  const onReplace = () => {
+    const id = armedRef.current;
+    if (!id) {
+      setEditStatus("Pick the asset that should replace this one.");
+      return;
+    }
+    editPlaced((place) => {
+      place.id = id;
+    }, `Replaced it with ${id}.`);
+  };
+  const onAssetNote = (text: string) => {
+    editPlaced((place) => {
+      place.note = text.slice(0, 140);
+    }, "Saved what it does.");
+  };
+  const onPickPlaced = (i: number) => {
+    const place = devSpriteBook().placed[i];
+    if (!place) return;
+    const def = devSpriteBook().library.find((d) => d.id === place.id);
+    stampRef.current = i;
+    setStampIx(i);
+    setSpritePick(i);
+    setEditSel(placeBounds(place, def));
+    setEditStatus(`Selected ${place.id}.`);
   };
 
   return (
@@ -911,12 +983,14 @@ export function AssayGame() {
               }
               const at = snapSprite(w.x, w.y);
               const def = devSpriteBook().library.find((d) => d.id === id);
-              const next = [...devSpriteBook().placed.map((p) => ({ ...p })), { id, x: at.x, y: at.y, rot: 0 as const }];
+              const scale = def ? fitScale(def.w, def.h) : 1;
+              const next = [...devSpriteBook().placed.map((p) => ({ ...p })), { id, x: at.x, y: at.y, rot: 0 as const, scale, role: "decor" as const, note: "" }];
               void editApi.current.commit(next, `Stamped ${id} on the grid at ${at.x}, ${at.y}.`).then(() => {
                 const i = devSpriteBook().placed.length - 1;
                 stampRef.current = i;
+                setStampIx(i);
                 setSpritePick(i);
-                if (def) setEditSel({ x: at.x, y: at.y, w: def.w, h: def.h });
+                if (def) setEditSel(placeBounds({ id, x: at.x, y: at.y, scale }, def));
               });
             } else if (ed.mode === "select" || ed.mode === "erase" || ed.mode === "move") {
               const i = spriteIndexAt(w.x, w.y);
@@ -929,6 +1003,7 @@ export function AssayGame() {
               const box = placeBounds(place, def);
               if (ed.mode === "erase") {
                 stampRef.current = -1;
+                setStampIx(-1);
                 setSpritePick(-1);
                 void editApi.current.commit(
                   devSpriteBook().placed.filter((_, n) => n !== i).map((p) => ({ ...p })),
@@ -937,6 +1012,7 @@ export function AssayGame() {
                 return;
               }
               stampRef.current = i;
+              setStampIx(i);
               setSpritePick(i);
               setEditSel(box);
               if (ed.mode === "move") {
@@ -1192,12 +1268,21 @@ export function AssayGame() {
                 histRef.current.push(before);
                 redoRef.current = [];
                 stampRef.current = -1;
+                setStampIx(-1);
                 setSpritePick(-1);
                 return refreshSprites("Lifted sprites inside the selection.");
               })
               .catch(() => setEditStatus("Nothing lifted."));
           }}
           onTool={onTool}
+          placed={sprites.placed}
+          picked={stampIx}
+          onArmAsset={onArmAsset}
+          onPickPlaced={onPickPlaced}
+          onScale={onScale}
+          onRole={onRole}
+          onReplace={onReplace}
+          onNote={onAssetNote}
           onBlock={(blocked) => {
             if (!editSel) {
               setEditStatus("Select a place on the yard first.");

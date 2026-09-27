@@ -1,7 +1,8 @@
-import { WORLD_H, WORLD_W } from "./content.ts";
+import { setExtraFeet, WORLD_H, WORLD_W } from "./content.ts";
 import { GRID } from "./tiles.ts";
 
 export type SpriteDef = { id: string; file: string; w: number; h: number };
+export type SpriteRole = "decor" | "solid" | "use";
 export type SpritePlace = {
   id: string;
   x: number;
@@ -9,6 +10,9 @@ export type SpritePlace = {
   flipX?: boolean;
   flipY?: boolean;
   rot?: 0 | 90 | 180 | 270;
+  scale?: number;
+  role?: SpriteRole;
+  note?: string;
 };
 export type SpriteBook = { rev: number; library: SpriteDef[]; placed: SpritePlace[] };
 
@@ -30,11 +34,21 @@ export function snapSprite(x: number, y: number): { x: number; y: number } {
   };
 }
 
+export const SCALES = [0.25, 0.5, 1, 2, 3, 4] as const;
+
+export function fitScale(w: number, h: number): number {
+  const m = Math.max(w, h);
+  if (m <= 48) return 1;
+  if (m <= 128) return 0.5;
+  return 0.25;
+}
+
 export function placeBounds(place: SpritePlace, def: { w: number; h: number } | undefined): { x: number; y: number; w: number; h: number } {
+  const scale = place.scale && SCALES.includes(place.scale as (typeof SCALES)[number]) ? place.scale : 1;
+  const dw = Math.max(1, Math.round((def?.w ?? GRID) * scale));
+  const dh = Math.max(1, Math.round((def?.h ?? GRID) * scale));
   const swap = place.rot === 90 || place.rot === 270;
-  const w = Math.max(GRID, swap ? def?.h ?? GRID : def?.w ?? GRID);
-  const h = Math.max(GRID, swap ? def?.w ?? GRID : def?.h ?? GRID);
-  return { x: place.x, y: place.y, w, h };
+  return { x: place.x, y: place.y, w: swap ? dh : dw, h: swap ? dw : dh };
 }
 
 export function spriteIndexAt(x: number, y: number): number {
@@ -105,7 +119,10 @@ export function devSpriteLayers(): { y: number; paint: (ctx: CanvasRenderingCont
           ctx.translate(box.x + box.w / 2, box.y + box.h / 2);
           ctx.rotate(((at.rot ?? 0) * Math.PI) / 180);
           ctx.scale(at.flipX ? -1 : 1, at.flipY ? -1 : 1);
-          ctx.drawImage(img, Math.round(-def.w / 2), Math.round(-def.h / 2));
+          const scale = at.scale && SCALES.includes(at.scale as (typeof SCALES)[number]) ? at.scale : 1;
+          const dw = Math.max(1, Math.round(def.w * scale));
+          const dh = Math.max(1, Math.round(def.h * scale));
+          ctx.drawImage(img, Math.round(-dw / 2), Math.round(-dh / 2), dw, dh);
           ctx.restore();
           if (index === picked || ghost?.index === index) {
             ctx.save();
@@ -118,3 +135,27 @@ export function devSpriteLayers(): { y: number; paint: (ctx: CanvasRenderingCont
     ];
   });
 }
+
+export function assetUseAt(x: number, y: number): string | null {
+  for (let i = book.placed.length - 1; i >= 0; i--) {
+    const place = book.placed[i];
+    if (place.role !== "use") continue;
+    const def = book.library.find((d) => d.id === place.id);
+    const box = placeBounds(place, def);
+    if (x < box.x || x >= box.x + box.w || y < box.y || y >= box.y + box.h) continue;
+    const note = place.note?.trim();
+    return note ? `${place.id}. ${note}` : `${place.id}. It is set to be used.`;
+  }
+  return null;
+}
+
+setExtraFeet((x, y) => {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  for (const place of book.placed) {
+    if (place.role !== "solid") continue;
+    const def = book.library.find((d) => d.id === place.id);
+    const b = placeBounds(place, def);
+    if (box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y) return true;
+  }
+  return false;
+});

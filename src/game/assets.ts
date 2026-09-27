@@ -75,6 +75,26 @@ const URLS: Record<string, string> = {
   landWater: art("/game/land/water.png"),
 };
 
+export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
+  { id: "world", label: "World", keys: ["yard", "meadow", "path", "occlude", "house", "rocks", "meadowDress"] },
+  { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater"] },
+  { id: "druid", label: "Druid", keys: ["idle", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
+  { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "bee", "butterfly"] },
+  { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
+  { id: "covers", label: "Covers", keys: ["tree-nw", "tree-n", "tree-ne", "tree-e", "tree-sw", "tree-s", "tree-se", "bush-w", "bush-e"] },
+  { id: "fx", label: "Effects", keys: ["emoji", "fxHearts", "fxHeartsPink", "fxStars", "fxBuff", "fxDebuff", "fxTired", "fxBlood", "fxMagic", "res"] },
+];
+
+export function assetIds(): string[] {
+  return Object.keys(URLS);
+}
+
+export function assetFile(id: string): string | null {
+  const url = URLS[id];
+  if (!url) return null;
+  return url.split("?")[0] ?? null;
+}
+
 export type Sheets = Record<string, HTMLImageElement>;
 
 export function loadSheets(): Promise<Sheets> {
