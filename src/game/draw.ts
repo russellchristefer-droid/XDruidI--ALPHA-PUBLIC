@@ -835,13 +835,13 @@ export function drawWorld(
   for (const layer of devSpriteLayers()) {
     queue.push({ y: layer.y, paint: () => layer.paint(ctx) });
   }
-  queue.sort((a, b) => a.y - b.y);
-  for (const d of queue) d.paint();
-  if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   if (sheets.farmExtend) {
     ctx.drawImage(sheets.farmExtend, 0, 0, 160, 8, 0, 184, 160, 8);
     ctx.drawImage(sheets.farmExtend, 192, 0, WORLD_W - 192, 8, 192, 184, WORLD_W - 192, 8);
   }
+  queue.sort((a, b) => a.y - b.y);
+  for (const d of queue) d.paint();
+  if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   if (sheets.campfire) drawCampfire(ctx, sheets.campfire, s.clock);
   drawSideGates(ctx, s);
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y))) paintPlayer(ctx, sheets, s);

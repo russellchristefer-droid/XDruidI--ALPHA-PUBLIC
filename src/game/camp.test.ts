@@ -52,7 +52,8 @@ test("a farmer in the void is put back on the farm", () => {
 
 test("the meadow is void and the farm is the rock", () => {
   assert.equal(MEADOW.y, 528);
-  assert.equal(footBlocked(172, 160), false);
+  assert.equal(footBlocked(172, 160), true);
+  assert.equal(footBlocked(172, 176), true);
   assert.equal(footBlocked(180, 180), false);
   assert.equal(footBlocked(80, 180), true);
   assert.equal(footBlocked(180, 300), false);
@@ -64,7 +65,7 @@ test("the meadow is void and the farm is the rock", () => {
   assert.equal(footBlocked(304, 112), false);
   assert.equal(canWalk({ x: 172, y: 160 }, { x: 180, y: 900 }), false);
   assert.equal(canWalk({ x: 172, y: 148 }, { x: 64, y: 108 }), true);
-  assert.equal(canWalk({ x: 172, y: 180 }, { x: 80, y: 300 }), true);
+  assert.equal(canWalk({ x: 180, y: 180 }, { x: 80, y: 300 }), true);
 });
 
 test("sidewalk ends cross onto a matching land", () => {

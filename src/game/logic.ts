@@ -1878,14 +1878,14 @@ function gateRoute(from: { x: number; y: number }, goal: { x: number; y: number 
   };
   if (south(from.y) !== south(goal.y)) {
     if (south(from.y)) {
-      pts.push({ x: 172, y: 208 }, { x: 172, y: 176 }, { x: 172, y: 156 });
+      pts.push({ x: 180, y: 208 }, { x: 180, y: 176 }, { x: 180, y: 156 });
       if (Math.abs(goal.x - 172) > 24) {
         if (goal.x > 260) pts.push({ x: 276, y: 148 }, { x: 300, y: 130 });
         else pts.push({ x: 172, y: 148 });
       }
     } else {
       if (Math.abs(from.x - 172) > 24) approach();
-      pts.push({ x: 172, y: 156 }, { x: 172, y: 176 }, { x: 172, y: 208 });
+      pts.push({ x: 180, y: 156 }, { x: 180, y: 176 }, { x: 180, y: 208 });
     }
   } else if (!south(from.y) && Math.abs(from.x - goal.x) > 48) approach();
   pts.push(goal);
