@@ -509,8 +509,7 @@ function verb(s: GameState, t: Target): string {
     return `Tend ${p.crop}`;
   }
   if (t.kind === "well") return toolKind(s) === "water" ? "Draw well" : "Wash at well";
-  if (t.kind === "pond") return "Draw pond";
-  if (t.kind === "fish") return hasRod(s) ? "Cast the line" : "Fishing dock";
+  if (t.kind === "pond") return hasRod(s) ? "Cast into the pond" : toolKind(s) === "water" ? "Draw pond" : "Farm pond";
   if (t.kind === "tub") {
     if (s.downed) return "Climb into the tub";
     return isNight(s.time) ? "Sleep until dawn" : "Wash in the tub";
@@ -636,7 +635,6 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (t.kind === "plot") return usePlot(s, t.id);
   if (t.kind === "well") return useWell(s);
   if (t.kind === "pond") return usePond(s);
-  if (t.kind === "fish") return useFish(s);
   if (t.kind === "tub") return useTub(s);
   if (t.kind === "fire") return useFire(s);
   if (t.kind === "hearth") {
@@ -704,8 +702,9 @@ function useWell(s: GameState): InteractResult {
 }
 
 function usePond(s: GameState): InteractResult {
+  if (hasRod(s)) return startAct(s, "fish", "pond", 1.5);
   const it = active(s);
-  if (!it || defOf(it).tool !== "water") return { msg: "Requires the watering can." };
+  if (!it || defOf(it).tool !== "water") return { msg: "Equip the fishing rod, or a watering can." };
   if ((it.water ?? 0) >= (defOf(it).waterMax ?? 0)) return { msg: "The can is already full." };
   return startAct(s, "fill", "pond");
 }
@@ -715,11 +714,6 @@ function hasRod(s: GameState): boolean {
   if (hand && defOf(hand).tool === "rod") return true;
   const it = active(s);
   return !!it && defOf(it).tool === "rod";
-}
-
-function useFish(s: GameState): InteractResult {
-  if (!hasRod(s)) return { msg: "Equip the fishing rod." };
-  return startAct(s, "fish", "fishdock", 1.5);
 }
 
 function useTub(s: GameState): InteractResult {
@@ -1476,8 +1470,8 @@ function listChores(s: GameState): Chore[] {
   const rod = toolItem(s, "rod");
   const fishHeld = s.pack.filter((p) => p?.defId === "fish").length;
   if (rod && fishHeld < 3 && s.pack.some((p) => p === null)) {
-    const dock = SPOTS.find((sp) => sp.id === "fishdock")!;
-    out.push({ id: "fish", x: dock.x + dock.w / 2, y: dock.y + dock.h / 2, hold: rod.id, say: "He casts from the dock." });
+    const pond = SPOTS.find((sp) => sp.id === "pond")!;
+    out.push({ id: "fish", x: pond.x + pond.w / 2, y: pond.y + pond.h / 2, hold: rod.id, say: "He casts into the pond." });
   }
   const catchFish = s.pack.find((p) => p?.defId === "fish");
   if (catchFish && s.life.hunger > 36 && produceItem(s)?.defId === "fish") {

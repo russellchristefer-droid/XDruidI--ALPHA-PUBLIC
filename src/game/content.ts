@@ -129,7 +129,7 @@ export const DEFS: Record<string, Def> = {
     stack: false,
     tool: "rod",
     icon: T(64, 32),
-    blurb: "Cast from the fishing dock. The line needs open water.",
+    blurb: "Cast into the farm pond. The line needs open water.",
   },
   loaf: {
     id: "loaf",
@@ -617,7 +617,7 @@ export type GameState = {
   bolts: number;
   life: Life;
   auto: boolean;
-  /** Successful casts from the meadow dock. */
+  /** Successful casts into the farm pond. */
   fishing: number;
   /** -1 west copy, 0 home, 1 east copy. */
   wing: -1 | 0 | 1;
@@ -659,7 +659,6 @@ export const SOLIDS: Rect[] = [
 export const SPOTS: { id: string; name: string; kind: string; x: number; y: number; w: number; h: number }[] = [
   { id: "well", name: "Well", kind: "well", x: 158, y: 58, w: 42, h: 50 },
   { id: "pond", name: "Pond", kind: "pond", x: 110, y: 68, w: 50, h: 34 },
-  { id: "fishdock", name: "Fishing dock", kind: "fish", x: 118, y: 78, w: 28, h: 16 },
   { id: "tub", name: "Bathtub", kind: "tub", x: 92, y: 32, w: 52, h: 26 },
   { id: "fire", name: "Campfire", kind: "fire", x: 38, y: 64, w: 30, h: 26 },
   { id: "shed", name: "Shed chest", kind: "shed", x: 236, y: 134, w: 48, h: 24 },
@@ -771,9 +770,8 @@ export function placeHerd(s: GameState): void {
   placeFarmer(s);
 }
 
-/** Farm pond. The meadow dock is gone with the meadow. */
-export const FISH_WATER: Rect = { x: 118, y: 76, w: 30, h: 16 };
-export const FISH_CROWN: Rect = { x: 0, y: 0, w: 0, h: 0 };
+/** Open water on the farm pond. */
+export const FISH_WATER: Rect = { x: 118, y: 79, w: 32, h: 17 };
 
 export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
@@ -805,7 +803,6 @@ export function footBlocked(x: number, y: number): boolean {
     if (overlap(box, { x: r.x - w / 2, y: r.y - h, w, h })) return true;
   }
   if (overlap(box, FISH_WATER)) return true;
-  if (overlap(box, FISH_CROWN)) return true;
   if (onPortal(x, y)) return true;
   if (extraFeet(x, y)) return true;
   return false;

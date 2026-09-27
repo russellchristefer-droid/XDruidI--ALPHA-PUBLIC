@@ -379,6 +379,7 @@ test("the farm pond is not walkable, and a rod catches a fish from the bank", ()
   assert.equal(footBlocked(100, 96), false);
   s.x = 100;
   s.y = 96;
+  s.activeId = "";
   const bare = interact(s, 124, 84);
   assert.match(bare.msg ?? "", /rod/);
   const rod = s.pack.find((p) => p?.defId === "rod")!;
