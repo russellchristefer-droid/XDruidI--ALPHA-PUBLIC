@@ -807,7 +807,7 @@ function realmFeet(x: number, y: number): boolean {
   if (realmWing === 1) {
     if (overlap(box, { x: 128, y: 52, w: 112, h: 72 })) return true;
     if (overlap(box, { x: 158, y: 352, w: 64, h: 44 })) return true;
-    if (overlap(box, { x: 72, y: 158, w: 30, h: 16 })) return true;
+    if (overlap(box, { x: 56, y: 156, w: 58, h: 24 })) return true;
   } else {
     const onBridge = y > 196 && y < 224;
     if (!onBridge && overlap(box, { x: 214, y: 48, w: 34, h: 460 })) return true;
