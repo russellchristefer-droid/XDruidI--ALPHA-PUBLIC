@@ -62,11 +62,11 @@ export function sideGate(s: GameState): SideGate | null {
   if (s.y < 198 || s.y > 230) return null;
   if (s.x <= 70 && wing !== -1) {
     const dest: -1 | 0 = wing === 1 ? 0 : -1;
-    return { x: 40, y: 212, wing: dest, landX: 308, dir: "w", name: dest === 0 ? "the home land" : "the west land" };
+    return { x: 40, y: 202, wing: dest, landX: 308, dir: "w", name: dest === 0 ? "the home land" : "the west land" };
   }
   if (s.x >= 278 && wing !== 1) {
     const dest: 0 | 1 = wing === -1 ? 0 : 1;
-    return { x: 308, y: 212, wing: dest, landX: 40, dir: "e", name: dest === 0 ? "the home land" : "the east land" };
+    return { x: 308, y: 202, wing: dest, landX: 40, dir: "e", name: dest === 0 ? "the home land" : "the east land" };
   }
   return null;
 }
@@ -74,7 +74,7 @@ export function sideGate(s: GameState): SideGate | null {
 function crossSide(s: GameState, px: number, py: number): InteractResult | null {
   const gate = sideGate(s);
   if (!gate) return null;
-  if (Math.hypot(px - gate.x, py - gate.y) > 26) return null;
+  if (Math.hypot(px - gate.x, py - gate.y) > 32) return null;
   if (Math.hypot(s.x - gate.x, s.y - gate.y) > REACH) return null;
   s.wing = gate.wing;
   s.x = gate.landX;
@@ -539,7 +539,7 @@ function verb(s: GameState, t: Target): string {
 
 export function promptAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
-  if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= REACH && Math.hypot(px - gate.x, py - gate.y) <= 26) {
+  if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= REACH && Math.hypot(px - gate.x, py - gate.y) <= 32) {
     return `Cross to ${gate.name}  [E]`;
   }
   if (!inReach(s, px, py)) return "";
@@ -550,7 +550,7 @@ export function promptAt(s: GameState, px: number, py: number): string {
 
 export function examineAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
-  if (gate && Math.hypot(px - gate.x, py - gate.y) <= 26) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
+  if (gate && Math.hypot(px - gate.x, py - gate.y) <= 32) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
   const used = assetUseAt(px, py);
   const t = pickTarget(s, px, py);
   if (!t) return used ?? "Dirt, grass, and the fence line.";

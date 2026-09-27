@@ -416,28 +416,41 @@ function drawCourtLife(ctx: CanvasRenderingContext2D, s: GameState): void {
   }
 }
 
+function fillOval(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number, color: string): void {
+  ctx.fillStyle = color;
+  const ry2 = ry * ry;
+  for (let y = -ry; y <= ry; y++) {
+    const t = 1 - (y * y) / ry2;
+    if (t <= 0) continue;
+    const nx = Math.floor(rx * Math.sqrt(t));
+    ctx.fillRect(cx - nx, cy + y, nx * 2 + 1, 1);
+  }
+}
+
 function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
   const wing = s.wing ?? 0;
   const gates: number[] = [];
   if (wing !== -1) gates.push(40);
   if (wing !== 1) gates.push(308);
-  const pulse = 0.5 + 0.5 * Math.sin(s.clock * 4);
-  const rise = Math.floor(s.clock * 7) % 10;
+  const pulse = 0.55 + 0.45 * Math.sin(s.clock * 3);
   for (const cx of gates) {
-    const x = cx - 7;
-    const y = 198;
-    ctx.fillStyle = "#0c3d24";
-    ctx.fillRect(x, y + 4, 2, 22);
-    ctx.fillRect(x + 12, y + 4, 2, 22);
-    ctx.fillRect(x + 2, y + 2, 10, 2);
-    ctx.fillRect(x + 4, y, 6, 2);
-    ctx.fillStyle = `rgba(36, 168, 78, ${0.55 + pulse * 0.35})`;
-    ctx.fillRect(x + 2, y + 4, 10, 22);
-    ctx.fillStyle = `rgba(170, 255, 150, ${0.35 + pulse * 0.5})`;
-    ctx.fillRect(x + 4, y + 6 + rise, 6, 2);
-    ctx.fillRect(x + 5, y + 8 + ((rise + 5) % 12), 4, 1);
-    ctx.fillStyle = "#1f8a46";
-    ctx.fillRect(x - 1, y + 26, 16, 2);
+    const cy = 202;
+    fillOval(ctx, cx, cy, 16, 26, `rgba(28, 120, 64, ${0.22 + pulse * 0.12})`);
+    fillOval(ctx, cx, cy, 13, 23, "#0c3a22");
+    fillOval(ctx, cx, cy, 11, 20, `rgba(18, 92, 48, ${0.95})`);
+    fillOval(ctx, cx, cy, 9, 18, `rgba(46, 186, 86, ${0.72 + pulse * 0.2})`);
+    fillOval(ctx, cx, cy + 1, 5, 12, `rgba(198, 255, 176, ${0.45 + pulse * 0.35})`);
+    ctx.fillStyle = `rgba(230, 255, 210, ${0.55 + pulse * 0.4})`;
+    for (let i = 0; i < 4; i++) {
+      const a = s.clock * 2.2 + i * 1.57;
+      const px = Math.round(cx + Math.cos(a) * 6);
+      const py = Math.round(cy + Math.sin(a) * 14);
+      ctx.fillRect(px, py, 1, 2);
+    }
+    ctx.fillStyle = "#145c34";
+    ctx.fillRect(cx - 14, cy + 22, 29, 2);
+    ctx.fillStyle = "#0c3a22";
+    ctx.fillRect(cx - 12, cy + 24, 25, 1);
   }
 }
 
