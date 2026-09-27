@@ -842,6 +842,14 @@ export function drawWorld(
     ctx.fillStyle = `rgba(235, 242, 255, ${Math.min(0.55, s.flash * 3.2)})`;
     ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
+  if (s.cross) {
+    const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+    const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+    ctx.fillStyle = `rgba(8, 36, 22, ${0.15 + a * 0.82})`;
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.fillStyle = `rgba(170, 255, 190, ${a * 0.35})`;
+    ctx.fillRect(0, 190, WORLD_W, 40);
+  }
 
   if (hover && hover.x >= 0 && hover.y >= 0 && hover.x < WORLD_W && hover.y < WORLD_H) {
     const tx = Math.floor(hover.x / TILE) * TILE;

@@ -621,6 +621,16 @@ export type GameState = {
   fishing: number;
   /** -1 west copy, 0 home, 1 east copy. */
   wing: -1 | 0 | 1;
+  /** A portal crossing. The land changes halfway through the fade. */
+  cross: {
+    t: number;
+    wing: -1 | 0 | 1;
+    x: number;
+    y: number;
+    dir: Dir;
+    name: string;
+    moved: boolean;
+  } | null;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
 };
 
@@ -796,6 +806,7 @@ export function footBlocked(x: number, y: number): boolean {
   }
   if (overlap(box, FISH_WATER)) return true;
   if (overlap(box, FISH_CROWN)) return true;
+  if (onPortal(x, y)) return true;
   if (extraFeet(x, y)) return true;
   return false;
 }
@@ -808,8 +819,18 @@ export function ensureAuto(s: GameState): void {
   if (typeof s.auto !== "boolean") s.auto = true;
 }
 
+export function onPortal(x: number, y: number): boolean {
+  for (const cx of [40, 308]) {
+    const dx = x - cx;
+    const dy = y - 202;
+    if ((dx * dx) / 144 + (dy * dy) / 400 < 1) return true;
+  }
+  return false;
+}
+
 export function ensureWing(s: GameState): void {
   if (s.wing !== -1 && s.wing !== 0 && s.wing !== 1) s.wing = 0;
+  if (!s.cross || typeof s.cross.t !== "number") s.cross = null;
 }
 
 export function lifeLabel(life: Life): string {
@@ -954,5 +975,6 @@ export function createGame(): GameState {
     auto: true,
     fishing: 0,
     wing: 0,
+    cross: null,
   };
 }

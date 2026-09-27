@@ -62,25 +62,24 @@ export function sideGate(s: GameState): SideGate | null {
   if (s.y < 198 || s.y > 230) return null;
   if (s.x <= 70 && wing !== -1) {
     const dest: -1 | 0 = wing === 1 ? 0 : -1;
-    return { x: 40, y: 202, wing: dest, landX: 308, dir: "w", name: dest === 0 ? "the home land" : "the west land" };
+    return { x: 40, y: 202, wing: dest, landX: 284, dir: "w", name: dest === 0 ? "the home land" : "the west land" };
   }
   if (s.x >= 278 && wing !== 1) {
     const dest: 0 | 1 = wing === -1 ? 0 : 1;
-    return { x: 308, y: 202, wing: dest, landX: 40, dir: "e", name: dest === 0 ? "the home land" : "the east land" };
+    return { x: 308, y: 202, wing: dest, landX: 64, dir: "e", name: dest === 0 ? "the home land" : "the east land" };
   }
   return null;
 }
 
 function crossSide(s: GameState, px: number, py: number): InteractResult | null {
+  if (s.cross || s.action) return null;
   const gate = sideGate(s);
   if (!gate) return null;
   if (Math.hypot(px - gate.x, py - gate.y) > 32) return null;
   if (Math.hypot(s.x - gate.x, s.y - gate.y) > REACH) return null;
-  s.wing = gate.wing;
-  s.x = gate.landX;
-  s.y = 212;
-  s.dir = gate.dir;
-  return { msg: `You step through to ${gate.name}.`, save: true };
+  s.speed = 0;
+  s.cross = { t: 0, wing: gate.wing, x: gate.landX, y: 212, dir: gate.dir, name: gate.name, moved: false };
+  return { msg: `The gate opens toward ${gate.name}.` };
 }
 
 function unitRand(s: GameState): number {
@@ -1239,6 +1238,25 @@ export function step(s: GameState, dt: number, input: Input) {
   placeFarmer(s);
   if (s.cat.petCd > 0) s.cat.petCd = Math.max(0, s.cat.petCd - stepDt);
   stepFlowers(s, stepDt);
+  if (s.cross) {
+    s.speed = 0;
+    s.cross.t += stepDt;
+    if (!s.cross.moved && s.cross.t >= 0.42) {
+      s.wing = s.cross.wing;
+      s.x = s.cross.x;
+      s.y = s.cross.y;
+      s.dir = s.cross.dir;
+      s.cross.moved = true;
+      s.life.route = [];
+      s.life.errand = null;
+    }
+    if (s.cross.t >= 0.85) {
+      s.message = `You step through to ${s.cross.name}.`;
+      s.cross = null;
+      s.uiEvent = { save: true };
+    }
+    return;
+  }
   if (input.frozen) {
     s.speed = 0;
     return;
