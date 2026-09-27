@@ -41,6 +41,35 @@ export type Target = {
 const REACH = 36;
 const CONTACT_AT = 0.62;
 
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1; landX: number; dir: "e" | "w"; name: string };
+
+/** A click-step at a sidewalk end. The land beyond is the same courtyard. */
+export function sideGate(s: GameState): SideGate | null {
+  const wing = s.wing ?? 0;
+  if (s.y < 198 || s.y > 230) return null;
+  if (s.x <= 70 && wing !== -1) {
+    const dest: -1 | 0 = wing === 1 ? 0 : -1;
+    return { x: 40, y: 212, wing: dest, landX: 308, dir: "w", name: dest === 0 ? "the home land" : "the west land" };
+  }
+  if (s.x >= 278 && wing !== 1) {
+    const dest: 0 | 1 = wing === -1 ? 0 : 1;
+    return { x: 308, y: 212, wing: dest, landX: 40, dir: "e", name: dest === 0 ? "the home land" : "the east land" };
+  }
+  return null;
+}
+
+function crossSide(s: GameState, px: number, py: number): InteractResult | null {
+  const gate = sideGate(s);
+  if (!gate) return null;
+  if (Math.hypot(px - gate.x, py - gate.y) > 26) return null;
+  if (Math.hypot(s.x - gate.x, s.y - gate.y) > REACH) return null;
+  s.wing = gate.wing;
+  s.x = gate.landX;
+  s.y = 212;
+  s.dir = gate.dir;
+  return { msg: `You step through to ${gate.name}.`, save: true };
+}
+
 function unitRand(s: GameState): number {
   let x = s.rng >>> 0;
   if (!x) x = 1;
@@ -496,6 +525,10 @@ function verb(s: GameState, t: Target): string {
 }
 
 export function promptAt(s: GameState, px: number, py: number): string {
+  const gate = sideGate(s);
+  if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= REACH && Math.hypot(px - gate.x, py - gate.y) <= 26) {
+    return `Cross to ${gate.name}  [E]`;
+  }
   if (!inReach(s, px, py)) return "";
   const t = pickTarget(s, px, py);
   if (!t) return "";
@@ -503,6 +536,8 @@ export function promptAt(s: GameState, px: number, py: number): string {
 }
 
 export function examineAt(s: GameState, px: number, py: number): string {
+  const gate = sideGate(s);
+  if (gate && Math.hypot(px - gate.x, py - gate.y) <= 26) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
   const used = assetUseAt(px, py);
   const t = pickTarget(s, px, py);
   if (!t) return used ?? "Dirt, grass, and the fence line.";
@@ -564,6 +599,8 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
     }
     return { msg: "Downed. Crawl to the bathtub." };
   }
+  const crossed = crossSide(s, px, py);
+  if (crossed) return crossed;
   if (!inReach(s, px, py)) return { msg: "Too far." };
   const t = pickTarget(s, px, py);
   if (!t) return { msg: "Nothing to use here." };

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { FARMER_HOME, MEADOW, SPOTS, createGame, footBlocked, placeFarmer } from "./content.ts";
+import { interact } from "./logic.ts";
 
 function canWalk(from: { x: number; y: number }, to: { x: number; y: number }): boolean {
   const key = (p: { x: number; y: number }) => `${p.x},${p.y}`;
@@ -64,4 +65,24 @@ test("the meadow is void and the farm is the rock", () => {
   assert.equal(canWalk({ x: 172, y: 160 }, { x: 180, y: 900 }), false);
   assert.equal(canWalk({ x: 172, y: 148 }, { x: 64, y: 108 }), true);
   assert.equal(canWalk({ x: 172, y: 180 }, { x: 80, y: 300 }), true);
+});
+
+test("sidewalk ends cross onto a matching land", () => {
+  const s = createGame();
+  s.x = 40;
+  s.y = 212;
+  const west = interact(s, 40, 212);
+  assert.match(west.msg ?? "", /west land/);
+  assert.equal(s.wing, -1);
+  assert.equal(s.x, 308);
+  const home = interact(s, 308, 212);
+  assert.match(home.msg ?? "", /home land/);
+  assert.equal(s.wing, 0);
+  s.x = 308;
+  s.y = 212;
+  const east = interact(s, 308, 212);
+  assert.match(east.msg ?? "", /east land/);
+  assert.equal(s.wing, 1);
+  assert.equal(footBlocked(40, 212), false);
+  assert.equal(footBlocked(308, 212), false);
 });

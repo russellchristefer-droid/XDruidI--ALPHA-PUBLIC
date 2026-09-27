@@ -412,6 +412,26 @@ function drawCourtLife(ctx: CanvasRenderingContext2D, s: GameState): void {
   }
 }
 
+function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
+  const wing = s.wing ?? 0;
+  const gates: number[] = [];
+  if (wing !== -1) gates.push(28);
+  if (wing !== 1) gates.push(304);
+  const pulse = 0.45 + 0.55 * Math.sin(s.clock * 3);
+  for (const x of gates) {
+    ctx.fillStyle = "#3a322c";
+    ctx.fillRect(x, 198, 20, 28);
+    ctx.fillStyle = "#8a7058";
+    ctx.fillRect(x + 2, 200, 16, 8);
+    ctx.fillStyle = "#c4b08a";
+    ctx.fillRect(x + 4, 202, 5, 4);
+    ctx.fillRect(x + 11, 202, 5, 4);
+    ctx.fillStyle = `rgba(255, 214, 120, ${0.4 + pulse * 0.6})`;
+    ctx.fillRect(x + 8, 206, 4, 4);
+    ctx.fillRect(x + 9, 204, 2, 12);
+  }
+}
+
 function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
   ctx.fillStyle = "#07091a";
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
@@ -485,6 +505,7 @@ export function drawWorld(
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   if (sheets.farmExtend) ctx.drawImage(sheets.farmExtend, 0, PLATE);
   drawCourtLife(ctx, s);
+  drawSideGates(ctx, s);
 
   ctx.save();
   ctx.beginPath();

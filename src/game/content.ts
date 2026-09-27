@@ -619,6 +619,8 @@ export type GameState = {
   auto: boolean;
   /** Successful casts from the meadow dock. */
   fishing: number;
+  /** -1 west copy, 0 home, 1 east copy. */
+  wing: -1 | 0 | 1;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
 };
 
@@ -806,6 +808,10 @@ export function ensureAuto(s: GameState): void {
   if (typeof s.auto !== "boolean") s.auto = true;
 }
 
+export function ensureWing(s: GameState): void {
+  if (s.wing !== -1 && s.wing !== 0 && s.wing !== 1) s.wing = 0;
+}
+
 export function lifeLabel(life: Life): string {
   const mood = Math.round(life.mood);
   if (life.hunger > 60) return `Mood ${mood} · Hungry`;
@@ -947,5 +953,6 @@ export function createGame(): GameState {
     life: freshLife(),
     auto: true,
     fishing: 0,
+    wing: 0,
   };
 }
