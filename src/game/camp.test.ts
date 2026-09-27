@@ -97,4 +97,11 @@ test("sidewalk ends cross onto a matching land", () => {
   assert.equal(footBlocked(308, 202), true);
   assert.equal(footBlocked(64, 212), false);
   assert.equal(footBlocked(284, 212), false);
+  s.wing = 0;
+  s.x = 48;
+  s.y = 240;
+  const fromCourt = interact(s, 40, 202);
+  assert.match(fromCourt.msg ?? "", /west land/);
+  finish(s);
+  assert.equal(s.wing, -1);
 });

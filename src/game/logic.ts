@@ -56,15 +56,17 @@ export const TOOL_ANIM: Record<string, { sheet: string; frames: number; hit: num
 
 type SideGate = { x: number; y: number; wing: -1 | 0 | 1; landX: number; dir: "e" | "w"; name: string };
 
+const GATE_REACH = 46;
+
 /** A click-step at a sidewalk end. The land beyond is the same courtyard. */
 export function sideGate(s: GameState): SideGate | null {
   const wing = s.wing ?? 0;
-  if (s.y < 198 || s.y > 230) return null;
-  if (s.x <= 70 && wing !== -1) {
+  const by = (cx: number) => s.y > 170 && s.y < 260 && Math.hypot(s.x - cx, s.y - 202) <= GATE_REACH;
+  if (s.x < 130 && by(40) && wing !== -1) {
     const dest: -1 | 0 = wing === 1 ? 0 : -1;
     return { x: 40, y: 202, wing: dest, landX: 284, dir: "w", name: dest === 0 ? "the home land" : "the west land" };
   }
-  if (s.x >= 278 && wing !== 1) {
+  if (s.x > 220 && by(308) && wing !== 1) {
     const dest: 0 | 1 = wing === -1 ? 0 : 1;
     return { x: 308, y: 202, wing: dest, landX: 64, dir: "e", name: dest === 0 ? "the home land" : "the east land" };
   }
@@ -75,8 +77,8 @@ function crossSide(s: GameState, px: number, py: number): InteractResult | null 
   if (s.cross || s.action) return null;
   const gate = sideGate(s);
   if (!gate) return null;
-  if (Math.hypot(px - gate.x, py - gate.y) > 32) return null;
-  if (Math.hypot(s.x - gate.x, s.y - gate.y) > REACH) return null;
+  if (Math.hypot(px - gate.x, py - gate.y) > 40) return null;
+  if (Math.hypot(s.x - gate.x, s.y - gate.y) > GATE_REACH) return null;
   s.speed = 0;
   s.cross = { t: 0, wing: gate.wing, x: gate.landX, y: 212, dir: gate.dir, name: gate.name, moved: false };
   return { msg: `The gate opens toward ${gate.name}.` };
@@ -537,7 +539,7 @@ function verb(s: GameState, t: Target): string {
 
 export function promptAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
-  if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= REACH && Math.hypot(px - gate.x, py - gate.y) <= 32) {
+  if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= GATE_REACH && Math.hypot(px - gate.x, py - gate.y) <= 40) {
     return `Cross to ${gate.name}  [E]`;
   }
   if (!inReach(s, px, py)) return "";
@@ -548,7 +550,7 @@ export function promptAt(s: GameState, px: number, py: number): string {
 
 export function examineAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
-  if (gate && Math.hypot(px - gate.x, py - gate.y) <= 32) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
+  if (gate && Math.hypot(px - gate.x, py - gate.y) <= 40) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
   const used = assetUseAt(px, py);
   const t = pickTarget(s, px, py);
   if (!t) return used ?? "Dirt, grass, and the fence line.";
