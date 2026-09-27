@@ -8,6 +8,14 @@ On a computer, use the keyboard. On a phone, use the stick and the buttons along
 
 The yard saves in that browser. Clearing the site data wipes the homestead.
 
+## SNES sidecar
+
+`snes/xdruid.sfc` is a 32 KB LoROM cartridge. It is the homestead you can carry into an emulator. It is not the browser game squeezed into the console.
+
+[Download xdruid.sfc](https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/raw/main/snes/xdruid.sfc)
+
+Open it in Snes9x, bsnes, Mesen-S, or RetroArch with the snes9x core. How it plays is in [snes/README.md](snes/README.md).
+
 ## Run it yourself
 
 ```bash
