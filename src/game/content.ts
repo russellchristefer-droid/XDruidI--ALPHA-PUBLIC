@@ -1,4 +1,4 @@
-import { tileBlocks } from "./tiles";
+import { tileBlocks } from "./tiles.ts";
 export const WORLD_W = 347;
 export const WORLD_H = 960;
 /** The frame that fits on screen. The yard stays this size; the meadow is below it. */
@@ -6,7 +6,21 @@ export const VIEW_W = 347;
 export const VIEW_H = 194;
 /** South of the new field. Under this line is the void. */
 export const MEADOW = { x: 0, y: 528, w: 347, h: 432 } as const;
+/** Courtyard starts. Spread so the herd, the cat, and the farmer do not share a tile. */
+export const FARMER_HOME = { x: 168, y: 260 } as const;
+export const HERD_HOME = {
+  cow: { x: 56, y: 288 },
+  rooster: { x: 112, y: 344 },
+  goat: { x: 288, y: 280 },
+} as const;
+export const CAT_HOME = { x: 232, y: 336 } as const;
+/** Masked wizard. Courtyard guest, not stacked on the herd. */
+export const REAPER_HOME = { x: 188, y: 412 } as const;
 export const TILE = 8;
+/** Every player sheet is 80×112 cells, three rows, feet on y=95. */
+export const CHAR_W = 80;
+export const CHAR_H = 112;
+export const CHAR_FOOT_Y = 95;
 export const PACK_SLOTS = 28;
 export const VAULT_SLOTS = 40;
 export const MASS_CAP = 21;
@@ -487,6 +501,106 @@ export type Animal = {
   intent?: "graze" | "drink" | "court" | "wander" | "flee";
 };
 
+export type BirdMode = "stand" | "walk" | "takeoff" | "fly" | "land";
+
+export type Bird = {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  face: 1 | -1;
+  mode: BirdMode;
+  t: number;
+  tx: number;
+  ty: number;
+  pause: number;
+  seed: number;
+};
+
+export function freshBirds(): Bird[] {
+  return [
+    { id: "bird-1", x: 84, y: 252, z: 0, face: 1, mode: "walk", t: 0, tx: 156, ty: 268, pause: 0, seed: 11 },
+    { id: "bird-2", x: 208, y: 248, z: 0, face: -1, mode: "stand", t: 0, tx: 208, ty: 248, pause: 1.3, seed: 29 },
+    { id: "bird-3", x: 140, y: 396, z: 0, face: 1, mode: "takeoff", t: 0, tx: 220, ty: 340, pause: 0, seed: 47 },
+    { id: "bird-4", x: 268, y: 368, z: 16, face: -1, mode: "fly", t: 0.15, tx: 96, ty: 308, pause: 0, seed: 71 },
+    { id: "bird-5", x: 304, y: 428, z: 12, face: -1, mode: "land", t: 0, tx: 304, ty: 428, pause: 0, seed: 97 },
+  ];
+}
+
+export function ensureBirds(s: GameState): void {
+  if (!s.birds || s.birds.length < 5) s.birds = freshBirds();
+  for (const b of s.birds) {
+    if (b.mode !== "stand" && b.mode !== "walk" && b.mode !== "takeoff" && b.mode !== "fly" && b.mode !== "land") b.mode = "stand";
+    if (typeof b.z !== "number") b.z = b.mode === "fly" ? 16 : 0;
+    if (typeof b.t !== "number") b.t = 0;
+    if (typeof b.seed !== "number") b.seed = 1;
+    if (typeof b.tx !== "number") b.tx = b.x;
+    if (typeof b.ty !== "number") b.ty = b.y;
+    if (b.face !== 1 && b.face !== -1) b.face = 1;
+  }
+}
+
+/** Same rows as the farmer: front, side, back. Feet sit on the bottom of the 32px cell. */
+export const REAPER_POSES = ["idle", "walk", "handsidle", "handswalk", "water", "shovel", "scythe", "axe", "hammer", "pickaxe"] as const;
+export type ReaperPose = (typeof REAPER_POSES)[number];
+export const REAPER_FRAMES: Record<ReaperPose, number> = {
+  idle: 2,
+  walk: 8,
+  handsidle: 2,
+  handswalk: 8,
+  water: 8,
+  shovel: 7,
+  scythe: 5,
+  axe: 6,
+  hammer: 6,
+  pickaxe: 6,
+};
+
+export type Reaper = {
+  x: number;
+  y: number;
+  dir: Dir;
+  pause: number;
+  route: number[];
+  pose: ReaperPose;
+  poseT: number;
+  greet: number;
+};
+
+export function freshReaper(): Reaper {
+  return {
+    x: REAPER_HOME.x,
+    y: REAPER_HOME.y,
+    dir: "s",
+    pause: 0.8,
+    route: [],
+    pose: "idle",
+    poseT: 0,
+    greet: 0,
+  };
+}
+
+export function ensureReaper(s: GameState): void {
+  const r = s.reaper;
+  if (!r || typeof r.x !== "number" || typeof r.y !== "number") {
+    s.reaper = freshReaper();
+    return;
+  }
+  if (!REAPER_POSES.includes(r.pose)) r.pose = "idle";
+  if (!Array.isArray(r.route)) r.route = [];
+  if (typeof r.pause !== "number") r.pause = 0.4;
+  if (typeof r.poseT !== "number") r.poseT = 0;
+  if (typeof r.greet !== "number") r.greet = 0;
+  if (r.dir !== "n" && r.dir !== "e" && r.dir !== "s" && r.dir !== "w") r.dir = "s";
+  if (r.y > 510 || r.y < 40 || r.x < 28 || r.x > 324) {
+    r.x = REAPER_HOME.x;
+    r.y = REAPER_HOME.y;
+    r.route = [];
+    r.pose = "idle";
+    r.pause = 0.4;
+  }
+}
+
 export type Body = {
   head: Item | null;
   torso: Item | null;
@@ -520,6 +634,22 @@ export type Cast = { spell: SpellId; t: number };
 
 export const SPELLS: SpellId[] = ["fireball", "nova", "iceball", "ice", "spark", "bolt", "holy", "poison", "drip"];
 
+export const MAGIC_MAX = 100;
+export const MANA_MAX = 100;
+
+/** Mana spent when a cast begins. A full bar covers every spell, then it refills. */
+export const SPELL_COST: Record<SpellId, number> = {
+  fireball: 8,
+  nova: 16,
+  holy: 14,
+  ice: 14,
+  iceball: 8,
+  bolt: 12,
+  spark: 6,
+  poison: 10,
+  drip: 6,
+};
+
 export const SPELL_NAME: Record<SpellId, string> = {
   fireball: "fireball",
   nova: "fire nova",
@@ -531,6 +661,42 @@ export const SPELL_NAME: Record<SpellId, string> = {
   poison: "poison orb",
   drip: "toxic drip",
 };
+
+export type Liturgy = "strike" | "bind" | "mend" | "area";
+
+/** Which sentence a spell is speaking. The realm decides the clothes. */
+export function liturgyOf(spell: SpellId): Liturgy {
+  if (spell === "holy") return "mend";
+  if (spell === "ice" || spell === "iceball" || spell === "poison") return "bind";
+  if (spell === "drip") return "area";
+  return "strike";
+}
+
+/** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1): string {
+  if (wing === 0) return SPELL_NAME[spell];
+  const east = wing === 1;
+  switch (spell) {
+    case "fireball":
+      return east ? "agni-bindu" : "kumbha-bindu";
+    case "nova":
+      return east ? "bimba-mala" : "kumbha-tapa";
+    case "holy":
+      return east ? "anugraha" : "rupya-danda";
+    case "iceball":
+      return east ? "candrakanta" : "atisita";
+    case "ice":
+      return east ? "candrakanta-vyuha" : "sita-yantra";
+    case "spark":
+      return east ? "vajra-bija" : "kala-bindu";
+    case "bolt":
+      return east ? "vajra" : "danda";
+    case "poison":
+      return east ? "parijata-bija" : "vaitarani-bindu";
+    case "drip":
+      return east ? "soma-bindu" : "vaitarani-drip";
+  }
+}
 
 export type Face = "ok" | "happy" | "tired" | "ill" | "need" | "heart";
 
@@ -560,8 +726,8 @@ export function freshLife(): Life {
     face: "ok",
     emote: 0,
     errand: null,
-    tx: 78,
-    ty: 136,
+    tx: FARMER_HOME.x,
+    ty: FARMER_HOME.y,
     pause: 1.1,
     route: [],
     chore: "",
@@ -580,8 +746,8 @@ export function ensureLife(s: GameState): void {
   if (!life.face) life.face = "ok";
   if (typeof life.emote !== "number") life.emote = 0;
   if (life.errand === undefined) life.errand = null;
-  if (typeof life.tx !== "number") life.tx = 78;
-  if (typeof life.ty !== "number") life.ty = 136;
+  if (typeof life.tx !== "number") life.tx = FARMER_HOME.x;
+  if (typeof life.ty !== "number") life.ty = FARMER_HOME.y;
   if (typeof life.pause !== "number") life.pause = 0.4;
   if (!Array.isArray(life.route)) life.route = [];
   if (typeof life.chore !== "string") life.chore = "";
@@ -625,9 +791,13 @@ export type GameState = {
     ty: number;
     pause: number;
     mode: "sit" | "stand" | "walk" | "run";
+    look?: "n" | "e" | "s" | "w";
     route?: number[];
     intent?: "court" | "drink" | "yard" | "follow";
   };
+  birds: Bird[];
+  /** Friendly masked wizard. Keeps to the courtyard and minds his own work. */
+  reaper: Reaper;
   stats: {
     harvested: number;
     cooked: number;
@@ -651,7 +821,16 @@ export type GameState = {
   auto: boolean;
   /** Successful casts into the farm pond. */
   fishing: number;
+  /** Spellcraft skill. 100 is a full working set of casts. */
   magic: number;
+  /** Pool spent by casts. Recovers while he stands or walks, same idea as stamina. */
+  mana: number;
+  /** Body. 100 is unhurt. Hunger, thirst, and collapse pull it down. */
+  health: number;
+  /** Use-based skills. The number is experience, not the level. */
+  skills: SkillBook;
+  /** Next spell in the practice rotation. */
+  rune: number;
   cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy. */
   wing: -1 | 0 | 1;
@@ -666,17 +845,103 @@ export type GameState = {
     moved: boolean;
   } | null;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
+  /** Set once the courtyard spawn has been applied. Old saves move once, then stay put. */
+  courtSpawn?: boolean;
 };
 
-export type PanelId = "pack" | "body" | "vault" | "craft" | "map" | "pause" | "summary" | "controls" | "backpack";
+export type PanelId = "pack" | "body" | "vault" | "craft" | "map" | "pause" | "summary" | "controls" | "backpack" | "skills";
+
+export const SKILL_IDS = [
+  "farming",
+  "foraging",
+  "cooking",
+  "herbalism",
+  "fishing",
+  "husbandry",
+  "woodcraft",
+  "construction",
+  "tracking",
+  "healing",
+  "magic",
+  "ritual",
+  "survival",
+  "exploration",
+] as const;
+
+export type SkillId = (typeof SKILL_IDS)[number];
+export type SkillBook = Record<SkillId, number>;
+
+export const SKILL_NAME: Record<SkillId, string> = {
+  farming: "Farming",
+  foraging: "Foraging",
+  cooking: "Cooking",
+  herbalism: "Herbalism",
+  fishing: "Fishing",
+  husbandry: "Animal care",
+  woodcraft: "Woodcraft",
+  construction: "Construction",
+  tracking: "Tracking",
+  healing: "Healing",
+  magic: "Elemental magic",
+  ritual: "Ritual",
+  survival: "Survival",
+  exploration: "Exploration",
+};
+
+export const SKILL_NOTE: Record<SkillId, string> = {
+  farming: "Till, plant, water, and harvest.",
+  foraging: "Pick up what the ground offers.",
+  cooking: "Turn raw food into a meal.",
+  herbalism: "Know and cut the flowering beds.",
+  fishing: "A catch from the farm pond.",
+  husbandry: "Feed, gather, and greet the animals.",
+  woodcraft: "Take a branch without wasting the tree.",
+  construction: "Repair the gate, the door, and the tools.",
+  tracking: "Find the herd, the pond, and the way through.",
+  healing: "Eat, wash, and sleep the hurt off.",
+  magic: "Practice a working until it sits in the hand.",
+  ritual: "Cast where the loka can answer.",
+  survival: "Last the weather, the night, and an empty belly.",
+  exploration: "Step off the homestead into another land.",
+};
+
+export function freshSkills(): SkillBook {
+  const book = {} as SkillBook;
+  for (const id of SKILL_IDS) book[id] = 0;
+  book.magic = 270;
+  return book;
+}
+
+/** One level per 30 uses-worth of experience. Level 1 is the start. */
+export function skillLevel(xp: number): number {
+  return Math.min(99, 1 + Math.floor(Math.max(0, xp) / 30));
+}
+
+export function skillFill(xp: number): number {
+  return (Math.max(0, xp) % 30) / 30;
+}
+
+export function ensureSkills(s: GameState): void {
+  if (!s.skills) s.skills = freshSkills();
+  for (const id of SKILL_IDS) {
+    const n = s.skills[id];
+    if (typeof n !== "number" || Number.isNaN(n)) s.skills[id] = id === "magic" ? 270 : 0;
+  }
+  if ((s.skills.magic ?? 0) < 270) s.skills.magic = 270;
+}
+
+export function ensureHealth(s: GameState): void {
+  if (typeof s.health !== "number" || Number.isNaN(s.health)) s.health = 100;
+  s.health = Math.max(0, Math.min(100, s.health));
+}
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
 export const SOLIDS: Rect[] = [
   { x: 14, y: 22, w: 312, h: 12 },
   { x: 14, y: 22, w: 12, h: 146 },
-  { x: 14, y: 154, w: 142, h: 14 },
-  { x: 186, y: 154, w: 140, h: 14 },
+  { x: 14, y: 154, w: 142, h: 18 },
+  { x: 191, y: 154, w: 136, h: 18 },
   { x: 116, y: 74, w: 40, h: 22 },
   { x: 164, y: 62, w: 30, h: 38 },
   { x: 112, y: 16, w: 96, h: 60 },
@@ -698,7 +963,7 @@ export const SPOTS: { id: string; name: string; kind: string; x: number; y: numb
   { id: "shed", name: "Shed chest", kind: "shed", x: 236, y: 134, w: 48, h: 24 },
   { id: "bench", name: "Workbench", kind: "bench", x: 196, y: 112, w: 40, h: 22 },
   { id: "grind", name: "Grindstone", kind: "grind", x: 190, y: 92, w: 36, h: 28 },
-  { id: "gate", name: "Fence gate", kind: "gate", x: 156, y: 146, w: 34, h: 22 },
+  { id: "gate", name: "Fence gate", kind: "gate", x: 176, y: 148, w: 16, h: 40 },
 ];
 
 export const COVERS: { id: string; x: number; y: number; foot: number }[] = [
@@ -757,8 +1022,6 @@ export function itemMass(it: Item): number {
   return m;
 }
 
-export const FARMER_HOME = { x: 172, y: 132 } as const;
-
 export function placeFarmer(s: GameState): void {
   if (s.y >= MEADOW.y - 16) {
     s.x = FARMER_HOME.x;
@@ -779,13 +1042,8 @@ export function placeFarmer(s: GameState): void {
 }
 
 export function placeHerd(s: GameState): void {
-  const home = {
-    cow: { x: 80, y: 112 },
-    rooster: { x: 188, y: 136 },
-    goat: { x: 304, y: 112 },
-  } as const;
   for (const a of s.animals) {
-    const spot = home[a.kind];
+    const spot = HERD_HOME[a.kind];
     if (!spot || a.y < MEADOW.y - 12) continue;
     a.x = spot.x;
     a.y = spot.y;
@@ -794,14 +1052,52 @@ export function placeHerd(s: GameState): void {
     a.pause = a.kind === "cow" ? 1.4 : 0.5;
   }
   if (s.cat && s.cat.y >= MEADOW.y - 12) {
-    s.cat.x = 274;
-    s.cat.y = 148;
-    s.cat.tx = 274;
-    s.cat.ty = 148;
+    s.cat.x = CAT_HOME.x;
+    s.cat.y = CAT_HOME.y;
+    s.cat.tx = CAT_HOME.x;
+    s.cat.ty = CAT_HOME.y;
     s.cat.mode = "sit";
     s.cat.pause = 1.2;
   }
   placeFarmer(s);
+}
+
+/** First load of an older save: stand them in the courtyard, apart, then leave them alone. */
+export function placeCourtSpawn(s: GameState): void {
+  if (s.courtSpawn) return;
+  s.courtSpawn = true;
+  s.wing = 0;
+  s.cross = null;
+  s.x = FARMER_HOME.x;
+  s.y = FARMER_HOME.y;
+  s.dir = "s";
+  s.speed = 0;
+  if (s.life) {
+    s.life.tx = FARMER_HOME.x;
+    s.life.ty = FARMER_HOME.y;
+    s.life.route = [];
+    s.life.pause = 0.8;
+  }
+  for (const a of s.animals) {
+    const spot = HERD_HOME[a.kind];
+    if (!spot) continue;
+    a.x = spot.x;
+    a.y = spot.y;
+    a.tx = spot.x;
+    a.ty = spot.y;
+    a.pause = a.kind === "cow" ? 1.6 : a.kind === "goat" ? 0.9 : 0.5;
+  }
+  if (s.cat) {
+    s.cat.x = CAT_HOME.x;
+    s.cat.y = CAT_HOME.y;
+    s.cat.tx = CAT_HOME.x;
+    s.cat.ty = CAT_HOME.y;
+    s.cat.face = 1;
+    s.cat.look = "s";
+    s.cat.mode = "sit";
+    s.cat.pause = 2;
+    s.cat.route = [];
+  }
 }
 
 /** Open water on the farm pond. */
@@ -825,14 +1121,16 @@ function realmFeet(x: number, y: number): boolean {
   if (box.y < 48) return true;
   if (onPortal(x, y)) return true;
   if (realmWing === 1) {
-    if (overlap(box, { x: 128, y: 52, w: 112, h: 72 })) return true;
-    if (overlap(box, { x: 158, y: 352, w: 64, h: 44 })) return true;
-    if (overlap(box, { x: 56, y: 156, w: 58, h: 24 })) return true;
+    // Amarāvatī on the plate: the palace sits right of the pearl path. The landing at x≈64 stays open.
+    if (overlap(box, { x: 188, y: 48, w: 128, h: 88 })) return true;
+    if (overlap(box, { x: 104, y: 68, w: 48, h: 36 })) return true;
   } else {
-    const onBridge = y > 196 && y < 224;
-    if (!onBridge && overlap(box, { x: 214, y: 48, w: 34, h: 460 })) return true;
-    if (overlap(box, { x: 78, y: 270, w: 22, h: 16 })) return true;
-    if (overlap(box, { x: 36, y: 372, w: 78, h: 52 })) return true;
+    // North blood pool, then Vaitaraṇī. The plank bridge on the plate is the only crossing.
+    if (overlap(box, { x: 96, y: 52, w: 64, h: 56 })) return true;
+    const onBridge = y > 388 && y < 428 && x > 104 && x < 212;
+    if (!onBridge && overlap(box, { x: 116, y: 216, w: 92, h: 400 })) return true;
+    // Yama's hall. The landing at x≈284, y≈212 stays open.
+    if (overlap(box, { x: 200, y: 44, w: 118, h: 92 })) return true;
   }
   return false;
 }
@@ -847,15 +1145,20 @@ export function overlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
+/** Dirt mouth through the wooden gate. Everything else in this band is rail or hedge. */
+export const FENCE = { y0: 155, y1: 184, x0: 179, x1: 188, mouthX: 184, northY: 148, southY: 190 } as const;
+
+export function onFenceRail(x: number, y: number): boolean {
+  return y >= FENCE.y0 && y <= FENCE.y1 && (x < FENCE.x0 || x > FENCE.x1);
+}
+
 export function footBlocked(x: number, y: number): boolean {
   if (realmWing !== 0) return realmFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
   if (box.y < 36) return true;
-  const onSouthPath = x > 156 && x < 186;
-  if (y > 170 && y < 184 && !onSouthPath) return true;
-  if (overlap(box, { x: 168, y: 160, w: 8, h: 24 })) return true;
+  if (onFenceRail(x, y)) return true;
   for (const s of SOLIDS) if (overlap(box, s)) return true;
   for (const s of PROP_SOLIDS) if (overlap(box, s)) return true;
   for (const s of tileBlocks()) if (overlap(box, s)) return true;
@@ -875,7 +1178,11 @@ export function ensureFishing(s: GameState): void {
 }
 
 export function ensureMagic(s: GameState): void {
-  if (typeof s.magic !== "number" || Number.isNaN(s.magic)) s.magic = 0;
+  if (typeof s.magic !== "number" || Number.isNaN(s.magic) || s.magic < MAGIC_MAX) s.magic = MAGIC_MAX;
+  if (typeof s.mana !== "number" || Number.isNaN(s.mana)) s.mana = MANA_MAX;
+  s.mana = Math.max(0, Math.min(MANA_MAX, s.mana));
+  if (typeof s.rune !== "number" || Number.isNaN(s.rune)) s.rune = 0;
+  s.rune = ((Math.floor(s.rune) % SPELLS.length) + SPELLS.length) % SPELLS.length;
   const spell = s.cast?.spell;
   if (!s.cast || !SPELLS.includes(spell as SpellId) || typeof s.cast.t !== "number") s.cast = null;
 }
@@ -885,10 +1192,12 @@ export function ensureAuto(s: GameState): void {
 }
 
 export function onPortal(x: number, y: number): boolean {
-  for (const cx of [40, 308]) {
-    const dx = x - cx;
-    const dy = y - 202;
-    if ((dx * dx) / 144 + (dy * dy) / 400 < 1) return true;
+  // The picture is wider than this. The body stops on the stone. The step in front, on the sidewalk and in the courtyard, stays open.
+  const gates: Array<{ x: number; half: number; top: number }> = [];
+  if (realmWing !== -1) gates.push({ x: 40, half: 30, top: 124 });
+  if (realmWing !== 1) gates.push({ x: 308, half: 26, top: 116 });
+  for (const g of gates) {
+    if (Math.abs(x - g.x) <= g.half && y >= g.top && y <= 230) return true;
   }
   return false;
 }
@@ -1013,9 +1322,9 @@ export function createGame(): GameState {
     plots: freshPlots(),
     flowers: defaultFlowers(),
     animals: [
-      { id: "cow", kind: "cow", name: "Cow", x: 80, y: 112, dir: "s", fed: false, ready: false, tx: 80, ty: 112, pause: 1.4 },
-      { id: "rooster", kind: "rooster", name: "Rooster", x: 188, y: 136, dir: "e", fed: false, ready: false, tx: 188, ty: 136, pause: 0.4 },
-      { id: "goat", kind: "goat", name: "Goat", x: 304, y: 112, dir: "w", fed: false, ready: false, tx: 304, ty: 112, pause: 0.6 },
+      { id: "cow", kind: "cow", name: "Cow", x: HERD_HOME.cow.x, y: HERD_HOME.cow.y, dir: "e", fed: false, ready: false, tx: HERD_HOME.cow.x, ty: HERD_HOME.cow.y, pause: 1.6 },
+      { id: "rooster", kind: "rooster", name: "Rooster", x: HERD_HOME.rooster.x, y: HERD_HOME.rooster.y, dir: "n", fed: false, ready: false, tx: HERD_HOME.rooster.x, ty: HERD_HOME.rooster.y, pause: 0.5 },
+      { id: "goat", kind: "goat", name: "Goat", x: HERD_HOME.goat.x, y: HERD_HOME.goat.y, dir: "w", fed: false, ready: false, tx: HERD_HOME.goat.x, ty: HERD_HOME.goat.y, pause: 0.9 },
     ],
     branches: [],
     structures: [
@@ -1024,7 +1333,9 @@ export function createGame(): GameState {
       { id: "bench", name: "Workbench", quality: 44, floor: 12, floorMax: 26 },
     ],
     ground: [],
-    cat: { x: 274, y: 148, face: -1, petCd: 0, tx: 274, ty: 148, pause: 2.2, mode: "sit" },
+    cat: { x: CAT_HOME.x, y: CAT_HOME.y, face: 1, petCd: 0, tx: CAT_HOME.x, ty: CAT_HOME.y, pause: 2.2, mode: "sit", look: "s" },
+    birds: freshBirds(),
+    reaper: freshReaper(),
     stats: { harvested: 0, cooked: 0, floorEarned: 0, gateRepaired: false, boughtTool: false, daysSlept: 0 },
     nextId: next.n,
     rng: 0xa55a1,
@@ -1040,9 +1351,14 @@ export function createGame(): GameState {
     life: freshLife(),
     auto: true,
     fishing: 0,
-    magic: 0,
+    magic: MAGIC_MAX,
+    mana: MANA_MAX,
+    health: 100,
+    skills: freshSkills(),
+    rune: 0,
     cast: null,
     wing: 0,
     cross: null,
+    courtSpawn: true,
   };
 }

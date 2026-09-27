@@ -1,7 +1,6 @@
 {
-  "title": "Druid I",
-  "type": "x:game",
+  "title": "XDruid I",
+  "type": "website",
   "card": "custom",
-  "banner": "/x-banner.jpg",
-  "description": "A name in green neon."
+  "description": "A browser game. Open it in the phone's web browser. Nothing to install."
 }

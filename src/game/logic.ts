@@ -1,3 +1,5 @@
+import { soundState } from "./audio.ts";
+import { tickBirdsong } from "./birdsong.ts";
 import {
   DEFS,
   MASS_CAP,
@@ -11,14 +13,29 @@ import {
   ensureFishing,
   ensureMagic,
   ensureWeather,
+  ensureBirds,
+  ensureReaper,
+  ensureSkills,
+  ensureHealth,
+  skillLevel,
+  SKILL_NAME,
   footBlocked,
+  FENCE,
+  onFenceRail,
   isNight,
   itemMass,
   placeFarmer,
   setRealm,
   SPELLS,
-  SPELL_NAME,
+  liturgyName,
+  SPELL_COST,
+  MANA_MAX,
+  MAGIC_MAX,
   type Animal,
+  type Bird,
+  type Reaper,
+  type ReaperPose,
+  REAPER_FRAMES,
   type CropId,
   type GameState,
   type EquipSlot,
@@ -26,6 +43,7 @@ import {
   type Life,
   type PanelId,
   type Plot,
+  type SkillId,
 } from "./content.ts";
 import { assetUseAt } from "./dev-sprites.ts";
 
@@ -68,11 +86,11 @@ export function sideGate(s: GameState): SideGate | null {
   const by = (cx: number) => s.y > 170 && s.y < 260 && Math.hypot(s.x - cx, s.y - 202) <= GATE_REACH;
   if (s.x < 130 && by(40) && wing !== -1) {
     const dest: -1 | 0 = wing === 1 ? 0 : -1;
-    return { x: 40, y: 202, wing: dest, landX: 284, dir: "w", name: dest === 0 ? "the home land" : "Naraka" };
+    return { x: 40, y: 202, wing: dest, landX: 266, dir: "w", name: dest === 0 ? "the home land" : "Naraka" };
   }
   if (s.x > 220 && by(308) && wing !== 1) {
     const dest: 0 | 1 = wing === -1 ? 0 : 1;
-    return { x: 308, y: 202, wing: dest, landX: 64, dir: "e", name: dest === 0 ? "the home land" : "Svarga" };
+    return { x: 308, y: 202, wing: dest, landX: 86, dir: "e", name: dest === 0 ? "the home land" : "Svarga" };
   }
   return null;
 }
@@ -534,6 +552,7 @@ function verb(s: GameState, t: Target): string {
     return `Feed ${a.name.toLowerCase()}`;
   }
   if (t.kind === "cat") return "Pet the cat";
+  if (t.kind === "reaper") return "Greet the wizard";
   if (t.kind === "flower") {
     const f = s.flowers?.find((fl) => fl.id === t.id);
     return f && f.bloom >= 2 ? `Pick ${f.name.toLowerCase()}` : t.name;
@@ -546,6 +565,7 @@ export function promptAt(s: GameState, px: number, py: number): string {
   if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= GATE_REACH && Math.hypot(px - gate.x, py - gate.y) <= 40) {
     return `Cross to ${gate.name}  [E]`;
   }
+  if ((s.wing ?? 0) !== 0) return "";
   if (!inReach(s, px, py)) return "";
   const t = pickTarget(s, px, py);
   if (!t) return "";
@@ -555,6 +575,8 @@ export function promptAt(s: GameState, px: number, py: number): string {
 export function examineAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
   if (gate && Math.hypot(px - gate.x, py - gate.y) <= 40) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
+  if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
+  if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
   const used = assetUseAt(px, py);
   const t = pickTarget(s, px, py);
   if (!t) return used ?? "Dirt, grass, and the fence line.";
@@ -629,6 +651,9 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   }
   const crossed = crossSide(s, px, py);
   if (crossed) return crossed;
+  if ((s.wing ?? 0) !== 0) {
+    return { msg: s.wing === 1 ? "Nothing here is a chore. The grove keeps itself." : "Nothing here is yours to use. It is evidence." };
+  }
   if (!inReach(s, px, py)) return { msg: "Too far." };
   const t = pickTarget(s, px, py);
   if (!t) return { msg: "Nothing to use here." };
@@ -661,6 +686,7 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (t.kind === "branch") return useBranch(s, t.id);
   if (t.kind === "animal") return useAnimal(s, t.id);
   if (t.kind === "cat") return petCat(s);
+  if (t.kind === "reaper") return greetReaper(s);
   if (t.kind === "flower") return pickFlower(s, t.id);
   return { msg: "Nothing to use here." };
 }
@@ -725,7 +751,9 @@ function hasRod(s: GameState): boolean {
 function useTub(s: GameState): InteractResult {
   if (isNight(s.time)) return sleepNow(s);
   s.stamina = Math.min(100, s.stamina + 12);
-  return { msg: "A wash in the old tub. Stamina eases back.", save: true };
+  ensureHealth(s);
+  s.health = Math.min(100, s.health + 6);
+  return { msg: `A wash in the old tub. Stamina eases back.${grant(s, "healing", 6)}`, save: true };
 }
 
 function sleepNow(s: GameState): InteractResult {
@@ -734,13 +762,16 @@ function sleepNow(s: GameState): InteractResult {
   s.time = 0.05;
   s.stamina = Math.max(s.stamina, 78);
   s.downed = false;
+  ensureHealth(s);
+  s.health = Math.min(100, s.health + 28);
   s.stats.daysSlept += 1;
   const summary = s.day > 14;
   s.summary = summary;
   const dead = s.plots.filter((p) => p.kind === "bed" && p.stage < 0).length;
   const note = dead ? ` ${dead} bed${dead === 1 ? "" : "s"} gave out.` : " The beds held.";
+  const learned = grant(s, "healing", 10) + grant(s, "survival", 8);
   return {
-    msg: `Dawn of day ${s.day}.${note}`,
+    msg: `Dawn of day ${s.day}.${note}${learned}`,
     save: true,
     summary,
     panel: summary ? "summary" : undefined,
@@ -793,7 +824,22 @@ function petCat(s: GameState): InteractResult {
   if (s.cat.petCd > 0) return { msg: "The cat is busy being a cat." };
   s.cat.petCd = 20;
   s.stamina = Math.min(100, s.stamina + 4);
-  return { msg: "The cat allows it. A little of the day comes back." };
+  return { msg: `The cat allows it. A little of the day comes back.${grant(s, "husbandry", 8)}` };
+}
+
+function greetReaper(s: GameState): InteractResult {
+  ensureReaper(s);
+  const r = s.reaper;
+  const dx = s.x - r.x;
+  const dy = s.y - r.y;
+  if (Math.abs(dx) >= Math.abs(dy)) r.dir = dx >= 0 ? "e" : "w";
+  else r.dir = dy >= 0 ? "s" : "n";
+  r.pose = "handsidle";
+  r.poseT = 0;
+  r.pause = 1.5;
+  r.greet = 1.8;
+  r.route = [];
+  return { msg: `The masked wizard lifts both hands. He is a friend of the courtyard.${grant(s, "ritual", 4)}` };
 }
 
 function pickFlower(s: GameState, id: string): InteractResult {
@@ -807,7 +853,7 @@ function pickFlower(s: GameState, id: string): InteractResult {
   giveItem(s, item);
   f.bloom = 0;
   f.grow = 14 + unitRand(s) * 6;
-  return { msg: `Picked the ${f.name.toLowerCase()}. It will bloom again.`, save: true };
+  return { msg: `Picked the ${f.name.toLowerCase()}. It will bloom again.${grant(s, "herbalism", 12)}${grant(s, "foraging", 4)}`, save: true };
 }
 
 function stepFlowers(s: GameState, dt: number) {
@@ -831,7 +877,17 @@ function pickup(s: GameState, id: string): InteractResult {
   }
   s.ground.splice(idx, 1);
   giveItem(s, g.item);
-  return { msg: `Picked up ${defOf(g.item).name}.` };
+  const rose = grant(s, "foraging", 8);
+  return { msg: `Picked up ${defOf(g.item).name}.${rose}` };
+}
+
+function grant(s: GameState, id: SkillId, amount: number): string {
+  ensureSkills(s);
+  const before = skillLevel(s.skills[id]);
+  s.skills[id] += amount;
+  const after = skillLevel(s.skills[id]);
+  if (after > before) return ` ${SKILL_NAME[id]} reaches ${after}.`;
+  return "";
 }
 
 export function resolveAction(s: GameState): string {
@@ -851,7 +907,7 @@ export function resolveAction(s: GameState): string {
     can.water = (can.water ?? 0) - 1;
     p.watered = true;
     cost(5, 0.35);
-    return `Watered the ${p.crop}. Can ${can.water}/${defOf(can).waterMax}.`;
+    return `Watered the ${p.crop}. Can ${can.water}/${defOf(can).waterMax}.${grant(s, "farming", 8)}`;
   }
   if (act.kind === "fill") {
     const can = tool;
@@ -868,7 +924,7 @@ export function resolveAction(s: GameState): string {
     ensureFishing(s);
     s.fishing += 1;
     cost(6, 0.2);
-    return `Caught a pond fish. Fishing ${s.fishing}.`;
+    return `Caught a pond fish. Fishing ${s.fishing}.${grant(s, "fishing", 14)}`;
   }
   if (act.kind === "harvest") {
     const p = s.plots.find((pl) => pl.id === act.target);
@@ -883,7 +939,7 @@ export function resolveAction(s: GameState): string {
     p.revealed = true;
     s.stats.harvested += 1;
     cost(6, 0.4);
-    return `Harvested ${defOf(item).name}. Floor ${item.floor}.`;
+    return `Harvested ${defOf(item).name}. Floor ${item.floor}.${grant(s, "farming", 16)}`;
   }
   if (act.kind === "clear") {
     const p = s.plots.find((pl) => pl.id === act.target);
@@ -894,7 +950,7 @@ export function resolveAction(s: GameState): string {
     p.watered = false;
     p.revealed = true;
     cost(4, 0.3);
-    return "Cleared the spent bed.";
+    return `Cleared the spent bed.${grant(s, "farming", 6)}`;
   }
   if (act.kind === "till") {
     const p = s.plots.find((pl) => pl.id === act.target);
@@ -902,7 +958,7 @@ export function resolveAction(s: GameState): string {
     p.tilled = true;
     p.revealed = true;
     cost(7, 0.45);
-    return "Tilled a patch. It will take a seed.";
+    return `Tilled a patch. It will take a seed.${grant(s, "farming", 8)}`;
   }
   if (act.kind === "plant") {
     const p = s.plots.find((pl) => pl.id === act.target);
@@ -918,7 +974,7 @@ export function resolveAction(s: GameState): string {
     p.tilled = true;
     p.revealed = true;
     cost(4, 0);
-    return `Planted ${crop}.`;
+    return `Planted ${crop}.${grant(s, "farming", 8)}`;
   }
   if (act.kind === "chop") {
     const b = s.branches.find((br) => br.id === act.target);
@@ -928,7 +984,7 @@ export function resolveAction(s: GameState): string {
     b.left = false;
     giveItem(s, item);
     cost(8, 0.5);
-    return "Chopped a branch. The trees around the fence stay up.";
+    return `Chopped a branch. The trees around the fence stay up.${grant(s, "woodcraft", 14)}`;
   }
   if (act.kind === "cook") {
     const raw = produceItem(s);
@@ -942,7 +998,7 @@ export function resolveAction(s: GameState): string {
     s.stats.cooked += 1;
     s.stamina = Math.min(100, s.stamina + 8);
     cost(4, 0);
-    return "Cooked a hearth loaf at the campfire.";
+    return `Cooked a hearth loaf at the campfire.${grant(s, "cooking", 16)}`;
   }
   if (act.kind === "sharpen") {
     const it = findItem(s, act.target);
@@ -950,7 +1006,7 @@ export function resolveAction(s: GameState): string {
     it.quality = Math.min(100, it.quality + 5);
     wear(it, 1.2);
     cost(10, 0);
-    return `Sharpened. Quality ${Math.round(it.quality)}. Floor ${it.floor.toFixed(1)}.`;
+    return `Sharpened. Quality ${Math.round(it.quality)}. Floor ${it.floor.toFixed(1)}.${grant(s, "construction", 8)}`;
   }
   if (act.kind === "repair") {
     const st = structure(s, act.target);
@@ -961,7 +1017,7 @@ export function resolveAction(s: GameState): string {
     st.floor = st.floorMax;
     if (st.id === "gate") s.stats.gateRepaired = true;
     cost(8, 0.5);
-    return `${st.name} repaired. Quality ${Math.round(st.quality)}. Floor restored.`;
+    return `${st.name} repaired. Quality ${Math.round(st.quality)}. Floor restored.${grant(s, "construction", 18)}`;
   }
   if (act.kind === "feed") {
     const a = s.animals.find((an) => an.id === act.target);
@@ -971,7 +1027,7 @@ export function resolveAction(s: GameState): string {
     else removeItem(s, raw.id);
     a.fed = true;
     cost(3, 0);
-    return `Fed the ${a.name.toLowerCase()}. Check back after dawn.`;
+    return `Fed the ${a.name.toLowerCase()}. Check back after dawn.${grant(s, "husbandry", 12)}`;
   }
   if (act.kind === "collect") {
     const a = s.animals.find((an) => an.id === act.target);
@@ -982,7 +1038,7 @@ export function resolveAction(s: GameState): string {
     a.ready = false;
     giveItem(s, item);
     cost(3, 0);
-    return `Collected ${defOf(item).name}.`;
+    return `Collected ${defOf(item).name}.${grant(s, "husbandry", 10)}${grant(s, "tracking", 6)}`;
   }
   return "Done.";
 }
@@ -1049,15 +1105,21 @@ export function onQ(s: GameState): string {
 
 function eat(s: GameState, it: Item): string {
   const d = defOf(it);
+  ensureLife(s);
+  ensureHealth(s);
+  const empty = s.life.hunger > 55;
   s.stamina = Math.min(100, s.stamina + (d.stamina ?? 0));
   if (it.defId === "fish") {
-    ensureLife(s);
     s.life.hunger = Math.max(0, s.life.hunger - 24);
     s.stamina = Math.max(0, s.stamina - 4);
+  } else if ((d.stamina ?? 0) > 0) {
+    s.life.hunger = Math.max(0, s.life.hunger - 16);
   }
+  s.health = Math.min(100, s.health + 8);
   if (d.stack && it.qty > 1) it.qty -= 1;
   else removeItem(s, it.id);
-  return `Ate ${d.name}. Stamina ${Math.round(s.stamina)}.`;
+  const learned = grant(s, "healing", 8) + (empty ? grant(s, "survival", 6) : "");
+  return `Ate ${d.name}. Stamina ${Math.round(s.stamina)}.${learned}`;
 }
 
 export function onF(s: GameState): string {
@@ -1223,18 +1285,24 @@ export function moveFromBackpack(s: GameState, inner: number): string {
 function moveAxis(s: GameState, dx: number, dy: number) {
   const nx = s.x + dx;
   const ny = s.y + dy;
-  if (!footBlocked(nx, ny)) {
+  if (!fenceHop(s.x, s.y, nx, ny) && !footBlocked(nx, ny)) {
     s.x = nx;
     s.y = ny;
     return;
   }
-  if (!footBlocked(nx, s.y)) s.x = nx;
-  else if (!footBlocked(s.x, ny)) s.y = ny;
+  if (!fenceHop(s.x, s.y, nx, s.y) && !footBlocked(nx, s.y)) s.x = nx;
+  else if (!fenceHop(s.x, s.y, s.x, ny) && !footBlocked(s.x, ny)) s.y = ny;
 }
 
 export function step(s: GameState, dt: number, input: Input) {
   const stepDt = Math.min(0.05, Math.max(0, dt));
   s.clock += stepDt;
+  ensureMagic(s);
+  ensureSkills(s);
+  ensureHealth(s);
+  ensureReaper(s);
+  if (input.frozen || s.cross) s.speed = 0;
+  regenMana(s, stepDt);
   setRealm(s.wing ?? 0);
   placeFarmer(s);
   if (s.cat.petCd > 0) s.cat.petCd = Math.max(0, s.cat.petCd - stepDt);
@@ -1253,7 +1321,8 @@ export function step(s: GameState, dt: number, input: Input) {
       s.life.errand = null;
     }
     if (s.cross.t >= 0.85) {
-      s.message = `You step through to ${s.cross.name}.`;
+      const learned = grant(s, "exploration", 16) + grant(s, "tracking", 8);
+      s.message = `You step through to ${s.cross.name}.${learned}`;
       s.cross = null;
       s.uiEvent = { save: true };
     }
@@ -1323,6 +1392,14 @@ export function step(s: GameState, dt: number, input: Input) {
   setRealm(0);
   stepCritters(s, stepDt);
   setRealm(wing);
+  if (wing === 0) {
+    const tone = tickBirdsong(s, stepDt, soundState().muted || soundState().volume < 0.02);
+    if (tone) {
+      s.health = Math.min(100, s.health + tone.health);
+      s.mana = Math.min(MANA_MAX, s.mana + tone.mana);
+      s.message = "A bird sang the old tone. The hurt loosens.";
+    }
+  }
 }
 
 function tendSelf(s: GameState, dt: number, input: Input) {
@@ -1337,6 +1414,12 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     0,
     Math.min(100, 100 - life.hunger * 0.35 - life.thirst * 0.35 - life.dirt * 0.2 - Math.max(0, 40 - s.stamina) * 0.45),
   );
+  ensureHealth(s);
+  const strain = (life.hunger > 85 ? 1 : 0) + (life.thirst > 85 ? 1 : 0);
+  if (s.downed) s.health = Math.max(8, s.health - dt * 0.4);
+  else if (strain > 0) s.health = Math.max(0, s.health - dt * 2 * strain);
+  else if (life.hunger < 45 && life.thirst < 45 && s.stamina > 25) s.health = Math.min(100, s.health + dt * 1.4);
+  if (s.weather !== "clear" && life.hunger < 70) grant(s, "survival", dt * 0.35);
   if (life.emote > 0) life.emote = Math.max(0, life.emote - dt);
   else {
     const next = faceFor(s);
@@ -1376,27 +1459,22 @@ function tendSelf(s: GameState, dt: number, input: Input) {
   if ((s.wing ?? 0) !== 0) {
     life.errand = null;
     life.route = [];
+    s.speed = 0;
+    practiceMagic(s, dt);
     return;
   }
   const night = isNight(s.time);
   const spot =
-    life.thirst > 62
+    life.thirst > 84
       ? { kind: "drink" as const, x: 150, y: 120 }
-      : life.dirt > 68
-        ? { kind: "wash" as const, x: 118, y: 78 }
-        : s.stamina < 28 || (night && s.stamina < 42)
-          ? { kind: "rest" as const, x: night ? 118 : 64, y: night ? 78 : 98 }
+      : life.dirt > 90
+        ? { kind: "wash" as const, x: 128, y: 104 }
+        : s.stamina < 16 || (night && s.stamina < 22)
+          ? { kind: "rest" as const, x: 64, y: 116 }
           : null;
   if (!spot) {
     life.errand = null;
-    if (s.cast || life.chore === "magic") {
-      if (trainMagic(s, dt)) return;
-    }
-    const practice = s.clock > 12 && Math.floor((s.clock - 12) / 18) % 2 === 0;
-    if (practice) {
-      beginMagicLesson(s);
-      if (trainMagic(s, dt)) return;
-    }
+    if (practiceMagic(s, dt)) return;
     if (tendFarm(s, dt)) return;
     stroll(s, dt);
     return;
@@ -1411,7 +1489,7 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     } else if (spot.kind === "wash") {
       life.dirt = Math.max(0, life.dirt - 55);
       s.stamina = Math.min(100, s.stamina + 8);
-      s.message = "He washes in the tub.";
+      s.message = "He washes at the pond.";
     } else if (night) {
       s.message = sleepNow(s).msg ?? s.message;
     } else {
@@ -1433,61 +1511,119 @@ function tendSelf(s: GameState, dt: number, input: Input) {
   }
 }
 
-const PRACTICE = { x: 176, y: 268 };
+function practiceMagic(s: GameState, dt: number): boolean {
+  const life = s.life;
+  if (s.cast || life.chore === "magic") {
+    if (trainMagic(s, dt)) return true;
+  }
+  const onBreak = life.skip === "magic" && s.clock < life.skipUntil;
+  if (s.clock > 0.2 && !onBreak && s.mana >= 6) {
+    beginMagicLesson(s);
+    return trainMagic(s, dt);
+  }
+  return false;
+}
 
 function beginMagicLesson(s: GameState): void {
   const life = s.life;
   if (life.chore === "magic") return;
   life.chore = "magic";
-  life.skipUntil = s.clock + 12;
+  life.skip = "";
+  life.skipUntil = s.clock + 20;
+  life.pause = 0;
   life.route = [];
-  s.message = "He goes to train his magic.";
+  life.face = "happy";
+  life.emote = 1.4;
+  s.message = "He plays with a spell.";
+}
+
+function regenMana(s: GameState, dt: number) {
+  ensureMagic(s);
+  // Same recovery as stamina: still is the fast refill, walking is the slow one.
+  // Casting does not stop it, so a full bar stays usable instead of stranding him.
+  const rate = s.speed < 8 ? 8 : 3;
+  s.mana = Math.min(MANA_MAX, s.mana + dt * rate);
 }
 
 function beginCast(s: GameState): void {
   ensureMagic(s);
-  const spell = SPELLS[s.magic % SPELLS.length] ?? "fireball";
+  const spell = SPELLS[s.rune % SPELLS.length] ?? "fireball";
+  const cost = SPELL_COST[spell];
+  if (s.mana < cost) {
+    s.speed = 0;
+    s.life.pause = 0.4;
+    s.message = `He gathers mana (${Math.round(s.mana)} / ${MANA_MAX}).`;
+    return;
+  }
+  s.mana = Math.max(0, s.mana - cost);
+  s.dir = (s.wing ?? 0) === 0 ? "s" : ((["s", "e", "n", "w"] as const)[s.rune % 4] ?? "s");
+  s.rune = (s.rune + 1) % SPELLS.length;
   s.cast = { spell, t: 0 };
-  s.dir = "s";
   s.speed = 0;
-  s.message = `He casts ${SPELL_NAME[spell]}.`;
+  const said = liturgyName(spell, s.wing ?? 0);
+  s.message = `He casts ${said}. Mana ${Math.round(s.mana)}.`;
+}
+
+const SEAL = { x: 172, y: 380 };
+
+function standOnSeal(s: GameState, dt: number): boolean {
+  if ((s.wing ?? 0) !== 0) return true;
+  if (footBlocked(SEAL.x, SEAL.y)) return true;
+  const life = s.life;
+  if (Math.hypot(s.x - SEAL.x, s.y - SEAL.y) <= 4) {
+    s.x = SEAL.x;
+    s.y = SEAL.y;
+    s.speed = 0;
+    life.route = [];
+    if (!s.cast) s.dir = "s";
+    return true;
+  }
+  s.cast = null;
+  const step = followGoal(s, dt, SEAL.x, SEAL.y, 36);
+  if (step === "arrive" || Math.hypot(s.x - SEAL.x, s.y - SEAL.y) <= 6) {
+    s.x = SEAL.x;
+    s.y = SEAL.y;
+    s.speed = 0;
+    life.route = [];
+    if (!s.cast) s.dir = "s";
+    return true;
+  }
+  if (step === "stuck") life.route = [];
+  s.speed = 36;
+  s.message = "He walks to the center of the seal.";
+  return false;
 }
 
 function trainMagic(s: GameState, dt: number): boolean {
   ensureMagic(s);
   const life = s.life;
+  if (life.chore === "magic" && !standOnSeal(s, dt)) return true;
   if (s.cast) {
     s.speed = 0;
     s.cast.t += dt;
     if (s.cast.t < 1) return true;
-    const name = SPELL_NAME[s.cast.spell];
-    s.magic = Math.min(100, s.magic + 1);
+    const name = liturgyName(s.cast.spell, s.wing ?? 0);
+    s.magic = MAGIC_MAX;
+    const learned = grant(s, "magic", 10) + ((s.wing ?? 0) !== 0 ? grant(s, "ritual", 10) : "");
     s.cast = null;
     life.face = "happy";
     life.emote = 1.3;
-    life.pause = 0.35;
-    s.message = `He practices ${name}. Magic ${s.magic}.`;
+    life.pause = 0.12;
+    s.message = `He practices ${name}, for the fun of it. Magic ${s.magic}. Mana ${Math.round(s.mana)}.${learned}`;
     return true;
   }
   if (life.chore !== "magic") return false;
   if (s.clock > life.skipUntil) {
     life.chore = "";
     life.route = [];
+    life.skip = "magic";
+    life.skipUntil = s.clock + 2;
     return false;
   }
   if (life.pause > 0) {
     life.pause -= dt;
     s.speed = 0;
     if (life.pause <= 0) beginCast(s);
-    return true;
-  }
-  if (Math.hypot(PRACTICE.x - s.x, PRACTICE.y - s.y) > 16) {
-    const step = followGoal(s, dt, PRACTICE.x, PRACTICE.y, 30);
-    if (step === "stuck") {
-      life.chore = "";
-      life.route = [];
-      return false;
-    }
     return true;
   }
   beginCast(s);
@@ -1733,7 +1869,7 @@ function autoBlocked(x: number, y: number): boolean {
 
 const PATH_G = 8;
 
-export function autoRoute(x0: number, y0: number, x1: number, y1: number): number[] {
+export function autoRoute(x0: number, y0: number, x1: number, y1: number, axis = false): number[] {
   const cols = Math.ceil(347 / PATH_G);
   const rows = Math.ceil(960 / PATH_G);
   const key = (x: number, y: number) => y * cols + x;
@@ -1767,16 +1903,23 @@ export function autoRoute(x0: number, y0: number, x1: number, y1: number): numbe
   const gscore = new Map<number, number>([[start, 0]]);
   const prev = new Map<number, number>();
   const openSet = new Set<number>([start]);
-  const dirs = [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-    [1, 1],
-    [1, -1],
-    [-1, 1],
-    [-1, -1],
-  ];
+  const dirs = axis
+    ? [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]
+    : [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+        [1, 1],
+        [1, -1],
+        [-1, 1],
+        [-1, -1],
+      ];
   let guard = 0;
   while (openSet.size > 0 && guard++ < 3000) {
     let cur = -1;
@@ -1823,10 +1966,10 @@ export function autoRoute(x0: number, y0: number, x1: number, y1: number): numbe
     pts.push((chain[i]! % cols) * PATH_G, ((chain[i]! / cols) | 0) * PATH_G);
   }
   pts.push(x1, y1);
-  return thinRoute(pts);
+  return thinRoute(pts, axis);
 }
 
-function thinRoute(pts: number[]): number[] {
+function thinRoute(pts: number[], axis = false): number[] {
   if (pts.length <= 4) return pts;
   const out = [pts[0]!, pts[1]!];
   for (let i = 2; i < pts.length - 2; i += 2) {
@@ -1836,39 +1979,120 @@ function thinRoute(pts: number[]): number[] {
     const y1 = pts[i + 1]!;
     const x2 = pts[i + 2]!;
     const y2 = pts[i + 3]!;
-    if (Math.abs((x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)) > 12) out.push(x1, y1);
+    const colinear = (x0 === x1 && x1 === x2) || (y0 === y1 && y1 === y2);
+    const bend = Math.abs((x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)) > 12;
+    const keep = axis ? !colinear || !segmentOpen(x0, y0, x2, y2) : bend || !segmentOpen(x0, y0, x2, y2);
+    if (keep) out.push(x1, y1);
   }
   out.push(pts[pts.length - 2]!, pts[pts.length - 1]!);
   return out;
 }
 
+function segmentOpen(x0: number, y0: number, x1: number, y1: number): boolean {
+  const dist = Math.hypot(x1 - x0, y1 - y0);
+  const n = Math.max(1, Math.ceil(dist / 2));
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
+    if (autoBlocked(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+  }
+  return true;
+}
+
+function slipCorner(body: { x: number; y: number }, dx: number, dy: number): boolean {
+  const shove = 6;
+  const dirs: Array<[number, number]> =
+    Math.abs(dx) >= Math.abs(dy)
+      ? [
+          [0, 1],
+          [0, -1],
+        ]
+      : [
+          [-1, 0],
+          [1, 0],
+        ];
+  for (const [sx, sy] of dirs) {
+    const px = body.x + sx * shove;
+    const py = body.y + sy * shove;
+    if (!autoBlocked(px, py)) {
+      body.x = px;
+      body.y = py;
+      return true;
+    }
+  }
+  return false;
+}
+
 function followGoal(s: GameState, dt: number, x: number, y: number, speed: number): "walk" | "arrive" | "stuck" {
   const life = s.life;
-  if (life.tx !== x || life.ty !== y || life.route.length < 2) {
-    life.tx = x;
-    life.ty = y;
-    life.route = Math.hypot(x - s.x, y - s.y) < 8 ? [] : autoRoute(s.x, s.y, x, y);
+  const openGoal = footBlocked(x, y) ? nearestOpen(x, y) : { x, y };
+  const gx = openGoal?.x ?? x;
+  const gy = openGoal?.y ?? y;
+  if (life.tx !== gx || life.ty !== gy || life.route.length < 2) {
+    life.tx = gx;
+    life.ty = gy;
+    life.route = Math.hypot(gx - s.x, gy - s.y) < 8 ? [] : autoRoute(s.x, s.y, gx, gy);
   }
-  if (life.route.length < 2) return Math.hypot(x - s.x, y - s.y) < 10 ? "arrive" : "stuck";
-  const wx = life.route[0]!;
-  const wy = life.route[1]!;
-  const dx = wx - s.x;
-  const dy = wy - s.y;
-  if (Math.hypot(dx, dy) < 5) {
-    life.route = life.route.slice(2);
-    return life.route.length < 2 ? "arrive" : "walk";
+  let guard = 0;
+  while (life.route.length >= 2 && guard++ < 6) {
+    const wx = life.route[0]!;
+    const wy = life.route[1]!;
+    if (autoBlocked(wx, wy)) {
+      life.route = life.route.slice(2);
+      continue;
+    }
+    if (Math.hypot(wx - s.x, wy - s.y) < 4) {
+      s.x = wx;
+      s.y = wy;
+      life.route = life.route.slice(2);
+      continue;
+    }
+    const dx = wx - s.x;
+    const dy = wy - s.y;
+    const mag = Math.hypot(dx, dy) || 1;
+    const step = Math.min(mag, speed * dt);
+    const nx = s.x + (dx / mag) * step;
+    const ny = s.y + (dy / mag) * step;
+    if (!autoBlocked(nx, ny)) {
+      s.x = nx;
+      s.y = ny;
+    } else if (Math.abs(dx) >= Math.abs(dy) && !autoBlocked(nx, s.y)) s.x = nx;
+    else if (Math.abs(dy) > Math.abs(dx) && !autoBlocked(s.x, ny)) s.y = ny;
+    else if (!autoBlocked(nx, s.y) && Math.abs(nx - s.x) > 0.4) s.x = nx;
+    else if (!autoBlocked(s.x, ny) && Math.abs(ny - s.y) > 0.4) s.y = ny;
+    else if (slipCorner(s, dx, dy)) {
+      life.route = [];
+    } else {
+      unstick(s);
+      life.route = [];
+      return "stuck";
+    }
+    s.speed = speed;
+    if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
+    else s.dir = dy > 0 ? "s" : "n";
+    return "walk";
   }
-  const mag = Math.hypot(dx, dy) || 1;
-  const step = Math.min(mag, speed * dt);
-  const nx = s.x + (dx / mag) * step;
-  const ny = s.y + (dy / mag) * step;
-  if (autoBlocked(nx, ny)) return "stuck";
-  s.x = nx;
-  s.y = ny;
-  s.speed = speed;
-  if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
-  else s.dir = dy > 0 ? "s" : "n";
-  return "walk";
+  const left = Math.hypot(gx - s.x, gy - s.y);
+  if (left < 3) {
+    if (!autoBlocked(gx, gy)) {
+      s.x = gx;
+      s.y = gy;
+    }
+    return "arrive";
+  }
+  if (left < 14) {
+    const dx = gx - s.x;
+    const dy = gy - s.y;
+    const step = Math.min(left, speed * dt);
+    const nx = s.x + (dx / left) * step;
+    const ny = s.y + (dy / left) * step;
+    if (!autoBlocked(nx, ny)) {
+      s.x = nx;
+      s.y = ny;
+      s.speed = speed;
+      return "walk";
+    }
+  }
+  return "stuck";
 }
 
 function faceFor(s: GameState): Life["face"] {
@@ -1928,12 +2152,12 @@ function clamp(n: number, lo: number, hi: number) {
 
 const POND_BANK = { x: 128, y: 104 };
 const FOLIAGE: { x: number; y: number }[] = [
-  { x: 56, y: 148 },
-  { x: 96, y: 148 },
-  { x: 136, y: 146 },
-  { x: 200, y: 148 },
-  { x: 248, y: 148 },
-  { x: 280, y: 146 },
+  { x: 56, y: 132 },
+  { x: 96, y: 130 },
+  { x: 136, y: 132 },
+  { x: 210, y: 130 },
+  { x: 248, y: 132 },
+  { x: 280, y: 130 },
 ];
 const COURT_SPOTS: { x: number; y: number }[] = [
   { x: 90, y: 240 },
@@ -1943,72 +2167,195 @@ const COURT_SPOTS: { x: number; y: number }[] = [
   { x: 210, y: 390 },
   { x: 150, y: 230 },
 ];
+const REAPER_SPOTS: { x: number; y: number }[] = [
+  { x: 72, y: 248 },
+  { x: 120, y: 276 },
+  { x: 200, y: 252 },
+  { x: 268, y: 292 },
+  { x: 88, y: 340 },
+  { x: 168, y: 360 },
+  { x: 248, y: 348 },
+  { x: 112, y: 420 },
+  { x: 188, y: 456 },
+  { x: 276, y: 424 },
+  { x: 148, y: 488 },
+  { x: 220, y: 300 },
+];
+const REAPER_TOOLS: ReaperPose[] = ["water", "shovel", "scythe", "axe", "hammer", "pickaxe"];
 
-function gateRoute(from: { x: number; y: number }, goal: { x: number; y: number }): number[] {
-  const south = (y: number) => y >= 184;
-  const pts: { x: number; y: number }[] = [];
-  const approach = () => {
-    if (from.x > 260) pts.push({ x: 300, y: 130 }, { x: 276, y: 148 });
-    else if (from.x < 70) pts.push({ x: 56, y: 148 });
-    pts.push({ x: 172, y: 148 });
-  };
-  if (south(from.y) !== south(goal.y)) {
-    if (south(from.y)) {
-      pts.push({ x: 180, y: 208 }, { x: 180, y: 176 }, { x: 180, y: 156 });
-      if (Math.abs(goal.x - 172) > 24) {
-        if (goal.x > 260) pts.push({ x: 276, y: 148 }, { x: 300, y: 130 });
-        else pts.push({ x: 172, y: 148 });
-      }
-    } else {
-      if (Math.abs(from.x - 172) > 24) approach();
-      pts.push({ x: 180, y: 156 }, { x: 180, y: 176 }, { x: 180, y: 208 });
+function nearestOpen(x: number, y: number): { x: number; y: number } | null {
+  if (!footBlocked(x, y)) return { x, y };
+  for (let r = 4; r <= 48; r += 4) {
+    for (const [dx, dy] of [
+      [r, 0],
+      [-r, 0],
+      [0, r],
+      [0, -r],
+      [r, r],
+      [-r, r],
+      [r, -r],
+      [-r, -r],
+    ] as const) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!footBlocked(nx, ny)) return { x: nx, y: ny };
     }
-  } else if (!south(from.y) && Math.abs(from.x - goal.x) > 48) approach();
-  pts.push(goal);
-  const route: number[] = [];
-  for (const p of pts) route.push(p.x, p.y);
-  return route;
+  }
+  return null;
+}
+
+function unstick(body: { x: number; y: number }) {
+  if (onFenceRail(body.x, body.y) || (body.y >= FENCE.y0 && body.y <= FENCE.y1)) {
+    const mouth = nearestOpen(FENCE.mouthX, body.y < (FENCE.y0 + FENCE.y1) / 2 ? FENCE.northY : FENCE.southY);
+    if (mouth) {
+      body.x = mouth.x;
+      body.y = mouth.y;
+      return;
+    }
+  }
+  const spot = nearestOpen(body.x, body.y) ?? nearestOpen(body.x + 8, body.y) ?? nearestOpen(body.x, body.y + 8);
+  if (!spot) return;
+  if (spot.x === body.x && spot.y === body.y) {
+    for (const [dx, dy] of [
+      [8, 0],
+      [-8, 0],
+      [0, 8],
+      [0, -8],
+    ] as const) {
+      if (!footBlocked(body.x + dx, body.y + dy)) {
+        body.x += dx;
+        body.y += dy;
+        return;
+      }
+    }
+    return;
+  }
+  body.x = spot.x;
+  body.y = spot.y;
+}
+
+function gateRoute(from: { x: number; y: number }, goal: { x: number; y: number }, axis = false): number[] {
+  const end = nearestOpen(offRail(goal).x, offRail(goal).y);
+  if (!end) return [];
+  if (footBlocked(from.x, from.y)) return [];
+  const north = (y: number) => y < FENCE.y0;
+  const south = (y: number) => y > FENCE.y1;
+  const crossing = (north(from.y) && south(end.y)) || (south(from.y) && north(end.y));
+  if (!crossing) return autoRoute(from.x, from.y, end.x, end.y, axis);
+  const goingSouth = from.y < end.y;
+  const a = goingSouth ? { x: FENCE.mouthX, y: FENCE.northY } : { x: FENCE.mouthX, y: FENCE.southY };
+  const b = goingSouth ? { x: FENCE.mouthX, y: FENCE.southY } : { x: FENCE.mouthX, y: FENCE.northY };
+  const legs = [
+    autoRoute(from.x, from.y, a.x, a.y, axis),
+    autoRoute(a.x, a.y, b.x, b.y, axis),
+    autoRoute(b.x, b.y, end.x, end.y, axis),
+  ];
+  if (legs[1]!.length < 2) return autoRoute(from.x, from.y, end.x, end.y, axis);
+  const pts: number[] = [];
+  for (const leg of legs) {
+    for (let i = 0; i < leg.length; i += 2) {
+      const x = leg[i]!;
+      const y = leg[i + 1]!;
+      if (pts.length >= 2 && pts[pts.length - 2] === x && pts[pts.length - 1] === y) continue;
+      pts.push(x, y);
+    }
+  }
+  return thinRoute(pts, axis);
 }
 
 function pickSpot<T>(s: GameState, list: T[]): T {
   return list[Math.floor(unitRand(s) * list.length)]!;
 }
 
-function slideTo(body: { x: number; y: number }, tx: number, ty: number, speed: number, dt: number): "walk" | "arrive" | "stuck" {
+function slideTo(body: { x: number; y: number }, tx: number, ty: number, speed: number, dt: number, axis = false): "walk" | "arrive" | "stuck" {
   const dx = tx - body.x;
   const dy = ty - body.y;
   const dist = Math.hypot(dx, dy);
-  if (dist < 2) {
-    body.x = tx;
-    body.y = ty;
+  if (axis ? Math.abs(dx) < 1.5 && Math.abs(dy) < 1.5 : dist < 2) {
+    if (!footBlocked(tx, ty)) {
+      body.x = tx;
+      body.y = ty;
+    }
     return "arrive";
   }
-  const step = Math.min(dist, speed * dt);
+  const step = Math.min(axis ? Math.max(Math.abs(dx), Math.abs(dy)) : dist, speed * dt, 4);
+  if (axis) {
+    const tryAxis = (alongX: boolean) => {
+      const mag = alongX ? Math.abs(dx) : Math.abs(dy);
+      if (mag < 0.01) return false;
+      const nx = alongX ? body.x + Math.sign(dx) * Math.min(mag, step) : body.x;
+      const ny = alongX ? body.y : body.y + Math.sign(dy) * Math.min(mag, step);
+      if (fenceHop(body.x, body.y, nx, ny) || footBlocked(nx, ny)) return false;
+      body.x = nx;
+      body.y = ny;
+      return true;
+    };
+    if (tryAxis(Math.abs(dx) >= Math.abs(dy)) || tryAxis(Math.abs(dx) < Math.abs(dy))) return "walk";
+    return "stuck";
+  }
   const nx = body.x + (dx / dist) * step;
   const ny = body.y + (dy / dist) * step;
-  if (!footBlocked(nx, ny)) {
+  if (fenceHop(body.x, body.y, nx, ny) || footBlocked(nx, ny)) {
+    if (!fenceHop(body.x, body.y, nx, body.y) && !footBlocked(nx, body.y)) body.x = nx;
+    else if (!fenceHop(body.x, body.y, body.x, ny) && !footBlocked(body.x, ny)) body.y = ny;
+    else return "stuck";
+  } else {
     body.x = nx;
     body.y = ny;
-  } else if (!footBlocked(nx, body.y)) body.x = nx;
-  else if (!footBlocked(body.x, ny)) body.y = ny;
-  else return "stuck";
+  }
   return "walk";
 }
 
-function faceDelta(body: { dir?: "n" | "e" | "s" | "w"; face?: number }, dx: number, dy: number) {
-  if (Math.abs(dx) > Math.abs(dy)) {
-    if (body.dir !== undefined) body.dir = dx > 0 ? "e" : "w";
-    if (body.face !== undefined) body.face = dx > 0 ? -1 : 1;
-  } else if (body.dir !== undefined) body.dir = dy > 0 ? "s" : "n";
+function fenceHop(x: number, y: number, nx: number, ny: number): boolean {
+  const north = (py: number) => py < FENCE.y0;
+  const south = (py: number) => py > FENCE.y1;
+  const mouth = (px: number) => px >= FENCE.x0 && px <= FENCE.x1;
+  if ((north(y) && south(ny)) || (south(y) && north(ny))) return !(mouth(x) && mouth(nx));
+  return false;
 }
 
-function followRoute(body: { x: number; y: number; route?: number[]; dir?: "n" | "e" | "s" | "w"; face?: number }, speed: number, dt: number): "walk" | "arrive" | "stuck" {
-  const route = body.route;
-  if (!route || route.length < 2) return "arrive";
-  const moved = slideTo(body, route[0]!, route[1]!, speed, dt);
-  if (moved === "stuck") return "stuck";
-  faceDelta(body, route[0]! - body.x, route[1]! - body.y);
-  if (moved === "arrive") body.route = route.slice(2);
+function offRail(p: { x: number; y: number }): { x: number; y: number } {
+  if (!onFenceRail(p.x, p.y)) return p;
+  return { x: FENCE.mouthX, y: p.y < (FENCE.y0 + FENCE.y1) / 2 ? FENCE.northY : FENCE.southY };
+}
+
+function faceDelta(body: { dir?: "n" | "e" | "s" | "w"; face?: number; look?: "n" | "e" | "s" | "w" }, dx: number, dy: number) {
+  if (Math.hypot(dx, dy) < 0.04) return;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (body.dir !== undefined) body.dir = dx > 0 ? "e" : "w";
+    if (body.face !== undefined) body.face = dx > 0 ? 1 : -1;
+    if (body.look !== undefined) body.look = dx > 0 ? "e" : "w";
+  } else if (body.dir !== undefined || body.look !== undefined) {
+    const dir = dy > 0 ? "s" : "n";
+    if (body.dir !== undefined) body.dir = dir;
+    if (body.look !== undefined) body.look = dir;
+  }
+}
+
+function followRoute(body: { x: number; y: number; route?: number[]; dir?: "n" | "e" | "s" | "w"; face?: number; look?: "n" | "e" | "s" | "w" }, speed: number, dt: number, axis = false): "walk" | "arrive" | "stuck" {
+  if (!body.route || body.route.length < 2) return "arrive";
+  const x0 = body.x;
+  const y0 = body.y;
+  let guard = 0;
+  while (body.route && body.route.length >= 2 && guard++ < 6) {
+    const tx = body.route[0]!;
+    const ty = body.route[1]!;
+    if (Math.hypot(tx - body.x, ty - body.y) < 2) {
+      if (!footBlocked(tx, ty)) {
+        body.x = tx;
+        body.y = ty;
+      }
+      body.route = body.route.slice(2);
+      continue;
+    }
+    if (footBlocked(tx, ty)) return "stuck";
+    const moved = slideTo(body, tx, ty, speed, dt, axis);
+    faceDelta(body, body.x - x0, body.y - y0);
+    if (moved === "stuck") return "stuck";
+    if (moved === "arrive") body.route = body.route.slice(2);
+    return body.route && body.route.length >= 2 ? "walk" : "arrive";
+  }
+  faceDelta(body, body.x - x0, body.y - y0);
   return body.route && body.route.length >= 2 ? "walk" : "arrive";
 }
 
@@ -2044,13 +2391,22 @@ function herdGoal(s: GameState, a: Animal): { x: number; y: number; intent: Anim
 function stepCat(s: GameState, dt: number) {
   const cat = s.cat;
   if (!cat.mode) cat.mode = "sit";
+  if (!cat.look) cat.look = "s";
   if (cat.pause > 0) {
     cat.pause -= dt;
+    return;
+  }
+  if (footBlocked(cat.x, cat.y)) {
+    unstick(cat);
+    cat.route = [];
+    cat.mode = "sit";
+    cat.pause = 0.4;
     return;
   }
   if (cat.mode === "sit") {
     if (unitRand(s) < 0.4) {
       cat.face *= -1;
+      cat.look = cat.face < 0 ? "w" : "e";
       cat.pause = 0.7 + unitRand(s) * 1.4;
       return;
     }
@@ -2081,7 +2437,12 @@ function stepCat(s: GameState, dt: number) {
     if (footBlocked(goal.x, goal.y)) goal = { x: 160, y: 270 };
     cat.intent = intent;
     cat.route = gateRoute(cat, goal);
-    cat.face = goal.x >= cat.x ? -1 : 1;
+    cat.face = goal.x >= cat.x ? 1 : -1;
+    cat.look = Math.abs(goal.y - cat.y) > Math.abs(goal.x - cat.x) ? (goal.y >= cat.y ? "s" : "n") : goal.x >= cat.x ? "e" : "w";
+    if (cat.route.length < 2) {
+      cat.mode = "sit";
+      cat.pause = 0.6;
+    }
     return;
   }
   const speed = cat.mode === "run" ? 36 : 15;
@@ -2091,14 +2452,200 @@ function stepCat(s: GameState, dt: number) {
     cat.route = [];
     cat.pause = cat.intent === "drink" ? 1.6 : 1.2 + unitRand(s) * 2.4;
   } else if (step === "stuck") {
+    unstick(cat);
     cat.mode = "sit";
     cat.route = [];
-    cat.pause = 0.5;
+    cat.pause = 0.6;
   }
 }
 
+const BIRD_PADS: [number, number][] = [
+  [72, 248],
+  [128, 256],
+  [184, 244],
+  [236, 260],
+  [292, 252],
+  [64, 320],
+  [156, 308],
+  [220, 324],
+  [276, 336],
+  [96, 392],
+  [168, 404],
+  [240, 384],
+  [304, 412],
+  [120, 456],
+  [200, 468],
+  [268, 448],
+];
+const TAKEOFF_T = 0.5;
+const LAND_T = 0.5;
+const FLY_Z = 16;
+
+function birdRoll(b: Bird): number {
+  b.seed = (Math.imul(b.seed >>> 0, 1664525) + 1013904223) >>> 0;
+  return b.seed / 4294967296;
+}
+
+function pickPad(s: GameState, b: Bird): [number, number] {
+  let choice = BIRD_PADS[Math.floor(birdRoll(b) * BIRD_PADS.length)]!;
+  for (let i = 0; i < 4; i++) {
+    const pad = BIRD_PADS[Math.floor(birdRoll(b) * BIRD_PADS.length)]!;
+    choice = pad;
+    const crowded = s.birds.some((o) => o.id !== b.id && Math.hypot(o.tx - pad[0], o.ty - pad[1]) < 24);
+    if (!crowded && !footBlocked(pad[0], pad[1])) return pad;
+  }
+  return choice;
+}
+
+function beginTakeoff(b: Bird) {
+  if (b.mode === "takeoff" || b.mode === "fly") return;
+  b.mode = "takeoff";
+  b.t = 0;
+  b.z = 0;
+}
+
+function beginFly(s: GameState, b: Bird) {
+  b.mode = "fly";
+  b.t = 0;
+  b.z = FLY_Z;
+  const pad = pickPad(s, b);
+  b.tx = pad[0];
+  b.ty = pad[1];
+  b.face = b.tx >= b.x ? 1 : -1;
+}
+
+function beginLand(b: Bird) {
+  b.mode = "land";
+  b.t = 0;
+}
+
+function beginWalk(s: GameState, b: Bird) {
+  b.mode = "walk";
+  b.t = 0;
+  b.z = 0;
+  const pad = pickPad(s, b);
+  b.tx = pad[0];
+  b.ty = pad[1];
+  b.face = b.tx >= b.x ? 1 : -1;
+}
+
+function beginStand(b: Bird) {
+  b.mode = "stand";
+  b.t = 0;
+  b.z = 0;
+  b.pause = 0.7 + birdRoll(b) * 1.6;
+}
+
+function stepBirds(s: GameState, dt: number) {
+  ensureBirds(s);
+  for (const b of s.birds) stepBird(s, b, dt);
+}
+
+function stepBird(s: GameState, b: Bird, dt: number) {
+  b.t += dt;
+  const home = (s.wing ?? 0) === 0;
+  if (home && (b.mode === "walk" || b.mode === "stand") && s.cat) {
+    const farmer = Math.hypot(s.x - b.x, s.y - b.y) < 18;
+    const cat = Math.hypot(s.cat.x - b.x, s.cat.y - b.y) < 24;
+    const wizard = !!s.reaper && Math.hypot(s.reaper.x - b.x, s.reaper.y - b.y) < 18;
+    if (farmer || cat || wizard) beginTakeoff(b);
+  }
+  if (b.mode === "stand") {
+    if (b.t >= b.pause) {
+      if (birdRoll(b) < 0.4) beginTakeoff(b);
+      else beginWalk(s, b);
+    }
+    return;
+  }
+  if (b.mode === "takeoff") {
+    const p = Math.min(1, b.t / TAKEOFF_T);
+    b.z = p < 0.4 ? 0 : ((p - 0.4) / 0.6) * FLY_Z;
+    if (b.t >= TAKEOFF_T) beginFly(s, b);
+    return;
+  }
+  if (b.mode === "land") {
+    const p = Math.min(1, b.t / LAND_T);
+    b.z = (1 - p) * FLY_Z;
+    if (b.t >= LAND_T) {
+      b.z = 0;
+      if (birdRoll(b) < 0.45) beginStand(b);
+      else beginWalk(s, b);
+    }
+    return;
+  }
+  const dx = b.tx - b.x;
+  const dy = b.ty - b.y;
+  const dist = Math.hypot(dx, dy) || 0.0001;
+  if (dist < 3) {
+    b.x = b.tx;
+    b.y = b.ty;
+    if (b.mode === "fly") beginLand(b);
+    else if (birdRoll(b) < 0.34) beginTakeoff(b);
+    else if (birdRoll(b) < 0.62) beginStand(b);
+    else beginWalk(s, b);
+    return;
+  }
+  const speed = b.mode === "fly" ? 54 : 18;
+  const step = Math.min(dist, speed * dt);
+  const nx = b.x + (dx / dist) * step;
+  const ny = b.y + (dy / dist) * step;
+  if (b.mode === "walk" && footBlocked(nx, ny)) {
+    beginTakeoff(b);
+    return;
+  }
+  const ox = b.x;
+  const oy = b.y;
+  b.x = Math.max(40, Math.min(312, nx));
+  b.y = Math.max(236, Math.min(500, ny));
+  const movedX = b.x - ox;
+  const movedY = b.y - oy;
+  if (Math.abs(movedX) > 0.05 && Math.abs(movedX) >= Math.abs(movedY)) b.face = movedX > 0 ? 1 : -1;
+  if (b.mode === "fly") {
+    b.z = FLY_Z + Math.sin(b.t * 7) * 3;
+    if (b.t > 5.2) beginLand(b);
+  }
+}
+
+function reaperFace(r: Reaper, x: number, y: number) {
+  const dx = x - r.x;
+  const dy = y - r.y;
+  if (Math.abs(dx) >= Math.abs(dy)) r.dir = dx >= 0 ? "e" : "w";
+  else r.dir = dy >= 0 ? "s" : "n";
+}
+
+function reaperPracticeDir(s: GameState, r: Reaper, pose: ReaperPose): Reaper["dir"] {
+  const weapon = pose === "scythe" || pose === "axe" || pose === "hammer" || pose === "pickaxe";
+  const dx = s.x - r.x;
+  const dy = s.y - r.y;
+  if (weapon && Math.hypot(dx, dy) < 80) {
+    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "w" : "e";
+    return dy >= 0 ? "n" : "s";
+  }
+  const roll = unitRand(s);
+  if (roll < 0.5) return "s";
+  if (roll < 0.75) return "n";
+  return roll < 0.9 ? "e" : "w";
+}
+
+function reaperSpot(s: GameState, r: Reaper): { x: number; y: number } {
+  let spot = pickSpot(s, REAPER_SPOTS);
+  for (let i = 0; i < 5; i++) {
+    const next = pickSpot(s, REAPER_SPOTS);
+    if (Math.hypot(next.x - r.x, next.y - r.y) > 40) return next;
+    spot = next;
+  }
+  return spot;
+}
+
+function stepReaper(s: GameState, _dt: number) {
+  ensureReaper(s);
+}
+
+
 function stepCritters(s: GameState, dt: number) {
   stepCat(s, dt);
+  stepBirds(s, dt);
+  stepReaper(s, dt);
   for (const a of s.animals) {
     if (!a.route) a.route = [];
     if (a.pause > 0) {
@@ -2106,17 +2653,28 @@ function stepCritters(s: GameState, dt: number) {
       if (a.intent === "graze") a.dir = "s";
       continue;
     }
+    if (footBlocked(a.x, a.y)) {
+      unstick(a);
+      a.route = [];
+      a.pause = 0.4;
+      continue;
+    }
     if (a.route.length < 2) {
       const goal = herdGoal(s, a);
       a.intent = goal.intent;
-      a.route = gateRoute(a, goal);
+      a.route = gateRoute(a, goal, true);
+      if (a.route.length < 2) {
+        a.pause = 0.8;
+        continue;
+      }
     }
     const speed = a.kind === "rooster" ? 20 : a.kind === "goat" ? 15 : 8;
-    const step = followRoute(a, speed, dt);
+    const step = followRoute(a, speed, dt, true);
     if (step === "walk") continue;
     a.route = [];
     if (step === "stuck") {
-      a.pause = 0.35;
+      unstick(a);
+      a.pause = 0.7;
       continue;
     }
     if (a.intent === "graze") a.pause = a.kind === "cow" ? 3.4 + unitRand(s) * 1.6 : a.kind === "goat" ? 1.5 + unitRand(s) : 0.55 + unitRand(s) * 0.4;

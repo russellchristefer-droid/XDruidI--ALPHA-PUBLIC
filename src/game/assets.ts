@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260929i";
+export const ART = "20260927fresh";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -7,6 +7,8 @@ function art(path: string): string {
 
 const URLS: Record<string, string> = {
   yard: art("/game/yard.png"),
+  heavenIsle: art("/game/land/heaven-isle.png"),
+  hellIsle: art("/game/land/hell-isle.png"),
   meadow: art("/game/the-meadow.png"),
   idle: art("/game/char/idle.png"),
   goddess: art("/game/char/goddess.png"),
@@ -22,6 +24,24 @@ const URLS: Record<string, string> = {
   hammer: art("/game/char/hammer.png"),
   handsidle: art("/game/char/handsidle.png"),
   handswalk: art("/game/char/handswalk.png"),
+  plainIdle: art("/game/char/plain/idle.png"),
+  plainWalk: art("/game/char/plain/walk.png"),
+  plainWater: art("/game/char/plain/water.png"),
+  plainShovel: art("/game/char/plain/shovel.png"),
+  plainScythe: art("/game/char/plain/scythe.png"),
+  plainAxe: art("/game/char/plain/axe.png"),
+  plainHammer: art("/game/char/plain/hammer.png"),
+  plainHandsidle: art("/game/char/plain/handsidle.png"),
+  plainHandswalk: art("/game/char/plain/handswalk.png"),
+  courtIdle: art("/game/char/court/idle.png"),
+  courtWalk: art("/game/char/court/walk.png"),
+  courtWater: art("/game/char/court/water.png"),
+  courtShovel: art("/game/char/court/shovel.png"),
+  courtScythe: art("/game/char/court/scythe.png"),
+  courtAxe: art("/game/char/court/axe.png"),
+  courtHammer: art("/game/char/court/hammer.png"),
+  courtHandsidle: art("/game/char/court/handsidle.png"),
+  courtHandswalk: art("/game/char/court/handswalk.png"),
   cowIdle: art("/game/animals/dairyCow_idle.png"),
   cowWalk: art("/game/animals/dairyCow_walk.png"),
   roosterIdle: art("/game/animals/rooster_idle.png"),
@@ -33,6 +53,9 @@ const URLS: Record<string, string> = {
   catSit: art("/game/animals/bigcat_sit.png"),
   catStand: art("/game/animals/bigcat_sit.png"),
   catRun: art("/game/animals/bigcat_run.png"),
+  birdWalk: art("/game/animals/bird-walk.png"),
+  birdTakeoff: art("/game/animals/bird-takeoff.png"),
+  birdFly: art("/game/animals/bird-fly.png"),
   bee: art("/game/animals/bee.png"),
   butterfly: art("/game/animals/butterfly.png"),
   res: art("/game/icons/resources.png"),
@@ -86,6 +109,8 @@ const URLS: Record<string, string> = {
   landWater: art("/game/land/water.png"),
   svarga: art("/game/land/svarga.png"),
   naraka: art("/game/land/naraka.png"),
+  portalSvarga: art("/game/portal/svarga.png"),
+  portalNaraka: art("/game/portal/naraka.png"),
   seraphimIdle: art("/game/angels/Seraphim_Idle.png"),
   seraphimWalk: art("/game/angels/Seraphim_Walk.png"),
   seraphimFly: art("/game/angels/Seraphim_Fly.png"),
@@ -96,15 +121,41 @@ const URLS: Record<string, string> = {
   cherubShoot: art("/game/angels/Cherub_Shoot.png"),
   cherubArrow: art("/game/angels/Cherub_Arrow.png"),
   demonMage: art("/game/demons/demon-mage.png"),
+  reaperIdle: art("/game/char/reaper/idle.png"),
+  reaperWalk: art("/game/char/reaper/walk.png"),
+  reaperHandsIdle: art("/game/char/reaper/handsidle.png"),
+  reaperHandsWalk: art("/game/char/reaper/handswalk.png"),
+  reaperWater: art("/game/char/reaper/water.png"),
+  reaperShovel: art("/game/char/reaper/shovel.png"),
+  reaperScythe: art("/game/char/reaper/scythe.png"),
+  reaperAxe: art("/game/char/reaper/axe.png"),
+  reaperHammer: art("/game/char/reaper/hammer.png"),
+  reaperPickaxe: art("/game/char/reaper/pickaxe.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "world", label: "World", keys: ["yard", "meadow", "path", "occlude", "house", "rocks", "meadowDress"] },
-  { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater", "farmExtend", "svarga", "naraka"] },
+  { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater", "farmExtend", "svarga", "naraka", "portalSvarga", "portalNaraka"] },
   { id: "angels", label: "Angels", keys: ["seraphimIdle", "seraphimWalk", "seraphimFly", "seraphimAttack", "archangelFly", "archangelAttack", "cherubFly", "cherubShoot", "cherubArrow"] },
   { id: "demons", label: "Demons", keys: ["demonMage"] },
+  {
+    id: "reaper",
+    label: "Reaper",
+    keys: [
+      "reaperIdle",
+      "reaperWalk",
+      "reaperHandsIdle",
+      "reaperHandsWalk",
+      "reaperWater",
+      "reaperShovel",
+      "reaperScythe",
+      "reaperAxe",
+      "reaperHammer",
+      "reaperPickaxe",
+    ],
+  },
   { id: "druid", label: "Druid", keys: ["idle", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
-  { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "bee", "butterfly"] },
+  { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
   { id: "covers", label: "Covers", keys: ["tree-nw", "tree-n", "tree-ne", "tree-e", "tree-sw", "tree-s", "tree-se", "bush-w", "bush-e"] },
   { id: "fx", label: "Effects", keys: ["emoji", "fxHearts", "fxHeartsPink", "fxStars", "fxBuff", "fxDebuff", "fxTired", "fxBlood", "fxMagic", "res", "campfire"] },
@@ -123,13 +174,72 @@ export function assetFile(id: string): string | null {
 
 export type Sheets = Record<string, HTMLImageElement>;
 
-export function loadSheets(): Promise<Sheets> {
-  const entries = Object.entries(URLS).map(async ([key, url]) => {
+const FIRST = [
+  "yard",
+  "house",
+  "path",
+  "occlude",
+  "rocks",
+  "idle",
+  "walk",
+  "plainIdle",
+  "plainWalk",
+  "portalSvarga",
+  "portalNaraka",
+];
+
+function loadOne(key: string, sheets: Sheets, ms: number): Promise<void> {
+  const url = URLS[key];
+  if (!url || typeof window === "undefined") return Promise.resolve();
+  return new Promise((resolve) => {
     const img = new Image();
-    img.decoding = "async";
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+    const timer = window.setTimeout(finish, ms);
+    img.onload = () => {
+      window.clearTimeout(timer);
+      if (img.naturalWidth > 0) sheets[key] = img;
+      finish();
+    };
+    img.onerror = () => {
+      window.clearTimeout(timer);
+      finish();
+    };
     img.src = url;
-    await img.decode();
-    return [key, img] as const;
   });
-  return Promise.all(entries).then((list) => Object.fromEntries(list));
+}
+
+async function loadQueue(keys: string[], sheets: Sheets, limit: number, ms: number): Promise<void> {
+  let next = 0;
+  const workers = Math.max(1, Math.min(limit, keys.length));
+  await Promise.all(
+    Array.from({ length: workers }, async () => {
+      for (;;) {
+        const i = next;
+        next += 1;
+        const key = keys[i];
+        if (!key) return;
+        await loadOne(key, sheets, ms);
+      }
+    }),
+  );
+}
+
+export function loadSheets(): Promise<Sheets> {
+  const sheets: Sheets = {};
+  const first = FIRST.filter((key) => URLS[key]);
+  const rest = Object.keys(URLS).filter((key) => !first.includes(key));
+  return loadQueue(first, sheets, 4, 6000).then(() => {
+    const later = () => {
+      void loadQueue(rest, sheets, 2, 12000);
+    };
+    const idle = window.requestIdleCallback;
+    if (typeof idle === "function") idle(() => later(), { timeout: 1200 });
+    else window.setTimeout(later, 600);
+    return sheets;
+  });
 }

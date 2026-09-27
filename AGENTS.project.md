@@ -1,12 +1,12 @@
 DRUIDI — GROK BUILD PROJECT INSTRUCTIONS
 
-Live site: https://druidi.grok.me/ Pinned chat (source of truth for decisions, history, and open risks): https://grok.com/c/a0bd9e8c-b7f5-4128-b585-6402a2f4f42b?rid=2ef89b1d-d097-41da-93eb-c66527424a71 Asset pack: Farm Life Pixel Art Pack, Animated Asset Pack by sophi-x-x https://sophi-x-x.itch.io/farm-life-pixel-art-pack-animated-asset-pack
+
 
 0. ROLE AND MISSION
 
-You are Grok Build, the delivery engine for Druidi, an 8×8-grid game with 32×32 graphics. The live prototype at druidi.grok.me is the working baseline. Improve it in place. Never rebuild it from scratch. At the start of every session, read the pinned chat for prior decisions, then inspect the repository before proposing changes.
+You are Grok Build, the delivery engine for Druidi 2D pixel game. Improve it in place. Never rebuild it from scratch. At the start of every session, read the pinned chat for prior decisions, then inspect the repository before proposing changes.
 
-Mission: make Druidi the best possible game that can be built around the Farm Life pack: a persistent, autonomous, deeply systemic druid life-simulation RPG that feels like a living magical rural world. It should combine the strengths of the reference games below without copying any of them, and it should stay recognizably a handcrafted pixel farm: an 8×8 placement grid and 32×32 graphics.
+Mission: make Druidi the best possible game that can be built around the Farm Life pack: a persistent, autonomous, deeply systemic druid life-simulation RPG that feels like a living magical rural world. It should combine the strengths of the reference games below without copying any of them, and it should stay recognizably a handcrafted 16x16 pixel-art farm world.
 
 North star sentence: A healthy druid arrives at a neglected homestead at dawn in late winter. Everything he does, needs, builds, grows, wears, and remembers is real, persistent, readable, and inspectable.
 
@@ -27,7 +27,7 @@ Pillar priorities when they conflict: readability first, persistence second, aut
 
 2. NON-NEGOTIABLE RULES
 PLAN FIRST. Begin every session in plan mode. Inspect the repository, runtime, scene or DOM structure, asset dimensions, import settings, input mappings, scripts, current UI, and save implementation before editing. Produce a plan listing dependencies, risks, affected files, tests, and rollback points.
-PRESERVE THE ART. The placement grid is 8×8. Graphics are 32×32. Keep consistent pixel density, disciplined outlines, readable silhouettes, and the warm palette. Style target is high-fidelity pixel realism: realism from animation timing, lighting, material response, weather, and cause and effect, never from swapping in unrelated high-resolution art or adding visual noise. If any request for "hyperrealism" would break the pixel style, keep the pixel style and state the conflict.
+PRESERVE THE ART. Keep the Farm Life identity: 16x16 grid, consistent pixel density, disciplined outlines, readable silhouettes, warm palette. Style target is high-fidelity pixel realism: realism from animation timing, lighting, material response, weather, and cause and effect, never from swapping in unrelated high-resolution art or adding visual noise. If any request for "hyperrealism" would break the pixel style, keep the pixel style and state the conflict.
 NEVER DESTROY STATE. Do not silently overwrite or delete existing systems, raw assets, save data, or unknown or corrupted fields. If a system is missing, create a documented adapter and list every changed file.
 NO FABRICATION. Do not invent, redraw, or pretend to have assets the pack does not contain. Missing content follows the gap policy in Section 3.
 LICENSING. The pack allows commercial and non-commercial use, forbids reselling or redistributing the raw files, and appreciates (but does not require) credit. Keep credit to sophi-x-x in the game's credits screen and repository README. Stop for approval on any licensing-sensitive change.
@@ -50,7 +50,7 @@ Water: animated 4-frame water loop, pond borders, lilies, reeds.
 Food: soup, vegetable salad, mashed potatoes, baked potatoes, currants, 3 apple types.
 Resources and tools: logs, rocks, coal, branches, leaves, firewood, compost, sapling, water; bucket (full and empty); tool icons and world-sized tools in 16x16 and 32x32 variants.
 Particles: water drops, grass, leaves, stones, wood chips, dust.
-Format: PNG with transparency. This game uses an 8×8 grid and 32×32 graphics. Tagged for Unity, Godot, RPG Maker, and others.
+Format: PNG with transparency, 16x16 grid, tagged for Unity, Godot, RPG Maker, and others.
 3.2 What the pack does NOT contain (known gaps)
 
 The following are required by the design but are absent from the pack. Do not pretend otherwise:
@@ -72,7 +72,7 @@ If a system genuinely needs new art, mark the stand-in visibly (for example a la
 A missing sprite must never block a system's logic. Build and test the mechanic with a clearly marked placeholder.
 Client delivery: because this is a browser game, sprite files reach the player's browser. Ship packed atlases rather than the pack's original folder structure, do not publish a downloadable copy of the raw pack, and keep the credits and license notice in the repository.
 4. ART DIRECTION: HIGH-FIDELITY PIXEL REALISM
-Pixel consistency: 8×8 placement grid, 32×32 graphics, nearest-neighbor sampling only. Consistent pixel density, disciplined outlines, restrained palette. No mixed resolutions, no smoothed scaling.
+Pixel consistency: 16x16 base grid, consistent pixel density across every sprite and UI element, disciplined outlines, restrained palette relationships. No mixed resolutions, no smoothed scaling. Use integer scaling and nearest-neighbor sampling only.
 Animation: smooth but deliberately pixel-stepped transitions for walking, chopping, mining, hammering, watering, digging, scything, eating, crafting, sleeping, combat, spellcasting, and injury. Use the pack's animations as the base, add squash, follow-through, and timing offsets in code where allowed, and log any animation that must be commissioned.
 Material response: wood, soil, stone, cloth, metal, water, leaves, food, and fire each get distinct visual response and distinct audio. Wet soil looks and behaves differently from dry soil. Stone chips, wood chips, dust, and water drops come from the pack's particles.
 Light: a day-night cycle and color grade, a campfire that lights nearby tiles and consumes fuel, window light, lantern light, shadow direction that follows the sun, and frost, rain, and mist as overlays. Light is the main tool for realism.
@@ -230,7 +230,7 @@ Homestead, grove, pond, field, road, and further regions unlocked through explor
 
 10. CONSTRUCTION AND TERRAFORMING (WURM-INSPIRED)
 Homestead restoration: the neglected homestead starts damaged. Repaired roofs, doors, windows, floors, storage, hearth, and chimney give visible, persistent improvement and real comfort and warmth effects.
-Tile-level terraforming: dig, level, raise, pave, plant, flood, and drain, on the 8×8 grid, using 32×32 graphics. Terrain changes update collision, navigation, water flow, object placement, and background simulation.
+Tile-level terraforming: dig, level, raise, pave, plant, flood, and drain, within the limits the 16x16 tile set can express. Terrain changes update collision, navigation, water flow, object placement, and background simulation.
 Structures: paths, fences, windbreaks, irrigation channels, compost systems, shelters, workshops, animal areas, storage, wells, drying racks, smokehouses, sacred spaces, and expansions. Use the pack's shed, campfire, well, compost bin, chopping block, table, stove, fences, and signs as the foundation.
 Quality and skill: construction quality depends on skill, tools, and materials. Higher quality lasts longer and gives better bonuses.
 Decay and maintenance: structures weather, rot, and need repair. Neglect has visible consequences.

@@ -311,8 +311,9 @@ test("he strolls the yard on his own", () => {
   s.life.tx = 80;
   s.life.ty = 140;
   const x = s.x;
+  const y = s.y;
   step(s, 0.5, { mx: 0, my: 0, run: false, frozen: false });
-  assert.ok(s.x < x);
+  assert.ok(s.x !== x || s.y !== y);
   assert.ok(s.speed > 1);
 });
 
@@ -401,6 +402,8 @@ test("the farm pond is not walkable, and a rod catches a fish from the bank", ()
 
 test("he trains a spell on his own when magic is the lesson", () => {
   const s = createGame();
+  assert.equal(s.magic, 100);
+  assert.equal(s.mana, 100);
   s.x = 176;
   s.y = 268;
   s.life.hunger = 0;
@@ -411,6 +414,103 @@ test("he trains a spell on his own when magic is the lesson", () => {
   s.life.pause = 0;
   s.clock = 1;
   const idle = { mx: 0, my: 0, run: false, frozen: false };
-  for (let i = 0; i < 30; i++) step(s, 0.05, idle);
-  assert.ok(s.magic >= 1, `magic ${s.magic}`);
+  for (let i = 0; i < 200 && s.cast === null && !/practices|casts/.test(s.message); i++) step(s, 0.05, idle);
+  assert.equal(s.magic, 100);
+  assert.ok(s.mana > 70, `mana ${s.mana}`);
+  assert.ok(Math.hypot(s.x - 172, s.y - 380) <= 4, `${s.x},${s.y}`);
+  assert.ok(s.cast !== null || /practices|casts/.test(s.message), s.message);
+});
+
+test("a dirty farmer leaves the pond corner and trains on the seal", () => {
+  const s = createGame();
+  s.x = 112;
+  s.y = 101;
+  s.life.dirt = 96;
+  s.life.thirst = 10;
+  s.life.hunger = 10;
+  s.stamina = 90;
+  const idle = { mx: 0, my: 0, run: false, frozen: false };
+  let caught = 0;
+  for (let i = 0; i < 400; i++) {
+    step(s, 0.05, idle);
+    if (s.x < 116 && s.y > 98 && s.y < 106 && s.life.errand === "wash") caught++;
+    if (s.cast && Math.hypot(s.x - 172, s.y - 380) <= 4) break;
+  }
+  assert.ok(caught < 30, `stuck on the pond corner for ${caught} frames at ${s.x},${s.y}`);
+  assert.ok(s.life.dirt < 90, `dirt ${s.life.dirt}`);
+  assert.ok(Math.hypot(s.x - 172, s.y - 380) <= 4, `${s.x},${s.y} ${s.message}`);
+  assert.ok(s.cast !== null || /practices|casts/.test(s.message), s.message);
+});
+
+test("he crosses the fence gate without getting stuck", () => {
+  const s = createGame();
+  s.life.hunger = 0;
+  s.life.thirst = 0;
+  s.life.dirt = 0;
+  s.stamina = 100;
+  s.cat.petCd = 99;
+  for (const plot of s.plots) {
+    plot.stage = 2;
+    plot.crop = "tomato";
+    plot.watered = true;
+    plot.tilled = true;
+  }
+  for (const a of s.animals) {
+    a.fed = true;
+    a.ready = false;
+  }
+  for (const f of s.flowers ?? []) f.bloom = 0;
+  for (const b of s.branches) b.left = false;
+  const gate = s.structures.find((st) => st.id === "gate");
+  if (gate) gate.floor = 20;
+  for (const p of s.pack) {
+    if (!p) continue;
+    if (p.defId === "rod") p.floor = 0;
+    else if (DEFS[p.defId]?.kind === "tool") p.floor = 8;
+  }
+  s.life.skip = "magic";
+  s.life.skipUntil = 500;
+  s.life.pause = 0;
+  s.x = 172;
+  s.y = 132;
+  s.life.tx = 160;
+  s.life.ty = 260;
+  s.life.route = [];
+  const idle = { mx: 0, my: 0, run: false, frozen: false };
+  let caught = 0;
+  for (let i = 0; i < 500; i++) {
+    const px = s.x;
+    const py = s.y;
+    step(s, 0.05, idle);
+    const moved = Math.hypot(s.x - px, s.y - py);
+    if (s.y > 148 && s.y < 188 && moved < 0.15) caught++;
+    if (s.y > 200) break;
+  }
+  assert.ok(s.y > 200, `never crossed, at ${s.x.toFixed(0)},${s.y.toFixed(0)} ${s.message}`);
+  assert.ok(caught < 10, `caught on the fence for ${caught} frames`);
+  assert.equal(footBlocked(s.x, s.y), false);
+});
+
+test("mana refills like stamina when he is still", () => {
+  const s = createGame();
+  s.mana = 10;
+  s.speed = 0;
+  const idle = { mx: 0, my: 0, run: false, frozen: true };
+  for (let i = 0; i < 20; i++) step(s, 0.05, idle);
+  assert.ok(s.mana > 10, `mana ${s.mana}`);
+  assert.ok(s.mana <= 100);
+});
+
+test("the grim reaper does not walk the courtyard", () => {
+  const s = createGame();
+  const r = s.reaper;
+  const x = r.x;
+  const y = r.y;
+  const idle = { mx: 0, my: 0, run: false, frozen: false };
+  r.route = [160, 380];
+  r.pose = "walk";
+  r.pause = 0;
+  for (let i = 0; i < 40; i++) step(s, 0.05, idle);
+  assert.equal(r.x, x);
+  assert.equal(r.y, y);
 });

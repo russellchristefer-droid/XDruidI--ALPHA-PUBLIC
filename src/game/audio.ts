@@ -1,3 +1,5 @@
+import { takeSongs, type Sung } from "./birdsong.ts";
+
 const KEY = "xdruid-audio-v1";
 
 const LIGHT = [5, 6, 7, 8];
@@ -47,6 +49,9 @@ class Wind {
   private stormSrc: AudioBufferSourceNode | null = null;
   private rainGain: GainNode | null = null;
   private stormGain: GainNode | null = null;
+  private birdBus: GainNode | null = null;
+  private birdBufs = new Map<string, AudioBuffer>();
+  private birdLoading = false;
   private sky: "clear" | "rain" | "storm" = "clear";
   private volume = 0.7;
   private muted = false;
@@ -83,8 +88,17 @@ class Wind {
     this.emit();
   }
 
-  /** Call from a click or key. Starts the context in that same turn. */
   arm() {
+    if (typeof window === "undefined") return;
+    try {
+      this.armContext();
+    } catch {
+      this.want = false;
+    }
+  }
+
+  /** Call from a click or key. Starts the context in that same turn. */
+  private armContext() {
     if (typeof window === "undefined") return;
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
@@ -105,6 +119,7 @@ class Wind {
         if (document.visibilityState === "visible" && this.ctx?.state === "suspended") void this.ctx.resume();
       });
       void this.preload();
+      void this.loadBirds();
     }
     if (this.ctx.state === "suspended") void this.ctx.resume();
     this.want = true;
@@ -149,6 +164,61 @@ class Wind {
     if (this.sky === sky) return;
     this.sky = sky;
     this.apply(0.4);
+  }
+
+  sing(song: Sung) {
+    if (!this.ctx || !this.birdBus || this.muted || this.birdBufs.size === 0) return;
+    const now = this.ctx.currentTime + 0.03;
+    const dx = song.x - song.px;
+    const dist = Math.hypot(dx, song.y - song.py);
+    const near = Math.max(0, 1 - dist / 260);
+    const loud = song.gain * (0.28 + 0.72 * near);
+    const pan = Math.max(-0.85, Math.min(0.85, dx / 150));
+    const panner = this.ctx.createStereoPanner();
+    panner.pan.setValueAtTime(pan, now);
+    panner.connect(this.birdBus);
+    song.notes.forEach((n, i) => {
+      const key = n.long ? `${n.p}L` : `${n.p}${i % 2}`;
+      const buf = this.birdBufs.get(key);
+      if (!buf) return;
+      const rate = n.rate ?? 1;
+      const when = now + n.at;
+      const gain = this.ctx!.createGain();
+      gain.gain.setValueAtTime(Math.max(0.02, (n.gain ?? 1) * loud), when);
+      gain.connect(panner);
+      const src = this.ctx!.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.setValueAtTime(rate, when);
+      src.connect(gain);
+      src.start(when);
+      src.stop(when + buf.duration / rate + 0.02);
+      src.onended = () => {
+        try {
+          src.disconnect();
+          gain.disconnect();
+        } catch {
+          /* already gone */
+        }
+      };
+    });
+  }
+
+  private async loadBirds() {
+    if (this.birdLoading || !this.ctx || !this.master) return;
+    this.birdLoading = true;
+    this.birdBus = this.ctx.createGain();
+    this.birdBus.gain.value = 0.9;
+    this.birdBus.connect(this.master);
+    const ids = ["vl0", "vl1", "l0", "l1", "m0", "m1", "h0", "h1", "vh0", "vh1", "vlL", "lL", "mL", "hL", "vhL"];
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          this.birdBufs.set(id, await this.load(`/game/audio/birds/${id}.wav`));
+        } catch {
+          /* a missing syllable is skipped */
+        }
+      }),
+    );
   }
 
   thunder() {
@@ -357,4 +427,12 @@ export function syncSky(sky: "clear" | "rain" | "storm", bolts: number) {
     heardBolts = bolts;
     wind.thunder();
   }
+}
+
+export function playBirdsongs() {
+  if (!wind.state() || wind.state().muted) {
+    takeSongs();
+    return;
+  }
+  for (const song of takeSongs()) wind.sing(song);
 }

@@ -11,12 +11,21 @@ import {
   clockLabel,
   createGame,
   defOf,
+  ensureHealth,
+  ensureReaper,
+  ensureSkills,
   isNight,
-  lifeLabel,
   skyLabel,
+  liturgyName,
+  SKILL_IDS,
+  SKILL_NAME,
+  SKILL_NOTE,
+  skillLevel,
+  skillFill,
 } from "@/game/content";
+import { drawMarginSky } from "@/game/paint/marginSky";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
-import { armWind, heavyWind, onSound, setVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
+import { armWind, heavyWind, onSound, playBirdsongs, setVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
 import { drawWorld } from "@/game/draw";
 import {
   assignHotbar,
@@ -96,6 +105,7 @@ const CONTROLS = `WASD or arrows    Move. 4 directions.
 Shift             Walk faster while stamina holds. A heavy pack refuses.
 Left click        Use the highlighted tile.
 Right click       Examine, or a short menu.
+Mouse wheel       Zoom in on him. Scroll up closer, down back out.
 E or Space        Use the tile you face.
 Q                 Activate or eat the hotbar slot.
 F                 Stow or draw the hand item.
@@ -109,6 +119,18 @@ Esc               Pause. This yard is the whole world.
 At night, E on the shed or the bathtub sleeps and saves. B still opens the chest.
 
 Gamepad: stick move, A use, X pack, Y body, B cancel, LB/RB hotbar, LT walk-fast, Start pause.`;
+
+function placeName(s: GameState): string {
+  const wing = s.wing ?? 0;
+  if (wing === 1) return "Svarga";
+  if (wing === -1) return "Naraka";
+  if (Math.abs(s.x - 40) < 40 && s.y > 150 && s.y < 250) return "Naraka gate";
+  if (Math.abs(s.x - 308) < 40 && s.y > 150 && s.y < 250) return "Svarga gate";
+  if (Math.hypot(s.x - 172, s.y - 380) < 30) return "Courtyard seal";
+  if (s.y < 168) return "Farm";
+  if (s.y < 528) return "Courtyard";
+  return "Below the yard";
+}
 
 type Menu = { x: number; y: number; rows: { label: string; run: () => void }[] };
 
@@ -214,7 +236,7 @@ function SoundControls() {
       <button
         type="button"
         className="slot"
-        style={{ width: "auto", padding: "4px 8px" }}
+        style={{ width: "auto", height: 22, padding: "0 6px" }}
         aria-pressed={snd.muted}
         onClick={() => toggleMute()}
       >
@@ -233,6 +255,37 @@ function SoundControls() {
   );
 }
 
+function needColor(value: number): string {
+  if (value > 70) return "#e07a5f";
+  if (value > 45) return "#e2b657";
+  return "#7dba5a";
+}
+
+function Vital({ label, value, pct, color }: { label: string; value: string; pct: number; color: string }) {
+  return (
+    <div className="vital">
+      <b>{label}</b>
+      <div className="meter">
+        <span style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: color }} />
+      </div>
+      <i>{value}</i>
+    </div>
+  );
+}
+
+function Need({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <span>
+        {label} {Math.round(value)}
+      </span>
+      <div className="meter">
+        <span style={{ width: `${Math.max(0, Math.min(100, value))}%`, background: needColor(value) }} />
+      </div>
+    </div>
+  );
+}
+
 export function AssayGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stateRef = useRef<GameState | null>(null);
@@ -240,6 +293,8 @@ export function AssayGame() {
   const keysRef = useRef(new Set<string>());
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const camRef = useRef({ scale: 1, ox: 0, oy: 0 });
+  const zoomRef = useRef(1);
+  const wheelAcc = useRef(0);
   const screenRef = useRef<"title" | "play">("title");
   const panelRef = useRef<PanelId | null>(null);
   const stickRef = useRef({ x: 0, y: 0 });
@@ -348,20 +403,48 @@ export function AssayGame() {
 
   useEffect(() => {
     let dead = false;
+    const giveUp = window.setTimeout(() => {
+      if (dead) return;
+      if (!sheetsRef.current) sheetsRef.current = {};
+      if (!stateRef.current) {
+        try {
+          stateRef.current = readSave() ?? createGame();
+        } catch {
+          stateRef.current = createGame();
+        }
+      }
+      ensureSkills(stateRef.current);
+      ensureHealth(stateRef.current);
+      ensureReaper(stateRef.current);
+      setReady(true);
+    }, 7000);
     loadSheets()
       .then((sheets) => {
         if (dead) return;
         sheetsRef.current = sheets;
         loadTileLayer();
-        loadDevSprites().then((book) => setSprites(book));
-        if (!stateRef.current) stateRef.current = readSave() ?? createGame();
+        loadDevSprites().then((book) => setSprites(book)).catch(() => {});
+        if (!stateRef.current) {
+          try {
+            stateRef.current = readSave() ?? createGame();
+            ensureSkills(stateRef.current);
+            ensureHealth(stateRef.current);
+            ensureReaper(stateRef.current);
+          } catch {
+            stateRef.current = createGame();
+          }
+        }
         setReady(true);
         if (new URLSearchParams(location.search).has("qa")) {
           screenRef.current = "play";
           setScreen("play");
         }
       })
-      .catch((e: unknown) => setErr(e instanceof Error ? e.message : "The yard art failed to load."));
+      .catch(() => {
+        if (!sheetsRef.current) sheetsRef.current = {};
+        setReady(true);
+      })
+      .finally(() => window.clearTimeout(giveUp));
     const touchOn = () => setTouch(true);
     window.addEventListener("touchstart", touchOn, { passive: true });
     const coarse = window.matchMedia("(pointer: coarse)");
@@ -375,6 +458,7 @@ export function AssayGame() {
       dead = true;
       window.removeEventListener("touchstart", touchOn);
       phone.removeEventListener("change", onPhone);
+      window.clearTimeout(giveUp);
     };
   }, []);
 
@@ -417,9 +501,34 @@ export function AssayGame() {
   }, []);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const levels = [1, 1.5, 2, 3, 4];
+    const onWheel = (e: WheelEvent) => {
+      if (screenRef.current !== "play") return;
+      e.preventDefault();
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16;
+      else if (e.deltaMode === 2) dy *= 400;
+      wheelAcc.current += dy;
+      if (Math.abs(wheelAcc.current) < 60) return;
+      const out = wheelAcc.current > 0;
+      wheelAcc.current = 0;
+      let i = levels.findIndex((z) => Math.abs(z - zoomRef.current) < 0.05);
+      if (i < 0) i = 0;
+      i = Math.max(0, Math.min(levels.length - 1, i + (out ? -1 : 1)));
+      zoomRef.current = levels[i] ?? 1;
+    };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", onWheel);
+  }, []);
+
+  useEffect(() => {
     let raf = 0;
     let last = performance.now();
     let acc = 0;
+    const coarse = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 800;
+    const hudEvery = coarse ? 0.5 : 0.2;
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
@@ -427,7 +536,7 @@ export function AssayGame() {
       const sheets = sheetsRef.current;
       const s = stateRef.current;
       if (canvas && sheets && s) {
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const dpr = coarse ? 1 : Math.min(2, window.devicePixelRatio || 1);
         const rect = canvas.getBoundingClientRect();
         const w = Math.max(1, Math.floor(rect.width * dpr));
         const h = Math.max(1, Math.floor(rect.height * dpr));
@@ -436,24 +545,37 @@ export function AssayGame() {
           canvas.height = h;
         }
         const fit = Math.min(w / VIEW_W, h / VIEW_H);
-        const scale = Math.max(1, Math.floor(fit));
-        const follow = Math.round(s.y - VIEW_H / 2);
-        const camY = Math.max(0, Math.min(WORLD_H - VIEW_H, follow));
-        const ox = Math.floor((w - VIEW_W * scale) / 2);
-        const oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
+        const base = Math.max(1, Math.floor(fit));
+        const zoom = zoomRef.current;
+        const scale = Math.max(base, Math.round(base * zoom));
+        const brace = s.cast && s.wing === 1 ? -1 : s.cast && s.wing === -1 ? 1 : 0;
+        let ox: number;
+        let oy: number;
+        let skyW: number;
+        let skyH: number;
+        if (zoom <= 1) {
+          const follow = Math.round(s.y - VIEW_H / 2);
+          const camY = Math.max(0, Math.min(WORLD_H - VIEW_H, follow + brace));
+          ox = Math.floor((w - VIEW_W * scale) / 2);
+          oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
+          skyW = VIEW_W * scale;
+          skyH = VIEW_H * scale;
+        } else {
+          const viewW = w / scale;
+          const viewH = h / scale;
+          const pad = 24;
+          const camX = Math.max(-pad, Math.min(WORLD_W - viewW + pad, s.x - viewW / 2));
+          const camY = Math.max(-pad, Math.min(WORLD_H - viewH + pad, s.y - viewH / 2 + brace));
+          ox = Math.round(w / 2 - (camX + viewW / 2) * scale);
+          oy = Math.round(h / 2 - (camY + viewH / 2) * scale);
+          skyW = WORLD_W * scale;
+          skyH = WORLD_H * scale;
+        }
         camRef.current = { scale, ox, oy };
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.fillStyle = "#070b16";
-          ctx.fillRect(0, 0, w, h);
-          ctx.fillStyle = "#d7e4ff";
-          for (let i = 0; i < 36; i++) {
-            const sx = (i * 97 + 13) % w;
-            const sy = (i * 53 + 7) % h;
-            if ((i + Math.floor(performance.now() / 500)) % 8 === 0) continue;
-            ctx.fillRect(sx, sy, 1, 1);
-          }
+          drawMarginSky(ctx, w, h, ox, oy, skyW, skyH, performance.now() / 1000);
           ctx.setTransform(scale, 0, 0, scale, ox, oy);
           ctx.imageSmoothingEnabled = false;
           const keys = keysRef.current;
@@ -485,23 +607,34 @@ export function AssayGame() {
             if (edge(9)) api.current.toggle("pause");
             for (let i = 0; i < 16; i++) padRef.current[i] = !!gp.buttons[i]?.pressed;
           }
-          if (screenRef.current === "play") {
-            step(s, dt, {
-              mx,
-              my,
-              run,
-              frozen: panelRef.current !== null,
-            });
-            setWind(heavyWind(s.time, s.day));
-            syncSky(s.weather, s.bolts);
-            if (s.uiEvent) {
-              const ev = s.uiEvent;
-              s.uiEvent = undefined;
-              api.current.apply(ev);
+          if (screenRef.current === "play" && s) {
+            try {
+              step(s, dt, {
+                mx,
+                my,
+                run,
+                frozen: panelRef.current !== null,
+              });
+              setWind(heavyWind(s.time, s.day));
+              syncSky(s.weather, s.bolts);
+              playBirdsongs();
+              if (s.uiEvent) {
+                const ev = s.uiEvent;
+                s.uiEvent = undefined;
+                api.current.apply(ev);
+              }
+              const tool = findItem(s, s.activeId);
+              drawWorld(ctx, s, sheets, hoverRef.current, !!tool && defOf(tool).tool === "shovel");
+            } catch (err) {
+              s.message = err instanceof Error ? err.message : "The yard hit a snag.";
+            }
+          } else {
+            try {
+              drawWorld(ctx, s, sheets, hoverRef.current, false);
+            } catch {
+              /* Keep the title up if a frame fails. */
             }
           }
-          const tool = findItem(s, s.activeId);
-          drawWorld(ctx, s, sheets, hoverRef.current, !!tool && defOf(tool).tool === "shovel");
           if (editorRef.current.open) drawEditorBox(ctx, editorRef.current.live ?? editorRef.current.sel);
           window.__controlsTest = {
             getYaw: () => (s.dir === "e" ? Math.PI / 2 : s.dir === "w" ? -Math.PI / 2 : s.dir === "n" ? 0 : Math.PI),
@@ -516,7 +649,7 @@ export function AssayGame() {
         }
       }
       acc += dt;
-      if (acc > 0.12) {
+      if (acc > hudEvery) {
         acc = 0;
         setTick((n) => (n + 1) % 100000);
       }
@@ -634,7 +767,11 @@ export function AssayGame() {
   };
 
   const start = (fresh: boolean) => {
-    armWind();
+    try {
+      armWind();
+    } catch {
+      /* A phone can refuse sound. The yard still opens. */
+    }
     if (!ready) return;
     if (fresh) {
       localStorage.removeItem(SAVE_KEY);
@@ -1105,23 +1242,65 @@ export function AssayGame() {
       {screen === "play" && s && (
         <>
           <div className="hud-top">
-            <div className="panel" style={{ padding: "6px 8px", fontSize: 13 }}>
-              <div>
-                {clockLabel(s.time)} · Day {s.day} · {skyLabel(s)}
+            <div className="panel hud-card">
+              <div className="hud-head">
+                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : "Homestead"}</b>
+                <span>{skyLabel(s)}</span>
               </div>
-              <div style={{ color: "#c4a574" }}>{s.life ? lifeLabel(s.life) : ""}</div>
-              <div style={{ color: "#e6c86a" }}>Magic {Math.floor(s.magic ?? 0)}</div>
-              <div style={{ color: "#c4a574", maxWidth: 220 }}>{watcherLine(s)}</div>
+              <div className="hud-sub">
+                {placeName(s)} · {clockLabel(s.time)} · Day {s.day}
+                {s.cast ? ` · ${liturgyName(s.cast.spell, s.wing ?? 0)}` : ""}
+              </div>
+              <div className="need-row">
+                <Need label="Hunger" value={s.life?.hunger ?? 0} />
+                <Need label="Thirst" value={s.life?.thirst ?? 0} />
+                <Need label="Grime" value={s.life?.dirt ?? 0} />
+              </div>
+              <Vital
+                label="Mood"
+                value={String(Math.round(s.life?.mood ?? 0))}
+                pct={s.life?.mood ?? 0}
+                color={(s.life?.mood ?? 0) < 40 ? "#e07a5f" : "#e2b657"}
+              />
+              <div className="hud-sub">{s.downed ? "Downed. Crawl to the tub." : watcherLine(s)}</div>
+              <div className="fn-grid">
+                <button type="button" className={panel === "pack" ? "on" : ""} onClick={() => toggle("pack")}>
+                  Pack
+                </button>
+                <button type="button" className={panel === "body" ? "on" : ""} onClick={() => toggle("body")}>
+                  Body
+                </button>
+                <button type="button" className={panel === "skills" ? "on" : ""} onClick={() => toggle("skills")}>
+                  Skills
+                </button>
+                <button type="button" className={panel === "map" ? "on" : ""} onClick={() => toggle("map")}>
+                  Map
+                </button>
+                <button
+                  type="button"
+                  className={panel === "vault" ? "on" : ""}
+                  onClick={() => {
+                    if (Math.hypot(s.x - 260, s.y - 146) > 40) {
+                      s.message = "Stand at the house.";
+                      bump();
+                      return;
+                    }
+                    toggle("vault");
+                  }}
+                >
+                  Chest
+                </button>
+              </div>
               <button
                 type="button"
-                className="slot"
-                style={{ pointerEvents: "auto", marginTop: 6, width: "auto", padding: "4px 8px" }}
+                className={`hud-wide${s.auto === false ? "" : " on"}`}
                 onClick={() => {
                   s.auto = s.auto === false;
                   if (!s.auto) {
                     s.life.errand = null;
                     s.life.route = [];
                     s.life.chore = "";
+                    s.cast = null;
                   }
                   s.message = s.auto ? "Autonomy on. He tends the farm." : "Autonomy off. He waits for you.";
                   persist(s);
@@ -1131,24 +1310,81 @@ export function AssayGame() {
                 {s.auto === false ? "Autonomy off" : "Autonomy on"}
               </button>
             </div>
-            <div className="panel" style={{ padding: "6px 8px", fontSize: 13, textAlign: "right" }}>
-              <div>Stamina {Math.round(s.stamina)}</div>
-              <div className="meter" style={{ marginLeft: "auto" }}>
-                <span style={{ width: `${Math.max(0, Math.min(100, s.stamina))}%`, background: s.stamina < 20 ? "#e07a5f" : "#7dba5a" }} />
+            <div className="panel hud-card">
+              <Vital
+                label="Health"
+                value={String(Math.round(s.health ?? 100))}
+                pct={s.health ?? 100}
+                color={(s.health ?? 100) < 30 ? "#e07a5f" : "#c4544a"}
+              />
+              <Vital label="Stamina" value={String(Math.round(s.stamina))} pct={s.stamina} color={s.stamina < 20 ? "#e07a5f" : "#7dba5a"} />
+              <Vital
+                label="Mana"
+                value={String(Math.round(s.mana ?? 100))}
+                pct={s.mana ?? 100}
+                color={(s.mana ?? 100) < 20 ? "#c47ad4" : "#6aa7e8"}
+              />
+              <Vital label="Carry" value={mass.toFixed(1)} pct={(mass / MASS_CAP) * 100} color={mass >= 16 ? "#e07a5f" : "#c4a574"} />
+              <div className="hud-sub">
+                Purse {coinCount(s)} · cap {MASS_CAP.toFixed(0)}
               </div>
-              <div style={{ color: mass >= 16 ? "#e07a5f" : "#f3e6c8" }}>
-                {mass.toFixed(1)} / {MASS_CAP.toFixed(1)} wt
+              <div className="fn-grid">
+                <button
+                  type="button"
+                  onClick={() => {
+                    s.message = onQ(s);
+                    bump();
+                  }}
+                >
+                  Eat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    s.message = onF(s);
+                    bump();
+                  }}
+                >
+                  Stow
+                </button>
+                <button
+                  type="button"
+                  className={running ? "on" : ""}
+                  onClick={() => {
+                    runHold.current = !runHold.current;
+                    setRunning(runHold.current);
+                  }}
+                >
+                  Run
+                </button>
+                <button type="button" className={panel === "pause" ? "on" : ""} onClick={() => toggle("pause")}>
+                  Pause
+                </button>
               </div>
               <SoundControls />
             </div>
           </div>
           <div className="hotbar-wrap">
-            {s.message && (
-              <div className="prompt" style={{ maxWidth: "100%" }}>
-                {s.message}
+            {handheld ? (
+              <div className="prompt">
+                {s.message || prompt || (s.downed ? "Downed. Crawl to the tub." : "Walk the yard.")}
               </div>
+            ) : (
+              <>
+                {s.message && (
+                  <div className="prompt" style={{ maxWidth: "100%" }}>
+                    {s.message.startsWith("Tomato, cauliflower")
+                      ? s.wing === 1
+                        ? "Amarāvatī. The light here is leased."
+                        : s.wing === -1
+                          ? "The river is the Vaitaraṇī. The sentence is not eternal."
+                          : s.message
+                      : s.message}
+                  </div>
+                )}
+                <div className="prompt">{prompt || (s.downed ? "Downed — crawl to the bathtub  [E]" : " ")}</div>
+              </>
             )}
-            <div className="prompt">{prompt || (s.downed ? "Downed — crawl to the bathtub  [E]" : " ")}</div>
             <div className="hotbar" role="toolbar" aria-label="Hotbar">
               {s.hotbar.map((id, i) => {
                 const it = findItem(s, id);
@@ -1174,7 +1410,7 @@ export function AssayGame() {
                     aria-label={d ? d.name : `Empty slot ${i + 1}`}
                   >
                     <span className="idx">{i + 1}</span>
-                    {it && d && <Icon icon={d.icon} size={30} />}
+                    {it && d && <Icon icon={d.icon} size={handheld ? 18 : 30} />}
                     {it && d?.kind === "tool" && <span className="floor">{Math.round(it.floor)}</span>}
                     {it && defOf(it).stack && it.qty > 1 && <span className="qty">{it.qty}</span>}
                   </button>
@@ -1395,9 +1631,13 @@ export function AssayGame() {
               const y = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
               const m = Math.hypot(x, y) || 1;
               stickRef.current = { x: x / m, y: y / m };
+              const knob = (e.currentTarget as HTMLElement).querySelector("i");
+              if (knob) knob.style.transform = `translate(${(x / m) * 28}px, ${(y / m) * 28}px)`;
             }}
-            onPointerUp={() => {
+            onPointerUp={(e) => {
               stickRef.current = { x: 0, y: 0 };
+              const knob = (e.currentTarget as HTMLElement).querySelector("i");
+              if (knob) knob.style.transform = "translate(0px, 0px)";
             }}
           >
             <i style={{ transform: `translate(${stickRef.current.x * 28}px, ${stickRef.current.y * 28}px)` }} />
@@ -1428,7 +1668,7 @@ export function AssayGame() {
             </p>
             {err && <p>{err}</p>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button className="slot" style={{ width: "auto", padding: "8px 14px" }} disabled={!ready} onClick={() => start(false)}>
+              <button className="slot" style={{ width: "auto", padding: "12px 18px" }} disabled={!ready} onClick={() => start(false)}>
                 {ready ? "Play" : "Loading yard…"}
               </button>
               <button className="slot" style={{ width: "auto", padding: "8px 14px" }} onClick={() => setPanel(panel === "controls" ? null : "controls")}>
@@ -1459,10 +1699,12 @@ export function AssayGame() {
       {screen === "play" && s && (panel === "pack" || panel === "vault" || panel === "backpack" || panel === "body") && (
         <div className="overlay">
           <div className="panel sheet inv">
-            <h2>{panel === "vault" ? "House stores" : "Inventory"}</h2>
+            <h2>{panel === "vault" ? "House stores" : panel === "body" ? "Body" : "Pack"}</h2>
             <p style={{ marginTop: 0, fontSize: 13 }}>
-              {s.pack.filter(Boolean).length}/28 slots · {mass.toFixed(1)} / {MASS_CAP.toFixed(1)} · Floor purse {coinCount(s)}
-              {panel === "vault" ? " · The chest is beside the pack. Click a pack item, then a chest slot, to store it." : " · Click an item, then a body slot, to equip it."}
+              {panel === "body"
+                ? `Health ${Math.round(s.health ?? 100)} · Stamina ${Math.round(s.stamina)} · Mana ${Math.round(s.mana ?? 100)}. The pack is its own page.`
+                : `${s.pack.filter(Boolean).length}/28 slots · ${mass.toFixed(1)} / ${MASS_CAP.toFixed(1)} · Floor purse ${coinCount(s)}`}
+              {panel === "vault" ? " · Click a pack item, then a chest slot, to store it." : panel === "body" ? " Choose a piece in the Pack, then click a slot here." : " Choose a piece, then open Body to wear it."}
             </p>
             {picked && findItem(s, picked) && (
               <p style={{ fontSize: 13, marginTop: 0 }}>
@@ -1488,6 +1730,7 @@ export function AssayGame() {
               </p>
             )}
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              {panel !== "body" && (
               <div>
                 <div className="inv-grid">
                   {s.pack.map((it, i) => (
@@ -1565,6 +1808,8 @@ export function AssayGame() {
                   </>
                 )}
               </div>
+              )}
+              {panel === "body" && (
               <div>
                 <h2 style={{ fontSize: 14, marginTop: 0 }}>Worn</h2>
                 <div className="doll">
@@ -1622,8 +1867,9 @@ export function AssayGame() {
                     );
                   })}
                 </div>
-                <p style={{ fontSize: 12, maxWidth: 200 }}>Click a worn slot to stow it. Tools go on the hands. Clothes go on their own slot.</p>
+                <p style={{ fontSize: 12, maxWidth: 280 }}>Click a worn slot to stow it. Tools go on the hands. Clothes go on their own slot.</p>
               </div>
+              )}
               {panel === "vault" && (
                 <div>
                   <div className="inv-grid" style={{ gridTemplateColumns: "repeat(8, 56px)" }}>
@@ -1668,6 +1914,36 @@ export function AssayGame() {
         </div>
       )}
 
+      {screen === "play" && s && panel === "skills" && (
+        <div className="overlay" onClick={() => { panelRef.current = null; setPanel(null); }}>
+          <div className="panel sheet skills-sheet" onClick={(e) => e.stopPropagation()}>
+            <h2>Skills</h2>
+            <p style={{ marginTop: 0, fontSize: 13 }}>
+              Health {Math.round(s.health ?? 100)}. He learns by doing the work. The pack and the body stay on their own pages.
+            </p>
+            <div className="skill-list">
+              {SKILL_IDS.map((id) => {
+                const xp = s.skills?.[id] ?? 0;
+                const level = skillLevel(xp);
+                return (
+                  <div className="skill-row" key={id}>
+                    <b>{SKILL_NAME[id]}</b>
+                    <i>Lv {level}</i>
+                    <div className="meter">
+                      <span style={{ width: `${skillFill(xp) * 100}%`, background: "#c4a574" }} />
+                    </div>
+                    <small>{SKILL_NOTE[id]}</small>
+                  </div>
+                );
+              })}
+            </div>
+            <button className="slot" style={{ width: "auto", padding: "6px 10px", marginTop: 10 }} onClick={() => { panelRef.current = null; setPanel(null); }}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {screen === "play" && s && panel === "craft" && (
         <div className="overlay">
           <div className="panel sheet" style={{ maxWidth: 480 }}>
@@ -1697,28 +1973,60 @@ export function AssayGame() {
 
       {screen === "play" && s && panel === "map" && (
         <div className="overlay" onClick={() => { panelRef.current = null; setPanel(null); }}>
-          <div className="panel sheet" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <h2>Yard legend</h2>
-            <div style={{ position: "relative", width: "100%", maxWidth: 347 }}>
-              <img src={`/game/yard.png?v=${ART}`} alt="The homestead yard" style={{ width: "100%", imageRendering: "pixelated" }} />
+          <div className="panel sheet map-sheet" onClick={(e) => e.stopPropagation()}>
+            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : "Homestead"}</h2>
+            <p className="map-now">You are at {placeName(s)}.</p>
+            <div
+              className="live-map"
+              style={{ aspectRatio: s.wing ? "347 / 960" : "347 / 528" }}
+            >
+              {s.wing ? (
+                <img
+                  src={s.wing === 1 ? `/game/land/svarga.png?v=${ART}` : `/game/land/naraka.png?v=${ART}`}
+                  alt={s.wing === 1 ? "Svarga" : "Naraka"}
+                />
+              ) : (
+                <>
+                  <img src={`/game/yard.png?v=${ART}`} alt="The farm" className="live-map-farm" />
+                  <div className="live-map-walk" />
+                  <div className="live-map-court" />
+                </>
+              )}
+              {(s.wing === 0 || s.wing == null) && (
+                <>
+                  <span className="pin naraka" style={{ left: `${(40 / WORLD_W) * 100}%`, top: `${(210 / 528) * 100}%` }}>Naraka</span>
+                  <span className="pin svarga" style={{ left: `${(308 / WORLD_W) * 100}%`, top: `${(210 / 528) * 100}%` }}>Svarga</span>
+                  <span className="pin seal" style={{ left: `${(172 / WORLD_W) * 100}%`, top: `${(380 / 528) * 100}%` }}>Seal</span>
+                  <span className="pin spot" style={{ left: `${(134 / WORLD_W) * 100}%`, top: `${(84 / 528) * 100}%` }}>Pond</span>
+                  <span className="pin spot" style={{ left: `${(250 / WORLD_W) * 100}%`, top: `${(140 / 528) * 100}%` }}>House</span>
+                </>
+              )}
+              {s.wing === 1 && (
+                <span className="pin svarga" style={{ left: `${(40 / WORLD_W) * 100}%`, top: `${(210 / WORLD_H) * 100}%` }}>Yard</span>
+              )}
+              {s.wing === -1 && (
+                <span className="pin naraka" style={{ left: `${(308 / WORLD_W) * 100}%`, top: `${(210 / WORLD_H) * 100}%` }}>Yard</span>
+              )}
               <span
+                className="pin you"
                 style={{
-                  position: "absolute",
                   left: `${(s.x / WORLD_W) * 100}%`,
-                  top: `${(s.y / WORLD_H) * 100}%`,
-                  width: 8,
-                  height: 8,
-                  background: "#e2b657",
-                  transform: "translate(-50%, -50%)",
+                  top: `${(s.y / (s.wing ? WORLD_H : 528)) * 100}%`,
                 }}
-              />
+              >
+                You
+              </span>
             </div>
-            <ul style={{ fontSize: 13 }}>
-              <li>Gate south, on the path.</li>
-              <li>Beds west and center. Well and pond north.</li>
-              <li>Grindstone, workbench, and house east.</li>
-              <li>Campfire and tub on the north grass.</li>
-              <li>Cow, rooster, and goat by the shed.</li>
+            <ul>
+              {(s.wing === 0 || s.wing == null) && (
+                <>
+                  <li>West gate is Naraka. East gate is Svarga. Both stand on the sidewalk.</li>
+                  <li>Pond, well, and tub are on the farm. The house chest is east.</li>
+                  <li>The seal in the courtyard is where he trains.</li>
+                </>
+              )}
+              {s.wing === 1 && <li>The gate on the left of Svarga returns to the yard.</li>}
+              {s.wing === -1 && <li>The gate on the right of Naraka returns to the yard.</li>}
             </ul>
             <button className="slot" style={{ width: "auto", padding: "6px 10px" }} onClick={() => { panelRef.current = null; setPanel(null); }}>
               Close

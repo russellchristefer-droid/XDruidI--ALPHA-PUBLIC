@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { FARMER_HOME, MEADOW, SPOTS, createGame, footBlocked, placeFarmer } from "./content.ts";
+import { FARMER_HOME, MEADOW, SPOTS, createGame, footBlocked, placeFarmer, setRealm } from "./content.ts";
 import { interact, step } from "./logic.ts";
 
 function canWalk(from: { x: number; y: number }, to: { x: number; y: number }): boolean {
@@ -81,7 +81,7 @@ test("sidewalk ends cross onto a matching land", () => {
   assert.equal(s.wing, 0);
   finish(s);
   assert.equal(s.wing, -1);
-  assert.equal(s.x, 284);
+  assert.equal(s.x, 266);
   assert.equal(footBlocked(s.x, s.y), false);
   const home = interact(s, 308, 212);
   assert.match(home.msg ?? "", /home land/);
@@ -93,11 +93,15 @@ test("sidewalk ends cross onto a matching land", () => {
   assert.match(east.msg ?? "", /Svarga/);
   finish(s);
   assert.equal(s.wing, 1);
-  assert.equal(s.x, 64);
+  assert.equal(s.x, 86);
+  assert.equal(footBlocked(40, 202), true);
+  setRealm(-1);
+  assert.equal(footBlocked(308, 202), true);
+  setRealm(0);
   assert.equal(footBlocked(40, 202), true);
   assert.equal(footBlocked(308, 202), true);
-  assert.equal(footBlocked(64, 212), false);
-  assert.equal(footBlocked(284, 212), false);
+  assert.equal(footBlocked(86, 212), false);
+  assert.equal(footBlocked(266, 212), false);
   s.wing = 0;
   s.x = 48;
   s.y = 240;

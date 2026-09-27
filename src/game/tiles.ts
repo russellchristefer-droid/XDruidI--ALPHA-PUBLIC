@@ -1,4 +1,4 @@
-import { WORLD_H, WORLD_W, overlap, type Rect } from "./content";
+import { WORLD_H, WORLD_W, overlap, type Rect } from "./content.ts";
 
 export const GRID = 8;
 export const TILE_SIZE = 32;
