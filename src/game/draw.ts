@@ -601,50 +601,65 @@ function drawCampfire(ctx: CanvasRenderingContext2D, sheet: HTMLImageElement, cl
 }
 
 function drawSvarga(ctx: CanvasRenderingContext2D, clock: number, sheet?: HTMLImageElement): void {
-  ctx.fillStyle = "#30180c";
+  ctx.fillStyle = "#142448";
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   if (sheet) ctx.drawImage(sheet, 0, 0);
-  const lease = 0.5 + 0.5 * Math.sin(clock * 0.35);
+  const lease = 0.5 + 0.5 * Math.sin(clock * 0.22);
   ctx.save();
   ctx.beginPath();
   ctx.rect(156, 358, 68, 30);
   ctx.clip();
-  for (let i = 0; i < 7; i++) {
-    const x = 160 + ((clock * 16 + i * 13) % 56);
-    ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.7)" : "rgba(180,230,226,0.8)";
-    ctx.fillRect(Math.floor(x), 364 + (i % 4) * 5, 4, 1);
+  for (let i = 0; i < 5; i++) {
+    const x = 162 + ((clock * 8 + i * 17) % 52);
+    ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.75)" : "rgba(160,210,214,0.7)";
+    ctx.fillRect(Math.floor(x), 366 + (i % 3) * 6, 3, 1);
   }
   ctx.restore();
-  for (let i = 0; i < 16; i++) {
-    const x = (i * 41 + Math.floor(clock * (6 + (i % 3)))) % (WORLD_W - 6);
-    const y = 48 + ((i * 67 + Math.floor(clock * 5)) % (FARM_H - 70));
-    ctx.fillStyle = i % 3 === 0 ? "#fff8d8" : "#ffd878";
+  for (let i = 0; i < 10; i++) {
+    const x = (i * 29 + Math.floor(clock * 4)) % (WORLD_W - 4);
+    const y = 80 + ((i * 41 + Math.floor(clock * 10)) % (FARM_H - 100));
+    ctx.fillStyle = i % 2 ? "#e87898" : "#fff4ea";
     ctx.fillRect(x, y, 1, 1);
   }
-  ctx.fillStyle = `rgba(255, 232, 180, ${0.035 + lease * 0.04})`;
-  ctx.fillRect(0, 36, WORLD_W, FARM_H - 36);
+  for (let i = 0; i < 8; i++) {
+    const x = (i * 43 + Math.floor(clock * 6)) % (WORLD_W - 6);
+    const y = 200 + ((i * 23) % 180);
+    ctx.fillStyle = "rgba(255, 236, 180, 0.85)";
+    ctx.fillRect(x, y, 1, 1);
+  }
+  const ripple = (clock * 10) % 18;
+  ctx.strokeStyle = `rgba(255, 244, 210, ${0.15 + lease * 0.15})`;
+  ctx.strokeRect(168 + ripple, 210, 8, 3);
+  ctx.fillStyle = `rgba(255, 228, 170, ${0.03 + lease * 0.035})`;
+  ctx.fillRect(0, 40, WORLD_W, FARM_H - 40);
 }
 
 function drawNaraka(ctx: CanvasRenderingContext2D, clock: number, sheet?: HTMLImageElement): void {
-  ctx.fillStyle = "#100806";
+  ctx.fillStyle = "#0c0606";
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   if (sheet) ctx.drawImage(sheet, 0, 0);
   ctx.save();
   ctx.beginPath();
   ctx.rect(214, 48, 34, 462);
   ctx.clip();
-  for (let i = 0; i < 26; i++) {
-    const y = 48 + ((i * 19 + Math.floor(clock * 28)) % 462);
+  for (let i = 0; i < 14; i++) {
+    const y = 48 + ((i * 31 + Math.floor(clock * 7)) % 462);
     if (y > 194 && y < 226) continue;
-    ctx.fillStyle = i % 3 === 0 ? "rgba(210, 70, 48, 0.55)" : "rgba(40, 8, 8, 0.35)";
-    ctx.fillRect(216 + (i % 6) * 4, y, 3, 1);
+    ctx.fillStyle = i % 4 === 0 ? "rgba(190, 170, 140, 0.55)" : "rgba(120, 24, 18, 0.45)";
+    ctx.fillRect(218 + (i % 4) * 5, y, 5, 2);
   }
   ctx.restore();
-  const flick = 0.4 + 0.6 * Math.sin(clock * 8);
-  ctx.fillStyle = `rgba(255, 150, 48, ${0.45 + flick * 0.5})`;
+  for (let i = 0; i < 8; i++) {
+    const x = 40 + ((i * 37) % 160);
+    const y = FARM_H - 40 - ((Math.floor(clock * 8) + i * 19) % 200);
+    ctx.fillStyle = i % 2 ? "#2a2420" : "#1a1412";
+    ctx.fillRect(x, y, 1, 1);
+  }
+  const flick = 0.4 + 0.6 * Math.sin(clock * 5);
+  ctx.fillStyle = `rgba(180, 90, 36, ${0.25 + flick * 0.35})`;
+  ctx.fillRect(86, 276, 8, 2);
   ctx.fillRect(89, 282, 2, 1);
-  ctx.fillRect(91, 283, 1, 1);
-  const hop = Math.floor(clock * 2) % 2;
+  const hop = Math.floor(clock) % 2;
   ctx.fillStyle = "#0e0c0a";
   ctx.fillRect(298, 190 - hop, 6, 2);
   ctx.fillRect(284 + hop, 204, 5, 2);
