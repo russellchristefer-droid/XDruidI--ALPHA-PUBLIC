@@ -624,22 +624,28 @@ export function drawWorld(
 
   if (s.weather === "rain" || s.weather === "storm") {
     const storm = s.weather === "storm";
-    const drops = storm ? 210 : 120;
-    const span = FARM_H + 16;
+    const drops = storm ? 150 : 90;
     for (let i = 0; i < drops; i++) {
       const n = (i * 1103515245 + 12345) >>> 0;
-      const speed = (storm ? 320 : 210) + ((n >>> 16) % (storm ? 80 : 50));
-      const len = (storm ? 8 : 6) + ((n >>> 21) % 3);
-      const x0 = n % WORLD_W;
-      const y0 = Math.floor((((n >>> 8) % span) + s.clock * speed) % span) - 8;
-      const fade = 0.5 + ((n >>> 24) % 35) / 100;
+      const cycle = (storm ? 0.42 : 0.62) + ((n >>> 16) % 18) / 100;
+      const t = ((s.clock / cycle) + ((n >>> 8) % 1000) / 1000) % 1;
+      const x = n % WORLD_W;
+      const y = Math.floor(t * (FARM_H - 2));
+      const len = 2 + Math.floor(t * (storm ? 9 : 6));
+      const fade = 0.55 + ((n >>> 24) % 30) / 100;
       for (let k = 0; k < len; k++) {
-        const px = x0 - (k >> 1);
-        const py = y0 + k;
+        const py = y - k;
+        const px = x + (k >> 1);
         if (py < 0 || py >= FARM_H || px < 0 || px >= WORLD_W) continue;
-        const head = k >= len - 2;
-        ctx.fillStyle = head ? `rgba(236, 244, 252, ${fade})` : `rgba(160, 190, 210, ${fade * 0.4})`;
+        ctx.fillStyle = k < 2 ? `rgba(236, 244, 252, ${fade})` : `rgba(150, 186, 208, ${fade * 0.35})`;
         ctx.fillRect(px, py, 1, 1);
+      }
+      if (t > 0.9 && y < FARM_H) {
+        const frame = Math.min(2, Math.floor(((t - 0.9) / 0.1) * 3));
+        const w = 1 + frame * 2;
+        ctx.fillStyle = `rgba(220, 236, 246, ${0.75 - frame * 0.22})`;
+        ctx.fillRect(x - (w >> 1), y, w, 1);
+        if (frame > 0) ctx.fillRect(x, y - 1, 1, 1);
       }
     }
   }
