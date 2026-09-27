@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260929e";
+export const ART = "20260929f";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -77,11 +77,21 @@ const URLS: Record<string, string> = {
   landWater: art("/game/land/water.png"),
   svarga: art("/game/land/svarga.png"),
   naraka: art("/game/land/naraka.png"),
+  seraphimIdle: art("/game/angels/Seraphim_Idle.png"),
+  seraphimWalk: art("/game/angels/Seraphim_Walk.png"),
+  seraphimFly: art("/game/angels/Seraphim_Fly.png"),
+  seraphimAttack: art("/game/angels/Seraphim_Attack.png"),
+  archangelFly: art("/game/angels/Archangel_Fly.png"),
+  archangelAttack: art("/game/angels/Archangel_Attack.png"),
+  cherubFly: art("/game/angels/Cherub_Fly.png"),
+  cherubShoot: art("/game/angels/Cherub_Shoot.png"),
+  cherubArrow: art("/game/angels/Cherub_Arrow.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "world", label: "World", keys: ["yard", "meadow", "path", "occlude", "house", "rocks", "meadowDress"] },
   { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater", "farmExtend", "svarga", "naraka"] },
+  { id: "angels", label: "Angels", keys: ["seraphimIdle", "seraphimWalk", "seraphimFly", "seraphimAttack", "archangelFly", "archangelAttack", "cherubFly", "cherubShoot", "cherubArrow"] },
   { id: "druid", label: "Druid", keys: ["idle", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },

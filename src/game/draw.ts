@@ -665,6 +665,112 @@ function drawNaraka(ctx: CanvasRenderingContext2D, clock: number, sheet?: HTMLIm
   ctx.fillRect(284 + hop, 204, 5, 2);
 }
 
+const ANGEL = 108;
+const SERAPHIM_PATH = [
+  { x: 100, y: 220 },
+  { x: 150, y: 250 },
+  { x: 236, y: 292 },
+  { x: 286, y: 340 },
+  { x: 248, y: 430 },
+  { x: 130, y: 448 },
+  { x: 78, y: 340 },
+  { x: 86, y: 250 },
+];
+
+function alongPath(clock: number, speed: number, pts: { x: number; y: number }[]): { x: number; y: number; flip: boolean } {
+  let total = 0;
+  const seg: { a: { x: number; y: number }; b: { x: number; y: number }; d: number; at: number }[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i]!;
+    const b = pts[(i + 1) % pts.length]!;
+    const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    seg.push({ a, b, d, at: total });
+    total += d;
+  }
+  let dist = (clock * speed) % total;
+  for (const s of seg) {
+    if (dist <= s.at + s.d) {
+      const t = (dist - s.at) / s.d;
+      return { x: s.a.x + (s.b.x - s.a.x) * t, y: s.a.y + (s.b.y - s.a.y) * t, flip: s.b.x < s.a.x };
+    }
+  }
+  return { x: pts[0]!.x, y: pts[0]!.y, flip: false };
+}
+
+type AngelPaint = { x: number; y: number; key: string; frame: number; flip: boolean; scale: number; footY: number; shadow: boolean };
+
+function svargaAngels(clock: number): AngelPaint[] {
+  const out: AngelPaint[] = [];
+  const cycle = 22;
+  const t = clock % cycle;
+  const laps = Math.floor(clock / cycle);
+  const moving = t < 9 ? t : t < 11 ? 9 : t < 18 ? 9 + (t - 11) : 16;
+  const walked = alongPath(laps * 16 + moving, 26, SERAPHIM_PATH);
+  const flying = t >= 11 && t < 18;
+  const lift = flying ? Math.sin(((t - 11) / 7) * Math.PI) * 22 : 0;
+  const attacking = t >= 18 && t < 20;
+  out.push({
+    x: walked.x,
+    y: walked.y - lift,
+    flip: walked.flip,
+    key: attacking ? "seraphimAttack" : flying ? "seraphimFly" : t < 9 ? "seraphimWalk" : "seraphimIdle",
+    frame: attacking ? Math.floor((t - 18) * 8) % 4 : flying ? Math.floor(clock * 10) % 9 : t < 9 ? Math.floor(clock * 8) % 4 : Math.floor(clock * 4) % 4,
+    scale: 0.56,
+    footY: flying ? 64 : 82,
+    shadow: !flying,
+  });
+  const th = clock * 0.45;
+  const archAttack = clock % 12 < 0.5;
+  out.push({
+    x: 168 + Math.cos(th) * 108,
+    y: 108 + Math.sin(th * 0.85) * 30,
+    flip: -Math.sin(th) < 0,
+    key: archAttack ? "archangelAttack" : "archangelFly",
+    frame: archAttack ? Math.floor((clock % 12) * 8) % 3 : Math.floor(clock * 8) % 4,
+    scale: 0.64,
+    footY: 58,
+    shadow: false,
+  });
+  const th2 = clock * 0.7;
+  const shoot = clock % 8;
+  const shooting = shoot < 0.65;
+  const cherubFlip = -Math.sin(th2) < 0;
+  const cx = 246 + Math.cos(th2) * 46;
+  const cy = 308 + Math.sin(th2 * 1.2) * 22;
+  out.push({
+    x: cx,
+    y: cy,
+    flip: cherubFlip,
+    key: shooting ? "cherubShoot" : "cherubFly",
+    frame: shooting ? Math.floor(shoot * 8) % 5 : Math.floor(clock * 8) % 4,
+    scale: 0.78,
+    footY: 56,
+    shadow: false,
+  });
+  if (shoot < 1.35) {
+    const u = Math.min(1, shoot / 1.1);
+    const dir = cherubFlip ? -1 : 1;
+    out.push({
+      x: cx + dir * (16 + u * 52),
+      y: cy + 1,
+      flip: cherubFlip,
+      key: "cherubArrow",
+      frame: 0,
+      scale: 0.78,
+      footY: 54,
+      shadow: false,
+    });
+  }
+  return out;
+}
+
+function paintAngel(ctx: CanvasRenderingContext2D, sheets: Sheets, a: AngelPaint): void {
+  const img = sheets[a.key];
+  if (!img) return;
+  if (a.shadow) fillOval(ctx, a.x, a.y + 1, 10, 3, "rgba(90, 60, 20, 0.35)");
+  blit(ctx, img, a.frame * ANGEL, 0, ANGEL, ANGEL, a.x, a.y, a.scale, a.flip, 54, a.footY);
+}
+
 function drawRealmGate(ctx: CanvasRenderingContext2D, s: GameState): void {
   const wing = s.wing ?? 0;
   const gold = wing === 1;
@@ -705,9 +811,16 @@ export function drawWorld(
 ) {
   const wing = s.wing ?? 0;
   if (wing !== 0) {
-    if (wing === 1) drawSvarga(ctx, s.clock, sheets.svarga);
-    else drawNaraka(ctx, s.clock, sheets.naraka);
-    if (sheets.idle) paintPlayer(ctx, sheets, s);
+    if (wing === 1) {
+      drawSvarga(ctx, s.clock, sheets.svarga);
+      const angels = svargaAngels(s.clock).sort((a, b) => a.y - b.y);
+      for (const a of angels) if (a.y <= s.y) paintAngel(ctx, sheets, a);
+      if (sheets.idle) paintPlayer(ctx, sheets, s);
+      for (const a of angels) if (a.y > s.y) paintAngel(ctx, sheets, a);
+    } else {
+      drawNaraka(ctx, s.clock, sheets.naraka);
+      if (sheets.idle) paintPlayer(ctx, sheets, s);
+    }
     drawRealmGate(ctx, s);
     if (sheets.idle && playerInPortal(s)) paintPlayer(ctx, sheets, s);
     if (s.cross) {
