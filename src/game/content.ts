@@ -793,7 +793,7 @@ export function footBlocked(x: number, y: number): boolean {
   if (box.x < 22 || box.x + box.w > 330) return true;
   if (box.y < 36) return true;
   const onSouthPath = x > 156 && x < 186;
-  if (y > 170 && y < 192 && !onSouthPath) return true;
+  if (y > 170 && y < 184 && !onSouthPath) return true;
   for (const s of SOLIDS) if (overlap(box, s)) return true;
   for (const s of PROP_SOLIDS) if (overlap(box, s)) return true;
   for (const s of tileBlocks()) if (overlap(box, s)) return true;

@@ -576,7 +576,7 @@ function drawUnderside(ctx: CanvasRenderingContext2D): void {
     const depth = 14 + Math.round(dome ** 0.72 * 58) + jag;
     const n = (x * 7) & 7;
     for (let i = 0; i < depth; i++) {
-      const shelf = i < 3 ? "#6f8a3a" : i < 8 ? ((n + i) % 5 === 0 ? "#7a5340" : "#5c4030") : (n + i) % 4 === 0 ? "#1c140e" : "#3a281c";
+      const shelf = i < 2 ? "#2a221c" : i < 6 ? "#3a281c" : (n + i) % 4 === 0 ? "#1c140e" : "#3a281c";
       ctx.fillStyle = shelf;
       ctx.fillRect(x, FARM_H + i, 1, 1);
     }
@@ -738,6 +738,10 @@ export function drawWorld(
   queue.sort((a, b) => a.y - b.y);
   for (const d of queue) d.paint();
   if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
+  if (sheets.farmExtend) {
+    ctx.drawImage(sheets.farmExtend, 0, 0, 160, 8, 0, 184, 160, 8);
+    ctx.drawImage(sheets.farmExtend, 192, 0, WORLD_W - 192, 8, 192, 184, WORLD_W - 192, 8);
+  }
   drawSideGates(ctx, s);
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y))) paintPlayer(ctx, sheets, s);
 
