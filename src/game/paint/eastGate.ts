@@ -1,4 +1,4 @@
-/** East Svarga portal: gold toraṇa, moonstone step, lotus, bells, jewel studs. Collision ellipse stays in content/logic. */
+/** East portal: Indra toraṇa. Gold-ground, kalaśa, lotus, Airāvata hint. Collision stays in logic. */
 
 function fillOval(
   ctx: CanvasRenderingContext2D,
@@ -25,22 +25,32 @@ export function drawEastGate(
   clock: number,
 ): void {
   const pulse = 0.45 + 0.4 * Math.sin(clock * 2.1);
-  fillOval(ctx, cx + 1, cy + 24, 14, 4, "rgba(40,28,8,0.55)");
+  fillOval(ctx, cx + 1, cy + 24, 15, 4, "rgba(40,28,8,0.55)");
 
   ctx.fillStyle = "#c8d8e4";
-  ctx.fillRect(cx - 12, cy + 18, 24, 5);
+  ctx.fillRect(cx - 13, cy + 18, 26, 5);
   ctx.fillStyle = "#eef6fb";
-  ctx.fillRect(cx - 10, cy + 18, 20, 1);
+  ctx.fillRect(cx - 11, cy + 18, 22, 1);
+  ctx.fillStyle = "rgba(180,210,230,0.45)";
+  ctx.fillRect(cx - 9, cy + 19, 18, 1);
   ctx.fillStyle = "#9ab0c0";
-  ctx.fillRect(cx - 12, cy + 22, 24, 1);
+  ctx.fillRect(cx - 13, cy + 22, 26, 1);
 
   ctx.fillStyle = `rgba(232,184,200,${0.55 + pulse * 0.35})`;
   ctx.fillRect(cx - 8, cy + 17, 3, 2);
   ctx.fillRect(cx + 5, cy + 17, 3, 2);
   ctx.fillRect(cx - 1, cy + 16, 3, 2);
+  ctx.fillRect(cx - 5, cy + 16, 2, 2);
+  ctx.fillRect(cx + 3, cy + 16, 2, 2);
   ctx.fillStyle = "#fff6e0";
   ctx.fillRect(cx - 7, cy + 17, 1, 1);
   ctx.fillRect(cx + 6, cy + 17, 1, 1);
+
+  ctx.fillStyle = "#f0e8d8";
+  ctx.fillRect(cx - 16, cy + 20, 4, 3);
+  ctx.fillRect(cx - 17, cy + 17, 3, 4);
+  ctx.fillStyle = "#fff6c8";
+  ctx.fillRect(cx - 16, cy + 16, 2, 2);
 
   ctx.fillStyle = "#6a4a24";
   ctx.fillRect(cx - 18, cy - 22, 36, 6);
@@ -50,12 +60,16 @@ export function drawEastGate(
   ctx.fillRect(cx - 10, cy - 23, 20, 3);
   ctx.fillStyle = "#fff6c8";
   ctx.fillRect(cx - 4, cy - 24, 8, 2);
-
   ctx.fillStyle = "#e6c86a";
-  ctx.fillRect(cx - 2, cy - 28, 4, 4);
-  ctx.fillRect(cx - 1, cy - 30, 2, 2);
+  for (let i = 0; i < 7; i++) ctx.fillRect(cx - 12 + i * 4, cy - 20, 2, 1);
+
+  ctx.fillStyle = "#c4a060";
+  ctx.fillRect(cx - 3, cy - 28, 6, 5);
+  ctx.fillStyle = "#e6c86a";
+  ctx.fillRect(cx - 2, cy - 31, 4, 4);
+  ctx.fillRect(cx - 1, cy - 33, 2, 2);
   ctx.fillStyle = "#fff6c8";
-  ctx.fillRect(cx, cy - 31, 1, 2);
+  ctx.fillRect(cx, cy - 34, 1, 2);
 
   for (const s of [-1, 1] as const) {
     const sway = Math.round(Math.sin(clock * 3 + s) * 1);
@@ -78,6 +92,9 @@ export function drawEastGate(
   ctx.fillStyle = "#e6c86a";
   ctx.fillRect(cx - 14, cy - 14, 1, 28);
   ctx.fillRect(cx + 13, cy - 14, 1, 28);
+  ctx.fillStyle = "#fff6c8";
+  ctx.fillRect(cx - 14, cy - 16, 1, 2);
+  ctx.fillRect(cx + 13, cy - 16, 1, 2);
 
   for (const s of [-1, 1] as const) {
     for (let i = 0; i < 3; i++) {
