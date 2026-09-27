@@ -1,4 +1,4 @@
-import { FISH_CROWN, FISH_WATER, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { FISH_CROWN, FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 
@@ -370,62 +370,14 @@ function drawAnimal(
   blit(ctx, img, col * 72, row * 72, 72, 72, x, y, scale, false, 36, 66);
 }
 
-const ISLE_X = 173;
-const ISLE_Y = 102;
-const ISLE_RX = 152;
-const ISLE_RY = 86;
-
-function onFarm(x: number, y: number): boolean {
-  const ax = Math.abs((x - ISLE_X) / ISLE_RX);
-  const ay = Math.abs((y - ISLE_Y) / ISLE_RY);
-  return ax ** 2.15 + ay ** 2.35 <= 1;
-}
-
-const ISLE_TOP = new Int16Array(WORLD_W);
-const ISLE_BOT = new Int16Array(WORLD_W);
-let isleReady = false;
-
-function ensureIsle(): void {
-  if (isleReady) return;
-  isleReady = true;
-  for (let x = 0; x < WORLD_W; x++) {
-    let top = -1;
-    let bot = -1;
-    for (let y = 0; y < 230; y++) {
-      if (!onFarm(x, y)) continue;
-      if (top < 0) top = y;
-      bot = y;
-    }
-    ISLE_TOP[x] = top;
-    ISLE_BOT[x] = bot;
-  }
-}
-
-function clipIsle(ctx: CanvasRenderingContext2D): void {
-  ensureIsle();
-  ctx.beginPath();
-  let moved = false;
-  for (let x = 0; x < WORLD_W; x++) {
-    if (ISLE_TOP[x] < 0) continue;
-    if (!moved) {
-      ctx.moveTo(x, ISLE_TOP[x]);
-      moved = true;
-    } else ctx.lineTo(x, ISLE_TOP[x]);
-  }
-  for (let x = WORLD_W - 1; x >= 0; x--) {
-    if (ISLE_BOT[x] < 0) continue;
-    ctx.lineTo(x, ISLE_BOT[x] + 1);
-  }
-  ctx.closePath();
-  ctx.clip();
-}
+const FARM_H = MEADOW.y;
 
 function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
   ctx.fillStyle = "#07091a";
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   for (let i = 0; i < 520; i++) {
     const x = (i * 47 + 13) % WORLD_W;
-    const y = (i * 29 + 5) % WORLD_H;
+    const y = FARM_H + ((i * 29 + 5) % (WORLD_H - FARM_H));
     const band = (x * 3 + y) % 17;
     if (band > 4) continue;
     ctx.fillStyle = band === 0 ? "#3a2068" : band === 1 ? "#1a4060" : "#2a1848";
@@ -433,7 +385,7 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
   }
   for (let i = 0; i < 260; i++) {
     const x = (i * 53 + 9) % WORLD_W;
-    const y = (i * 37 + 4) % WORLD_H;
+    const y = FARM_H + 8 + ((i * 37) % (WORLD_H - FARM_H - 8));
     const tw = (i + Math.floor(clock * 2)) % 11 === 0;
     ctx.fillStyle = i % 9 === 0 ? "#f6d48a" : i % 4 === 0 ? "#9ecbff" : "#f4f7ff";
     ctx.fillRect(x, y, tw ? 2 : 1, tw ? 2 : 1);
@@ -442,17 +394,17 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
       ctx.fillRect(x, y - 2, 1, 5);
     }
   }
-  paintOrb(ctx, 18, 18, 7, "#d5deea", "#9aabc0");
-  paintOrb(ctx, 36, 168, 11, "#c46a4a", "#7a3028");
-  paintOrb(ctx, 300, 250, 16, "#8eb8d8", "#3a5870");
+  paintOrb(ctx, 48, 340, 14, "#d5deea", "#9aabc0");
+  paintOrb(ctx, 300, 300, 16, "#8eb8d8", "#3a5870");
   ctx.fillStyle = "#c9d7e4";
-  ctx.fillRect(268, 250, 64, 1);
-  ctx.fillRect(274, 252, 52, 1);
-  paintOrb(ctx, 250, 420, 22, "#d8c48a", "#8a7040");
+  ctx.fillRect(268, 300, 64, 1);
+  ctx.fillRect(274, 302, 52, 1);
+  paintOrb(ctx, 250, 460, 22, "#d8c48a", "#8a7040");
   ctx.fillStyle = "#efe6c4";
-  ctx.fillRect(214, 418, 72, 1);
-  ctx.fillRect(206, 420, 88, 1);
-  ctx.fillRect(220, 422, 60, 1);
+  ctx.fillRect(214, 458, 72, 1);
+  ctx.fillRect(206, 460, 88, 1);
+  ctx.fillRect(220, 462, 60, 1);
+  paintOrb(ctx, 70, 560, 11, "#c46a4a", "#7a3028");
 }
 
 function paintOrb(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fill: string, shade: string): void {
@@ -463,28 +415,20 @@ function paintOrb(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: numb
   }
 }
 
-function drawCrust(ctx: CanvasRenderingContext2D): void {
-  ensureIsle();
+function drawUnderside(ctx: CanvasRenderingContext2D): void {
   for (let x = 0; x < WORLD_W; x++) {
-    const top = ISLE_TOP[x];
-    const bot = ISLE_BOT[x];
-    if (bot < 0 || top < 0) continue;
-    const dome = Math.sin((x / WORLD_W) * Math.PI);
-    const depth = 12 + Math.round(dome * 28) + ((x * 13) & 7);
+    const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
+    const jag = (x * 13) & 7;
+    const depth = 14 + Math.round(dome ** 0.72 * 58) + jag;
     const n = (x * 7) & 7;
-    if (top > 0) {
-      ctx.fillStyle = "#6f8f3a";
-      ctx.fillRect(x, top - 2, 1, 2);
-      ctx.fillStyle = n > 3 ? "#5a3c2a" : "#3e2a1c";
-      ctx.fillRect(x, top - 6, 1, 4);
-    }
     for (let i = 0; i < depth; i++) {
-      ctx.fillStyle = i < 2 ? "#7d9a44" : i < 7 ? (n + i) % 5 === 0 ? "#7a5340" : "#5c4030" : (n + i) % 4 === 0 ? "#241810" : "#3a281c";
-      ctx.fillRect(x, bot + 1 + i, 1, 1);
+      const shelf = i < 3 ? "#6f8a3a" : i < 8 ? ((n + i) % 5 === 0 ? "#7a5340" : "#5c4030") : (n + i) % 4 === 0 ? "#1c140e" : "#3a281c";
+      ctx.fillStyle = shelf;
+      ctx.fillRect(x, FARM_H + i, 1, 1);
     }
-    if ((x * 11) % 17 > 13) {
-      ctx.fillStyle = "#2a1c14";
-      ctx.fillRect(x, bot + depth, 2, 3 + (n % 4));
+    if ((x * 11) % 19 > 16) {
+      ctx.fillStyle = "#241810";
+      ctx.fillRect(x, FARM_H + depth, 2, 3 + (n % 5));
     }
   }
 }
@@ -497,10 +441,8 @@ export function drawWorld(
   showTill: boolean,
 ) {
   drawSpace(ctx, s.clock);
-  ctx.save();
-  clipIsle(ctx);
   const yard = sheets.yard;
-  if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, WORLD_H);
+  if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, FARM_H, 0, 0, WORLD_W, FARM_H);
 
   ctx.save();
   ctx.beginPath();
@@ -640,7 +582,7 @@ export function drawWorld(
   }
   queue.sort((a, b) => a.y - b.y);
   for (const d of queue) d.paint();
-  if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0);
+  if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, FARM_H, 0, 0, WORLD_W, FARM_H);
   if (sheets.idle && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
 
   const hour = 6 + s.time * 16;
@@ -658,20 +600,20 @@ export function drawWorld(
   }
   if (skyA > 0) {
     ctx.fillStyle = `rgba(${sky}, ${skyA})`;
-    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
   if (hour >= 20) {
     ctx.fillStyle = "rgba(255, 244, 210, 0.85)";
     for (let i = 0; i < 28; i++) {
       const sx = (i * 53 + 11) % WORLD_W;
-      const sy = (i * 37 + 8) % WORLD_H;
+      const sy = (i * 37 + 8) % FARM_H;
       if ((i + Math.floor(s.clock * 2)) % 5 === 0) continue;
       ctx.fillRect(sx, sy, 1, 1);
     }
   }
   if (s.wet > 0.04) {
     ctx.fillStyle = `rgba(28, 58, 72, ${Math.min(0.28, s.wet * 0.26)})`;
-    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -694,7 +636,7 @@ export function drawWorld(
     ctx.beginPath();
     for (let i = 0; i < drops; i++) {
       const x = (i * 47 + s.clock * (s.weather === "storm" ? 90 : 60)) % WORLD_W;
-      const y = (i * 83 + s.clock * (s.weather === "storm" ? 160 : 110)) % WORLD_H;
+      const y = (i * 83 + s.clock * (s.weather === "storm" ? 160 : 110)) % (FARM_H - 8);
       ctx.moveTo(x, y);
       ctx.lineTo(x - 2, y + (s.weather === "storm" ? 7 : 5));
     }
@@ -702,7 +644,7 @@ export function drawWorld(
   }
   if (s.flash > 0) {
     ctx.fillStyle = `rgba(235, 242, 255, ${Math.min(0.55, s.flash * 3.2)})`;
-    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
 
   if (hover && hover.x >= 0 && hover.y >= 0 && hover.x < WORLD_W && hover.y < WORLD_H) {
@@ -712,6 +654,5 @@ export function drawWorld(
     ctx.lineWidth = 1;
     ctx.strokeRect(tx + 0.5, ty + 0.5, TILE - 1, TILE - 1);
   }
-  ctx.restore();
-  drawCrust(ctx);
+  drawUnderside(ctx);
 }
