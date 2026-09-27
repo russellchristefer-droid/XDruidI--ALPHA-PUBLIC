@@ -1,6 +1,18 @@
-import { useEffect, useRef, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useRef, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import type { Rect } from "@/game/content";
-import { editorOrder, GRID } from "@/game/tiles";
+import { editorOrder, GRID, type SelMode } from "@/game/tiles";
+
+const MODES: { id: SelMode; label: string }[] = [
+  { id: "rect", label: "Rect" },
+  { id: "tile", label: "Tile" },
+  { id: "cell", label: "Cell" },
+  { id: "row", label: "Row" },
+  { id: "column", label: "Column" },
+  { id: "yard", label: "Yard" },
+  { id: "meadow", label: "Meadow" },
+  { id: "world", label: "World" },
+  { id: "here", label: "Druid" },
+];
 
 /** This builder session only. A published build never shows it. */
 export function builderDevAllowed(): boolean {
@@ -20,6 +32,10 @@ export function MapEditor({
   status,
   draft,
   busy,
+  mode,
+  setMode,
+  preview,
+  cameraRef,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -31,12 +47,53 @@ export function MapEditor({
   status: string;
   draft: string;
   busy: boolean;
+  mode: SelMode;
+  setMode: (mode: SelMode) => void;
+  preview: RefObject<HTMLCanvasElement | null>;
+  cameraRef: RefObject<{ scale: number; ox: number; oy: number }>;
 }) {
   const order = sel && note.trim() ? editorOrder(sel, note) : "";
   const promptRef = useRef<HTMLTextAreaElement>(null);
+  const liveRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     if (open && sel) promptRef.current?.focus();
   }, [open, sel]);
+  useEffect(() => {
+    if (!open) return;
+    let raf = 0;
+    const tick = () => {
+      const src = preview.current;
+      const dst = liveRef.current;
+      const cam = cameraRef.current;
+      if (src && dst && cam) {
+        const ctx = dst.getContext("2d");
+        if (ctx) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.fillStyle = "#120e0a";
+          ctx.fillRect(0, 0, dst.width, dst.height);
+          const top = 96;
+          const fit = Math.min(dst.width / src.width, top / src.height);
+          const dw = src.width * fit;
+          const dh = src.height * fit;
+          ctx.drawImage(src, (dst.width - dw) / 2, (top - dh) / 2, dw, dh);
+          if (sel && cam.scale > 0) {
+            const sx = cam.ox + sel.x * cam.scale;
+            const sy = cam.oy + sel.y * cam.scale;
+            const sw = Math.max(1, sel.w * cam.scale);
+            const sh = Math.max(1, sel.h * cam.scale);
+            const band = dst.height - top - 8;
+            const zoom = Math.min((dst.width - 8) / sw, band / sh);
+            const zw = sw * zoom;
+            const zh = sh * zoom;
+            ctx.drawImage(src, sx, sy, sw, sh, (dst.width - zw) / 2, top + 4 + (band - zh) / 2, zw, zh);
+          }
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [open, sel, preview, cameraRef]);
   const lastPress = useRef(0);
   const press = (e: { stopPropagation: () => void }, fn: () => void) => {
     e.stopPropagation();
@@ -60,17 +117,25 @@ export function MapEditor({
       </button>
       {open && (
         <div className="panel map-edit-panel" role="dialog" aria-label="Developer mode">
-          <p className="map-edit-hint">Drag a rectangle, write what you want, then Write prompt.</p>
+          <canvas ref={liveRef} className="map-live" width={520} height={280} aria-label="Live game" />
+          <p className="map-edit-hint">The game keeps running. Pick a selection, say what you mean, then Write prompt.</p>
+          <div className="map-edit-modes">
+            {MODES.map((m) => (
+              <button key={m.id} type="button" className={mode === m.id ? "on" : ""} {...fire(() => setMode(m.id))}>
+                {m.label}
+              </button>
+            ))}
+          </div>
           <div className="map-edit-meta">
             {sel
-              ? `x ${sel.x}–${sel.x + sel.w}  y ${sel.y}–${sel.y + sel.h} · ${Math.round(sel.w / GRID)}×${Math.round(sel.h / GRID)} tiles`
-              : "No rectangle yet"}
+              ? `x ${sel.x}–${sel.x + sel.w}  y ${sel.y}–${sel.y + sel.h} · ${Math.max(1, Math.round(sel.w / GRID))}×${Math.max(1, Math.round(sel.h / GRID))} cells`
+              : "No selection yet"}
           </div>
           <textarea
             ref={promptRef}
             value={note}
-            placeholder="Prompt for this rectangle"
-            aria-label="Prompt for this rectangle"
+            placeholder="Say what you mean. The prompt will explain it."
+            aria-label="What you want done"
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={(e) => {
               e.stopPropagation();

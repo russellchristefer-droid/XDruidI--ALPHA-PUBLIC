@@ -7,6 +7,7 @@ import {
   WORLD_W,
   VIEW_H,
   VIEW_W,
+  MEADOW,
   clockLabel,
   createGame,
   defOf,
@@ -60,10 +61,10 @@ import {
   drawEditorBox,
   editorOrder,
   loadTileLayer,
-  paintRect,
-  flushTiles,
   snapRect,
+  pickRect,
   type PaintId,
+  type SelMode,
 } from "@/game/tiles";
 
 declare global {
@@ -256,7 +257,7 @@ export function AssayGame() {
   const [picked, setPicked] = useState<string | null>(null);
   const [devHere, setDevHere] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editMode, setEditMode] = useState<"box" | "paint">("box");
+  const [editMode, setEditMode] = useState<SelMode>("rect");
   const [editTile] = useState<PaintId>("grass");
   const [editSel, setEditSel] = useState<Rect | null>(null);
   const [editNote, setEditNote] = useState("");
@@ -265,7 +266,7 @@ export function AssayGame() {
   const [drafting, setDrafting] = useState(false);
   const editorRef = useRef({
     open: false,
-    mode: "box" as "box" | "paint",
+    mode: "rect" as SelMode,
     tile: "grass" as PaintId,
     drag: null as { x: number; y: number } | null,
     sel: null as Rect | null,
@@ -301,14 +302,13 @@ export function AssayGame() {
       const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
       const my = (e.clientY - rect.top) * (canvas.height / rect.height);
       const w = { x: (mx - cam.ox) / cam.scale, y: (my - cam.oy) / cam.scale };
-      if (ed.mode === "box") {
+      if (ed.mode === "rect") {
         const box = snapRect(ed.drag, w);
         ed.sel = box;
         ed.live = null;
         setEditSel(box);
       }
       ed.drag = null;
-      if (ed.mode === "paint") flushTiles();
     };
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
@@ -444,7 +444,7 @@ export function AssayGame() {
               mx,
               my,
               run,
-              frozen: panelRef.current !== null || editorRef.current.open,
+              frozen: panelRef.current !== null,
             });
             setWind(heavyWind(s.time, s.day));
             syncSky(s.weather, s.bolts);
@@ -753,8 +753,10 @@ export function AssayGame() {
           hoverRef.current = w;
           const ed = editorRef.current;
           if (!ed.open || !ed.drag || !w) return;
-          if (ed.mode === "box") ed.live = snapRect(ed.drag, w);
-          else paintRect({ x: Math.floor(w.x / 16) * 16, y: Math.floor(w.y / 16) * 16, w: 16, h: 16 }, ed.tile, false);
+          if (ed.mode === "rect") ed.live = snapRect(ed.drag, w);
+          else if (ed.mode === "tile" || ed.mode === "cell" || ed.mode === "row" || ed.mode === "column") {
+            ed.live = pickRect(ed.mode, w);
+          }
         }}
         onPointerLeave={() => {
           hoverRef.current = null;
@@ -766,12 +768,14 @@ export function AssayGame() {
           const ed = editorRef.current;
           if (ed.open) {
             e.preventDefault();
-            if (ed.mode === "box") {
+            if (ed.mode === "rect") {
               ed.drag = w;
               ed.live = snapRect(w, w);
-            } else {
-              paintRect({ x: Math.floor(w.x / 16) * 16, y: Math.floor(w.y / 16) * 16, w: 16, h: 16 }, ed.tile);
-              ed.drag = w;
+            } else if (ed.mode === "tile" || ed.mode === "cell" || ed.mode === "row" || ed.mode === "column") {
+              const box = pickRect(ed.mode, w);
+              ed.sel = box;
+              ed.live = box;
+              setEditSel(box);
             }
             return;
           }
@@ -820,14 +824,18 @@ export function AssayGame() {
           const ed = editorRef.current;
           if (ed.open && ed.drag) {
             const w = worldOf(e.clientX, e.clientY) ?? ed.drag;
-            if (ed.mode === "box") {
+            if (ed.mode === "rect") {
               const box = snapRect(ed.drag, w);
+              ed.sel = box;
+              ed.live = null;
+              setEditSel(box);
+            } else if (ed.mode === "tile" || ed.mode === "cell" || ed.mode === "row" || ed.mode === "column") {
+              const box = pickRect(ed.mode, w);
               ed.sel = box;
               ed.live = null;
               setEditSel(box);
             }
             ed.drag = null;
-            if (ed.mode === "paint") flushTiles();
             return;
           }
           if (el.dataset.held === "1") {
@@ -928,14 +936,7 @@ export function AssayGame() {
         <MapEditor
           open={editorOpen}
           onToggle={() => {
-            setEditorOpen((v) => {
-              const next = !v;
-              if (next) {
-                editorRef.current.mode = "box";
-                setEditMode("box");
-              }
-              return next;
-            });
+            setEditorOpen((v) => !v);
             setEditStatus("");
           }}
           sel={editSel}
@@ -944,9 +945,25 @@ export function AssayGame() {
             setEditNote(v);
             setDraft("");
           }}
+          mode={editMode}
+          setMode={(mode) => {
+            editorRef.current.mode = mode;
+            setEditMode(mode);
+            const cur = stateRef.current;
+            if (mode === "yard") setEditSel({ x: 0, y: 0, w: VIEW_W, h: VIEW_H });
+            else if (mode === "meadow") setEditSel({ x: MEADOW.x, y: MEADOW.y, w: MEADOW.w, h: MEADOW.h });
+            else if (mode === "world") setEditSel({ x: 0, y: 0, w: WORLD_W, h: WORLD_H });
+            else if (mode === "here" && cur) {
+              const x = Math.max(0, Math.min(WORLD_W - 32, Math.floor((cur.x - 16) / 8) * 8));
+              const y = Math.max(0, Math.min(WORLD_H - 32, Math.floor((cur.y - 16) / 8) * 8));
+              setEditSel({ x, y, w: 32, h: 32 });
+            }
+          }}
+          preview={canvasRef}
+          cameraRef={camRef}
           onBlock={(blocked) => {
             if (!editSel) {
-              setEditStatus("Drag a rectangle on the yard first.");
+              setEditStatus("Select a place on the yard first.");
               return;
             }
             blockRect(editSel, blocked);

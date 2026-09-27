@@ -477,8 +477,8 @@
   top: auto;
   right: auto;
   transform: none;
-  flex: 0 0 252px;
-  width: 252px;
+  flex: 0 0 300px;
+  width: 300px;
   height: 100%;
   max-height: none;
   box-sizing: border-box;
@@ -595,6 +595,35 @@
   flex: 1;
 }
 
+.map-edit-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.map-edit-modes button {
+  flex: 1 1 30%;
+  min-height: 28px;
+  background: #1c1612;
+  border: 2px solid #c4a574;
+  color: #f3e6c8;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.map-edit-modes button.on {
+  border-color: #ffe14a;
+  color: #ffe14a;
+}
+
+.map-live {
+  width: 100%;
+  height: auto;
+  background: #120e0a;
+  border: 2px solid #c4a574;
+  image-rendering: pixelated;
+}
+
 .map-edit-row {
   display: flex;
   gap: 6px;
@@ -661,7 +690,7 @@
   white-space: pre-wrap;
   font-size: 11px;
   color: #f3e6c8;
-  max-height: 88px;
+  max-height: 180px;
   overflow: auto;
 }
 

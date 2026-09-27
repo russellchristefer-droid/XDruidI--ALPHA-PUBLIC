@@ -31,8 +31,8 @@ export const draftDevPrompt = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         model: "grok-3-mini",
-        temperature: 0.3,
-        max_tokens: 900,
+        temperature: 0.45,
+        max_tokens: 1600,
         messages: [
           {
             role: "system",
@@ -40,7 +40,7 @@ export const draftDevPrompt = createServerFn({ method: "POST" })
           },
           {
             role: "user",
-            content: `${locked}\nPlayer note: ${data.note}`,
+            content: `${locked}\nThe player said exactly this. Elucidate it. Do not shorten it into a pixel recipe:\n${data.note}\nThen implore one improvement of that same place so the homestead gets better without leaving the rectangle.`,
           },
         ],
       }),

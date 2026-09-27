@@ -75,15 +75,37 @@ export function blockRect(rect: Rect, blocked: boolean): void {
   persist();
 }
 
+export type SelMode = "rect" | "tile" | "cell" | "row" | "column" | "yard" | "meadow" | "world" | "here";
+
+export function pickRect(kind: "tile" | "cell" | "row" | "column", w: { x: number; y: number }): Rect {
+  if (kind === "tile") {
+    const x = Math.max(0, Math.min(WORLD_W - TILE_SIZE, Math.floor(w.x / TILE_SIZE) * TILE_SIZE));
+    const y = Math.max(0, Math.min(WORLD_H - TILE_SIZE, Math.floor(w.y / TILE_SIZE) * TILE_SIZE));
+    return { x, y, w: Math.min(TILE_SIZE, WORLD_W - x), h: Math.min(TILE_SIZE, WORLD_H - y) };
+  }
+  if (kind === "cell") {
+    const x = Math.max(0, Math.min(WORLD_W - GRID, Math.floor(w.x / GRID) * GRID));
+    const y = Math.max(0, Math.min(WORLD_H - GRID, Math.floor(w.y / GRID) * GRID));
+    return { x, y, w: GRID, h: GRID };
+  }
+  if (kind === "row") {
+    const y = Math.max(0, Math.min(WORLD_H - GRID, Math.floor(w.y / GRID) * GRID));
+    return { x: 0, y, w: WORLD_W, h: GRID };
+  }
+  const x = Math.max(0, Math.min(WORLD_W - GRID, Math.floor(w.x / GRID) * GRID));
+  return { x, y: 0, w: GRID, h: WORLD_H };
+}
+
 export function editorOrder(rect: Rect, note: string): string {
   const x1 = rect.x + rect.w;
   const y1 = rect.y + rect.h;
+  const said = note.trim();
   return [
-    "MAP EDIT",
-    `Square: x ${rect.x}–${x1}, y ${rect.y}–${y1} (${rect.w}×${rect.h} px).`,
-    `Tiles: column ${Math.floor(rect.x / GRID)}–${Math.floor((x1 - 1) / GRID)}, row ${Math.floor(rect.y / GRID)}–${Math.floor((y1 - 1) / GRID)}.`,
-    `Do this: ${note.trim()}`,
-  ].join("\n");
+    `Locked rectangle: x ${rect.x}–${x1}, y ${rect.y}–${y1} (${rect.w}×${rect.h} pixels).`,
+    `The player said: ${said}`,
+    `Elucidate that and do it. They mean this, and not a shorter version: ${said} Work only inside the rectangle unless that sentence is a system that has to be wired through the game.`,
+    `Implore the improvement. Make this part of the homestead better in the same pass: keep the warm 32×32 farm, keep objects readable against the dirt, and if the note touches a need, a tool, a crop, an animal, or a save, make that system persistent and explained. Do not redesign the rest of the map.`,
+  ].join("\n\n");
 }
 
 type SheetBag = Record<string, HTMLImageElement | undefined>;
