@@ -398,3 +398,19 @@ test("the farm pond is not walkable, and a rod catches a fish from the bank", ()
   onQ(s);
   assert.ok(s.life.hunger < 40);
 });
+
+test("he trains a spell on his own when magic is the lesson", () => {
+  const s = createGame();
+  s.x = 176;
+  s.y = 268;
+  s.life.hunger = 0;
+  s.life.thirst = 0;
+  s.life.dirt = 0;
+  s.life.chore = "magic";
+  s.life.skipUntil = 40;
+  s.life.pause = 0;
+  s.clock = 1;
+  const idle = { mx: 0, my: 0, run: false, frozen: false };
+  for (let i = 0; i < 30; i++) step(s, 0.05, idle);
+  assert.ok(s.magic >= 1, `magic ${s.magic}`);
+});

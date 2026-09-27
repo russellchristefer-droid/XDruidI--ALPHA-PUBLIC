@@ -1,4 +1,4 @@
-import { SAVE_KEY, defaultFlowers, ensureAuto, ensureFishing, ensureLife, ensureWeather, ensureWing, lockBeds, placeHerd, type GameState } from "./content.ts";
+import { SAVE_KEY, defaultFlowers, ensureAuto, ensureFishing, ensureLife, ensureMagic, ensureWeather, ensureWing, lockBeds, placeHerd, type GameState } from "./content.ts";
 
 export const BAK1 = `${SAVE_KEY}.bak1`;
 export const BAK2 = `${SAVE_KEY}.bak2`;
@@ -81,6 +81,7 @@ export function readSaveFrom(store: SaveStore): GameState | null {
       ensureWeather(decoded.state);
       ensureLife(decoded.state);
       ensureFishing(decoded.state);
+      ensureMagic(decoded.state);
       ensureAuto(decoded.state);
       ensureWing(decoded.state);
       return decoded.state;

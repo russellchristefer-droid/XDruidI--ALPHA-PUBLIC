@@ -1110,6 +1110,7 @@ export function AssayGame() {
                 {clockLabel(s.time)} · Day {s.day} · {skyLabel(s)}
               </div>
               <div style={{ color: "#c4a574" }}>{s.life ? lifeLabel(s.life) : ""}</div>
+              <div style={{ color: "#e6c86a" }}>Magic {Math.floor(s.magic ?? 0)}</div>
               <div style={{ color: "#c4a574", maxWidth: 220 }}>{watcherLine(s)}</div>
               <button
                 type="button"

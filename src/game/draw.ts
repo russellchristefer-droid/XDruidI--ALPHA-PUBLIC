@@ -1,4 +1,4 @@
-import { FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Dir, type GameState, type Plot } from "./content.ts";
+import { FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Dir, type GameState, type Plot, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { TOOL_ANIM, findItem } from "./logic.ts";
@@ -131,6 +131,45 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   blit(ctx, sheet, pose.col * 80, row * 112, 80, 112, s.x, s.y, CHAR, flip, footX, 95);
   drawEffect(ctx, sheets, s);
   ctx.restore();
+}
+
+const SPELL_KIND: Record<SpellId, "bolt" | "burst" | "strike" | "drip"> = {
+  fireball: "bolt",
+  iceball: "bolt",
+  spark: "bolt",
+  poison: "bolt",
+  nova: "burst",
+  holy: "burst",
+  ice: "burst",
+  bolt: "strike",
+  drip: "drip",
+};
+
+function drawSpell(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
+  const cast = s.cast;
+  if (!cast) return;
+  const img = sheets[cast.spell];
+  if (!img) return;
+  const frame = Math.min(11, Math.floor(cast.t * 12));
+  const col = frame % 6;
+  const row = Math.floor(frame / 6);
+  const dx = s.dir === "e" ? 1 : s.dir === "w" ? -1 : 0;
+  const dy = s.dir === "s" ? 1 : s.dir === "n" ? -1 : 0;
+  const kind = SPELL_KIND[cast.spell];
+  let x = s.x;
+  let y = s.y - 6;
+  if (kind === "bolt") {
+    const travel = 8 + cast.t * 52;
+    x += dx * travel;
+    y += dy * travel;
+  } else if (kind === "strike") {
+    x += dx * 12;
+    y += dy * 4 - 10;
+  } else if (kind === "drip") {
+    x += dx * 8 || 0;
+    y += 6;
+  }
+  blit(ctx, img, col * 34, row * 34, 32, 32, x, y, 1.25, false, 16, 16);
 }
 
 function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
@@ -1021,6 +1060,7 @@ export function drawWorld(
   if (sheets.campfire) drawCampfire(ctx, sheets.campfire, s.clock);
   drawSideGates(ctx, s);
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y))) paintPlayer(ctx, sheets, s);
+  drawSpell(ctx, sheets, s);
 
   const hour = 6 + s.time * 16;
   let sky = "rgba(0,0,0,0)";

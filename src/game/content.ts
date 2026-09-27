@@ -514,6 +514,24 @@ export type Branch = { id: string; x: number; y: number; left: boolean };
 
 export type Structure = { id: string; name: string; quality: number; floor: number; floorMax: number };
 
+export type SpellId = "fireball" | "nova" | "holy" | "ice" | "iceball" | "bolt" | "spark" | "poison" | "drip";
+
+export type Cast = { spell: SpellId; t: number };
+
+export const SPELLS: SpellId[] = ["fireball", "nova", "iceball", "ice", "spark", "bolt", "holy", "poison", "drip"];
+
+export const SPELL_NAME: Record<SpellId, string> = {
+  fireball: "fireball",
+  nova: "fire nova",
+  holy: "holy light",
+  ice: "ice crystal",
+  iceball: "iceball",
+  bolt: "lightning",
+  spark: "lightning orb",
+  poison: "poison orb",
+  drip: "toxic drip",
+};
+
 export type Face = "ok" | "happy" | "tired" | "ill" | "need" | "heart";
 
 export type Life = {
@@ -633,6 +651,8 @@ export type GameState = {
   auto: boolean;
   /** Successful casts into the farm pond. */
   fishing: number;
+  magic: number;
+  cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy. */
   wing: -1 | 0 | 1;
   /** A portal crossing. The land changes halfway through the fade. */
@@ -854,6 +874,12 @@ export function ensureFishing(s: GameState): void {
   if (typeof s.fishing !== "number") s.fishing = 0;
 }
 
+export function ensureMagic(s: GameState): void {
+  if (typeof s.magic !== "number" || Number.isNaN(s.magic)) s.magic = 0;
+  const spell = s.cast?.spell;
+  if (!s.cast || !SPELLS.includes(spell as SpellId) || typeof s.cast.t !== "number") s.cast = null;
+}
+
 export function ensureAuto(s: GameState): void {
   if (typeof s.auto !== "boolean") s.auto = true;
 }
@@ -1014,6 +1040,8 @@ export function createGame(): GameState {
     life: freshLife(),
     auto: true,
     fishing: 0,
+    magic: 0,
+    cast: null,
     wing: 0,
     cross: null,
   };

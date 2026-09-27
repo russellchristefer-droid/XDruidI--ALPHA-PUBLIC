@@ -9,12 +9,15 @@ import {
   defOf,
   ensureLife,
   ensureFishing,
+  ensureMagic,
   ensureWeather,
   footBlocked,
   isNight,
   itemMass,
   placeFarmer,
   setRealm,
+  SPELLS,
+  SPELL_NAME,
   type Animal,
   type CropId,
   type GameState,
@@ -1345,10 +1348,14 @@ function tendSelf(s: GameState, dt: number, input: Input) {
   if (steered) {
     life.errand = null;
     life.route = [];
+    s.cast = null;
+    if (life.chore === "magic") life.chore = "";
   }
   if (steered || s.action || input.frozen || s.downed) return;
   if (s.auto === false) {
     s.speed = 0;
+    s.cast = null;
+    if (life.chore === "magic") life.chore = "";
     return;
   }
 
@@ -1382,6 +1389,14 @@ function tendSelf(s: GameState, dt: number, input: Input) {
           : null;
   if (!spot) {
     life.errand = null;
+    if (s.cast || life.chore === "magic") {
+      if (trainMagic(s, dt)) return;
+    }
+    const practice = s.clock > 12 && Math.floor((s.clock - 12) / 18) % 2 === 0;
+    if (practice) {
+      beginMagicLesson(s);
+      if (trainMagic(s, dt)) return;
+    }
     if (tendFarm(s, dt)) return;
     stroll(s, dt);
     return;
@@ -1416,6 +1431,67 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     life.route = [];
     life.pause = 0.6;
   }
+}
+
+const PRACTICE = { x: 176, y: 268 };
+
+function beginMagicLesson(s: GameState): void {
+  const life = s.life;
+  if (life.chore === "magic") return;
+  life.chore = "magic";
+  life.skipUntil = s.clock + 12;
+  life.route = [];
+  s.message = "He goes to train his magic.";
+}
+
+function beginCast(s: GameState): void {
+  ensureMagic(s);
+  const spell = SPELLS[s.magic % SPELLS.length] ?? "fireball";
+  s.cast = { spell, t: 0 };
+  s.dir = "s";
+  s.speed = 0;
+  s.message = `He casts ${SPELL_NAME[spell]}.`;
+}
+
+function trainMagic(s: GameState, dt: number): boolean {
+  ensureMagic(s);
+  const life = s.life;
+  if (s.cast) {
+    s.speed = 0;
+    s.cast.t += dt;
+    if (s.cast.t < 1) return true;
+    const name = SPELL_NAME[s.cast.spell];
+    s.magic = Math.min(100, s.magic + 1);
+    s.cast = null;
+    life.face = "happy";
+    life.emote = 1.3;
+    life.pause = 0.35;
+    s.message = `He practices ${name}. Magic ${s.magic}.`;
+    return true;
+  }
+  if (life.chore !== "magic") return false;
+  if (s.clock > life.skipUntil) {
+    life.chore = "";
+    life.route = [];
+    return false;
+  }
+  if (life.pause > 0) {
+    life.pause -= dt;
+    s.speed = 0;
+    if (life.pause <= 0) beginCast(s);
+    return true;
+  }
+  if (Math.hypot(PRACTICE.x - s.x, PRACTICE.y - s.y) > 16) {
+    const step = followGoal(s, dt, PRACTICE.x, PRACTICE.y, 30);
+    if (step === "stuck") {
+      life.chore = "";
+      life.route = [];
+      return false;
+    }
+    return true;
+  }
+  beginCast(s);
+  return true;
 }
 
 function holdItem(s: GameState, id: string): boolean {
