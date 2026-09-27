@@ -49,6 +49,7 @@ export function MapEditor({
   setNote,
   onBlock,
   onSend,
+  onCopy,
   status,
   draft,
   busy,
@@ -79,6 +80,7 @@ export function MapEditor({
   setNote: (v: string) => void;
   onBlock: (blocked: boolean) => void;
   onSend: () => void;
+  onCopy: () => void;
   status: string;
   draft: string;
   busy: boolean;
@@ -219,8 +221,13 @@ export function MapEditor({
               onSend();
             }}
           >
-            {busy ? "Writing…" : draft ? "Copy" : "Write prompt"}
+            {busy ? "Writing…" : draft ? "Rewrite" : "Write prompt"}
           </button>
+          {draft && (
+            <button type="button" className="send" onClick={(e) => { e.stopPropagation(); onCopy(); }}>
+              Copy prompt
+            </button>
+          )}
           {draft && <pre className="map-edit-order">{draft}</pre>}
           {status && <p className="map-edit-hint">{status}</p>}
           <div className="map-edit-row">

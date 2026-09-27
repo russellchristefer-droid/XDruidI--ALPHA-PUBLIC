@@ -439,8 +439,8 @@ export function AssayGame() {
         }
         const fit = Math.min(w / VIEW_W, h / VIEW_H);
         const scale = Math.max(1, Math.floor(fit));
-        let camY = 6;
-        if (s.y > 150) camY = Math.min(72, 6 + (s.y - 150) * 2);
+        let camY = 0;
+        if (s.y > 150) camY = Math.min(56, (s.y - 150) * 2);
         camY = Math.round(Math.max(0, Math.min(WORLD_H - VIEW_H, camY)));
         const ox = Math.floor((w - VIEW_W * scale) / 2);
         const oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
@@ -1297,10 +1297,6 @@ export function AssayGame() {
               setEditStatus(editSel ? "Write what you want, then press Write prompt." : "Drag a rectangle, then write what you want.");
               return;
             }
-            if (draft) {
-              setEditStatus(copyText(draft) ? "Copied. Paste it into the chat." : "Select the prompt and copy it by hand.");
-              return;
-            }
             const sel = editSel;
             const note = editNote.trim();
             setDrafting(true);
@@ -1316,6 +1312,13 @@ export function AssayGame() {
                 setEditStatus("The writer failed. Press Copy for the plain version.");
               })
               .finally(() => setDrafting(false));
+          }}
+          onCopy={() => {
+            if (!draft) {
+              setEditStatus("Write the prompt first.");
+              return;
+            }
+            setEditStatus(copyText(draft) ? "Copied. Paste it into the chat." : "Select the prompt and copy it by hand.");
           }}
           status={editStatus}
           draft={draft}

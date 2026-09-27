@@ -754,6 +754,8 @@
   color: #f3e6c8;
   max-height: 180px;
   overflow: auto;
+  user-select: text;
+  cursor: text;
 }
 
 .sheet.inv {
