@@ -1455,6 +1455,20 @@ function listChores(s: GameState): Chore[] {
     const grind = SPOTS.find((sp) => sp.id === "grind")!;
     out.push({ id: `${dull.id}:sharpen`, x: grind.x + grind.w / 2, y: grind.y + grind.h / 2, hold: dull.id, say: `He sharpens the ${defOf(dull).name.toLowerCase()}.` });
   }
+  const rod = toolItem(s, "rod");
+  const fishHeld = s.pack.filter((p) => p?.defId === "fish").length;
+  if (rod && fishHeld < 3 && s.pack.some((p) => p === null)) {
+    const dock = SPOTS.find((sp) => sp.id === "fishdock")!;
+    out.push({ id: "fish", x: dock.x + dock.w / 2, y: dock.y + dock.h / 2, hold: rod.id, say: "He casts from the dock." });
+  }
+  const catchFish = s.pack.find((p) => p?.defId === "fish");
+  if (catchFish && s.life.hunger > 36 && produceItem(s)?.defId === "fish") {
+    const fire = SPOTS.find((sp) => sp.id === "fire")!;
+    out.push({ id: "cook", x: fire.x + fire.w / 2, y: fire.y + fire.h / 2, hold: catchFish.id, say: "He cooks the catch." });
+  }
+  if ((s.cat.petCd ?? 0) <= 0) {
+    out.push({ id: "cat:pet", x: s.cat.x, y: s.cat.y, hold: null, say: "He greets the cat." });
+  }
   return out;
 }
 
@@ -1562,6 +1576,13 @@ const ROAM: [number, number][] = [
   [96, 118],
   [80, 112],
   [188, 136],
+  [176, 210],
+  [70, 214],
+  [286, 214],
+  [174, 280],
+  [120, 340],
+  [240, 360],
+  [174, 430],
 ];
 
 function pickRoam(s: GameState) {
@@ -1582,7 +1603,7 @@ function pickRoam(s: GameState) {
 
 /** Meadow travel stays on the dirt path. The yard still walks around walls. */
 function autoBlocked(x: number, y: number): boolean {
-  if (y > 172 && (x < 174 || x > 190)) return true;
+  if (y >= 520) return true;
   return footBlocked(x, y);
 }
 

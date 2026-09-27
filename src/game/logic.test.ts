@@ -316,6 +316,36 @@ test("he strolls the yard on his own", () => {
   assert.ok(s.speed > 1);
 });
 
+test("he fishes on his own once the beds are tended", () => {
+  const s = createGame();
+  s.life.hunger = 0;
+  s.life.thirst = 0;
+  s.life.dirt = 0;
+  s.stamina = 90;
+  for (const plot of s.plots) {
+    plot.stage = 2;
+    plot.crop = "tomato";
+    plot.watered = true;
+    plot.tilled = true;
+  }
+  for (const a of s.animals) {
+    a.fed = true;
+    a.ready = false;
+  }
+  for (const f of s.flowers ?? []) f.bloom = 0;
+  for (const b of s.branches) b.left = false;
+  const gate = s.structures.find((st) => st.id === "gate");
+  if (gate) gate.floor = 9;
+  for (const p of s.pack) if (p && DEFS[p.defId]?.kind === "tool") p.floor = 8;
+  s.cat.petCd = 30;
+  s.x = 132;
+  s.y = 100;
+  step(s, 0.3, { mx: 0, my: 0, run: false, frozen: false });
+  assert.equal(s.action?.kind, "fish");
+  const south = autoRoute(176, 200, 174, 360);
+  assert.ok(south.length >= 2);
+});
+
 test("animal wander is the same for the same seed", () => {
   const a = createGame();
   const b = createGame();
