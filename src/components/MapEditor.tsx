@@ -14,6 +14,21 @@ const MODES: { id: SelMode; label: string }[] = [
   { id: "world", label: "World" },
   { id: "here", label: "Druid" },
   { id: "sprite", label: "Stamp" },
+  { id: "select", label: "Select" },
+  { id: "erase", label: "Erase" },
+  { id: "move", label: "Move" },
+];
+
+const TOOLS: { id: string; label: string }[] = [
+  { id: "undo", label: "Undo" },
+  { id: "redo", label: "Redo" },
+  { id: "save", label: "Save" },
+  { id: "copy", label: "Copy" },
+  { id: "flipx", label: "Flip H" },
+  { id: "flipy", label: "Flip V" },
+  { id: "turn", label: "Turn" },
+  { id: "front", label: "Front" },
+  { id: "back", label: "Back" },
 ];
 
 /** This builder session only. A published build never shows it. */
@@ -44,6 +59,7 @@ export function MapEditor({
   onArm,
   onUpload,
   onLift,
+  onTool,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -65,6 +81,7 @@ export function MapEditor({
   onArm: (id: string) => void;
   onUpload: (file: File) => void;
   onLift: () => void;
+  onTool: (id: string) => void;
 }) {
   const order = sel && note.trim() ? editorOrder(sel, note) : "";
   const promptRef = useRef<HTMLTextAreaElement>(null);
@@ -134,6 +151,13 @@ export function MapEditor({
         <div className="panel map-edit-panel" role="dialog" aria-label="Developer mode">
           <canvas ref={liveRef} className="map-live" width={520} height={280} aria-label="Live game" />
           <p className="map-edit-hint">The game keeps running. Pick a selection, say what you mean, then Write prompt.</p>
+          <div className="map-edit-modes">
+            {TOOLS.map((t) => (
+              <button key={t.id} type="button" {...fire(() => onTool(t.id))}>
+                {t.label}
+              </button>
+            ))}
+          </div>
           <div className="map-edit-modes">
             {MODES.map((m) => (
               <button key={m.id} type="button" className={mode === m.id ? "on" : ""} {...fire(() => setMode(m.id))}>

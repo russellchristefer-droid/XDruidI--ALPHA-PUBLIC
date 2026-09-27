@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { SpriteBook, SpriteDef, SpritePlace } from "@/game/dev-sprites";
+import { placeBounds, type SpriteBook, type SpriteDef, type SpritePlace } from "@/game/dev-sprites";
 
 const FILE = "public/game/sprites/manifest.json";
 
@@ -101,9 +101,8 @@ export const liftDevSprite = createServerFn({ method: "POST" })
     const before = book.placed.length;
     book.placed = book.placed.filter((place) => {
       const def = book.library.find((d) => d.id === place.id);
-      const pw = def?.w ?? 8;
-      const ph = def?.h ?? 8;
-      const hit = place.x < data.x + data.w && place.x + pw > data.x && place.y < data.y + data.h && place.y + ph > data.y;
+      const box = placeBounds(place, def);
+      const hit = box.x < data.x + data.w && box.x + box.w > data.x && box.y < data.y + data.h && box.y + box.h > data.y;
       return !hit;
     });
     const lifted = before - book.placed.length;
@@ -112,4 +111,35 @@ export const liftDevSprite = createServerFn({ method: "POST" })
       await writeBook(book);
     }
     return { lifted };
+  });
+
+function cleanPlace(place: SpritePlace): SpritePlace | null {
+  const id = String(place?.id ?? "");
+  const x = Math.round(Number(place?.x));
+  const y = Math.round(Number(place?.y));
+  const rot = Number(place?.rot);
+  if (!id || !Number.isFinite(x) || !Number.isFinite(y)) return null;
+  return {
+    id,
+    x,
+    y,
+    flipX: !!place.flipX,
+    flipY: !!place.flipY,
+    rot: rot === 90 || rot === 180 || rot === 270 ? rot : 0,
+  };
+}
+
+export const replaceDevPlaced = createServerFn({ method: "POST" })
+  .validator((data: { placed?: SpritePlace[] }) => {
+    const raw = Array.isArray(data?.placed) ? data.placed : [];
+    if (raw.length > 400) throw new Error("Too many stamps.");
+    return { placed: raw.map(cleanPlace).filter((p): p is SpritePlace => !!p) };
+  })
+  .handler(async ({ data }): Promise<{ count: number }> => {
+    const book = await readBook();
+    const known = new Set(book.library.map((d) => d.id));
+    book.placed = data.placed.filter((p) => known.has(p.id));
+    book.rev += 1;
+    await writeBook(book);
+    return { count: book.placed.length };
   });

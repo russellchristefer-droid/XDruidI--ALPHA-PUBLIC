@@ -54,8 +54,8 @@ import {
 import { BAK1, BAK2, readSaveFrom, writeSave, type SaveStore } from "@/game/save";
 import { MapEditor, builderDevAllowed } from "@/components/MapEditor";
 import { draftDevPrompt } from "@/game/draft-prompt";
-import { loadDevSprites, snapSprite, devSpriteBook, type SpriteBook } from "@/game/dev-sprites";
-import { liftDevSprite, placeDevSprite, saveDevSprite } from "@/game/dev-sprite-api";
+import { loadDevSprites, snapSprite, devSpriteBook, placeBounds, setSpriteGhost, setSpritePick, spriteIndexAt, type SpriteBook, type SpritePlace } from "@/game/dev-sprites";
+import { liftDevSprite, replaceDevPlaced, saveDevSprite } from "@/game/dev-sprite-api";
 import { copyText } from "@/game/copy-text";
 import type { Rect } from "@/game/content";
 import {
@@ -65,6 +65,7 @@ import {
   loadTileLayer,
   snapRect,
   pickRect,
+  flushTiles,
   type PaintId,
   type SelMode,
 } from "@/game/tiles";
@@ -269,11 +270,21 @@ export function AssayGame() {
   const [sprites, setSprites] = useState<SpriteBook>({ rev: 0, library: [], placed: [] });
   const [armed, setArmed] = useState<string | null>(null);
   const armedRef = useRef<string | null>(null);
+  const stampRef = useRef(-1);
+  const histRef = useRef<SpritePlace[][]>([]);
+  const redoRef = useRef<SpritePlace[][]>([]);
+  const editApi = useRef({
+    undo: () => {},
+    redo: () => {},
+    save: () => {},
+    commit: async (_next: SpritePlace[], _msg: string) => {},
+  });
   const editorRef = useRef({
     open: false,
     mode: "rect" as SelMode,
     tile: "grass" as PaintId,
     drag: null as { x: number; y: number } | null,
+    sprite: null as { index: number; ox: number; oy: number } | null,
     sel: null as Rect | null,
     live: null as Rect | null,
   });
@@ -315,8 +326,17 @@ export function AssayGame() {
         ed.sel = box;
         ed.live = null;
         setEditSel(box);
+      } else if (ed.mode === "move" && ed.sprite) {
+        const drag = ed.sprite;
+        ed.sprite = null;
+        ed.drag = null;
+        setSpriteGhost(null);
+        const at = snapSprite(w.x - drag.ox, w.y - drag.oy);
+        const next = devSpriteBook().placed.map((p, i) => (i === drag.index ? { ...p, x: at.x, y: at.y } : { ...p }));
+        void editApi.current.commit(next, `Moved to ${at.x}, ${at.y}.`);
       }
       ed.drag = null;
+      ed.sprite = null;
     };
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
@@ -362,7 +382,18 @@ export function AssayGame() {
     const down = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const typing = !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && editorRef.current.open) {
+        e.preventDefault();
+        editApi.current.save();
+        return;
+      }
       if (typing) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && editorRef.current.open) {
+        e.preventDefault();
+        if (e.shiftKey) editApi.current.redo();
+        else editApi.current.undo();
+        return;
+      }
       keysRef.current.add(e.code);
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(e.code)) e.preventDefault();
       if (e.repeat) return;
@@ -750,6 +781,80 @@ export function AssayGame() {
 
   const handheld = touch || narrow;
 
+  const refreshSprites = async (msg: string) => {
+    const book = await loadDevSprites();
+    setSprites(book);
+    setEditStatus(msg);
+  };
+  editApi.current.commit = async (next, msg) => {
+    histRef.current.push(devSpriteBook().placed.map((p) => ({ ...p })));
+    if (histRef.current.length > 40) histRef.current.shift();
+    redoRef.current = [];
+    try {
+      await replaceDevPlaced({ data: { placed: next } });
+      await refreshSprites(msg);
+    } catch {
+      histRef.current.pop();
+      setEditStatus("That edit did not save.");
+    }
+  };
+  editApi.current.undo = () => {
+    const prev = histRef.current.pop();
+    if (!prev) {
+      setEditStatus("Nothing to undo.");
+      return;
+    }
+    redoRef.current.push(devSpriteBook().placed.map((p) => ({ ...p })));
+    void replaceDevPlaced({ data: { placed: prev } }).then(() => refreshSprites("Undid the last edit."));
+  };
+  editApi.current.redo = () => {
+    const next = redoRef.current.pop();
+    if (!next) {
+      setEditStatus("Nothing to redo.");
+      return;
+    }
+    histRef.current.push(devSpriteBook().placed.map((p) => ({ ...p })));
+    void replaceDevPlaced({ data: { placed: next } }).then(() => refreshSprites("Redid the edit."));
+  };
+  editApi.current.save = () => {
+    flushTiles();
+    void replaceDevPlaced({ data: { placed: devSpriteBook().placed } }).then(() => refreshSprites("Saved the stamps to the project."));
+  };
+  const onTool = (id: string) => {
+    if (id === "undo") return editApi.current.undo();
+    if (id === "redo") return editApi.current.redo();
+    if (id === "save") return editApi.current.save();
+    const all = devSpriteBook().placed.map((p) => ({ ...p }));
+    const i = stampRef.current;
+    if (i < 0 || !all[i]) {
+      setEditStatus("Select a sprite first.");
+      return;
+    }
+    const place = all[i];
+    if (id === "copy") {
+      const at = snapSprite(place.x + 8, place.y);
+      void editApi.current.commit([...all, { ...place, x: at.x, y: at.y }], `Copied ${place.id}.`);
+      return;
+    }
+    if (id === "flipx") all[i] = { ...place, flipX: !place.flipX };
+    else if (id === "flipy") all[i] = { ...place, flipY: !place.flipY };
+    else if (id === "turn") {
+      const rot = (((place.rot ?? 0) + 90) % 360) as 0 | 90 | 180 | 270;
+      all[i] = { ...place, rot };
+    } else if (id === "front") {
+      const [item] = all.splice(i, 1);
+      all.push(item);
+      stampRef.current = all.length - 1;
+      setSpritePick(all.length - 1);
+    } else if (id === "back") {
+      const [item] = all.splice(i, 1);
+      all.unshift(item);
+      stampRef.current = 0;
+      setSpritePick(0);
+    } else return;
+    void editApi.current.commit(all, "Updated the sprite.");
+  };
+
   return (
     <main className={`${handheld ? "assay touch" : "assay"}${editorOpen && devHere ? " dev-open" : ""}`}>
       <div className="yard-stage">
@@ -761,7 +866,13 @@ export function AssayGame() {
           const w = worldOf(e.clientX, e.clientY);
           hoverRef.current = w;
           const ed = editorRef.current;
-          if (!ed.open || !ed.drag || !w) return;
+          if (!ed.open || !w) return;
+          if (ed.mode === "move" && ed.sprite) {
+            const at = snapSprite(w.x - ed.sprite.ox, w.y - ed.sprite.oy);
+            setSpriteGhost({ index: ed.sprite.index, x: at.x, y: at.y });
+            return;
+          }
+          if (!ed.drag) return;
           if (ed.mode === "rect") ed.live = snapRect(ed.drag, w);
           else if (ed.mode === "tile" || ed.mode === "cell" || ed.mode === "row" || ed.mode === "column") {
             ed.live = pickRect(ed.mode, w);
@@ -793,14 +904,41 @@ export function AssayGame() {
               }
               const at = snapSprite(w.x, w.y);
               const def = devSpriteBook().library.find((d) => d.id === id);
-              placeDevSprite({ data: { id, x: at.x, y: at.y } })
-                .then(() => loadDevSprites())
-                .then((book) => {
-                  setSprites(book);
-                  if (def) setEditSel({ x: at.x, y: at.y, w: def.w, h: def.h });
-                  setEditStatus(`Stamped ${id} on the grid at ${at.x}, ${at.y}.`);
-                })
-                .catch(() => setEditStatus("The sprite did not attach."));
+              const next = [...devSpriteBook().placed.map((p) => ({ ...p })), { id, x: at.x, y: at.y, rot: 0 as const }];
+              void editApi.current.commit(next, `Stamped ${id} on the grid at ${at.x}, ${at.y}.`).then(() => {
+                const i = devSpriteBook().placed.length - 1;
+                stampRef.current = i;
+                setSpritePick(i);
+                if (def) setEditSel({ x: at.x, y: at.y, w: def.w, h: def.h });
+              });
+            } else if (ed.mode === "select" || ed.mode === "erase" || ed.mode === "move") {
+              const i = spriteIndexAt(w.x, w.y);
+              if (i < 0) {
+                setEditStatus(ed.mode === "erase" ? "No sprite there to erase." : "No sprite there.");
+                return;
+              }
+              const place = devSpriteBook().placed[i];
+              const def = devSpriteBook().library.find((d) => d.id === place.id);
+              const box = placeBounds(place, def);
+              if (ed.mode === "erase") {
+                stampRef.current = -1;
+                setSpritePick(-1);
+                void editApi.current.commit(
+                  devSpriteBook().placed.filter((_, n) => n !== i).map((p) => ({ ...p })),
+                  `Erased ${place.id}.`,
+                );
+                return;
+              }
+              stampRef.current = i;
+              setSpritePick(i);
+              setEditSel(box);
+              if (ed.mode === "move") {
+                ed.drag = w;
+                ed.sprite = { index: i, ox: w.x - place.x, oy: w.y - place.y };
+                setEditStatus(`Moving ${place.id}.`);
+                return;
+              }
+              setEditStatus(`Selected ${place.id}.`);
             }
             return;
           }
@@ -849,6 +987,16 @@ export function AssayGame() {
           const ed = editorRef.current;
           if (ed.open && ed.drag) {
             const w = worldOf(e.clientX, e.clientY) ?? ed.drag;
+            if (ed.mode === "move" && ed.sprite) {
+              const drag = ed.sprite;
+              ed.sprite = null;
+              ed.drag = null;
+              setSpriteGhost(null);
+              const at = snapSprite(w.x - drag.ox, w.y - drag.oy);
+              const next = devSpriteBook().placed.map((p, i) => (i === drag.index ? { ...p, x: at.x, y: at.y } : { ...p }));
+              void editApi.current.commit(next, `Moved to ${at.x}, ${at.y}.`);
+              return;
+            }
             if (ed.mode === "rect") {
               const box = snapRect(ed.drag, w);
               ed.sel = box;
@@ -1027,14 +1175,22 @@ export function AssayGame() {
               setEditStatus("Select the sprite, then Lift.");
               return;
             }
+            const before = devSpriteBook().placed.map((p) => ({ ...p }));
             liftDevSprite({ data: { x: box.x, y: box.y, w: box.w, h: box.h } })
-              .then(() => loadDevSprites())
-              .then((book) => {
-                setSprites(book);
-                setEditStatus("Lifted sprites inside the selection.");
+              .then((res) => {
+                if (!res.lifted) {
+                  setEditStatus("No sprite in that selection.");
+                  return;
+                }
+                histRef.current.push(before);
+                redoRef.current = [];
+                stampRef.current = -1;
+                setSpritePick(-1);
+                return refreshSprites("Lifted sprites inside the selection.");
               })
               .catch(() => setEditStatus("Nothing lifted."));
           }}
+          onTool={onTool}
           onBlock={(blocked) => {
             if (!editSel) {
               setEditStatus("Select a place on the yard first.");
