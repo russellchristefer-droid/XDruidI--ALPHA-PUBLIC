@@ -482,6 +482,9 @@ export type Animal = {
   tx: number;
   ty: number;
   pause: number;
+  /** Waypoints through the gate. Empty means choose a new errand. */
+  route?: number[];
+  intent?: "graze" | "drink" | "court" | "wander" | "flee";
 };
 
 export type Body = {
@@ -520,7 +523,7 @@ export type Life = {
   mood: number;
   face: Face;
   emote: number;
-  errand: "eat" | "drink" | "wash" | "rest" | null;
+  errand: "eat" | "drink" | "wash" | "rest" | "look" | null;
   tx: number;
   ty: number;
   pause: number;
@@ -595,7 +598,18 @@ export type GameState = {
   branches: Branch[];
   structures: Structure[];
   ground: Ground[];
-  cat: { x: number; y: number; face: number; petCd: number; tx: number; ty: number; pause: number; mode: "sit" | "stand" | "walk" | "run" };
+  cat: {
+    x: number;
+    y: number;
+    face: number;
+    petCd: number;
+    tx: number;
+    ty: number;
+    pause: number;
+    mode: "sit" | "stand" | "walk" | "run";
+    route?: number[];
+    intent?: "court" | "drink" | "yard" | "follow";
+  };
   stats: {
     harvested: number;
     cooked: number;
