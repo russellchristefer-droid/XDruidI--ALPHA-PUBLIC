@@ -370,6 +370,7 @@ function drawAnimal(
   blit(ctx, img, col * 72, row * 72, 72, 72, x, y, scale, false, 36, 66);
 }
 
+const PLATE = 192;
 const FARM_H = MEADOW.y;
 
 function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
@@ -442,7 +443,8 @@ export function drawWorld(
 ) {
   drawSpace(ctx, s.clock);
   const yard = sheets.yard;
-  if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, FARM_H, 0, 0, WORLD_W, FARM_H);
+  if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
+  if (sheets.farmExtend) ctx.drawImage(sheets.farmExtend, 0, PLATE);
 
   ctx.save();
   ctx.beginPath();
@@ -582,7 +584,7 @@ export function drawWorld(
   }
   queue.sort((a, b) => a.y - b.y);
   for (const d of queue) d.paint();
-  if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, FARM_H, 0, 0, WORLD_W, FARM_H);
+  if (sheets.occlude) ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   if (sheets.idle && feetOnPath(sheets, s.x, s.y)) paintPlayer(ctx, sheets, s);
 
   const hour = 6 + s.time * 16;

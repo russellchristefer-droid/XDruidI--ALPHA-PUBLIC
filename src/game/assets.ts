@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260928p";
+export const ART = "20260928q";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -70,6 +70,7 @@ const URLS: Record<string, string> = {
   fxBlood: art("/game/fx/blood.png"),
   fxMagic: art("/game/fx/curved-blue.png"),
   landGrass: art("/game/land/grass.png"),
+  farmExtend: art("/game/land/farm-extension.png"),
   landSoil: art("/game/land/soil.png"),
   landTilled: art("/game/land/tilled.png"),
   landWater: art("/game/land/water.png"),
@@ -77,7 +78,7 @@ const URLS: Record<string, string> = {
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "world", label: "World", keys: ["yard", "meadow", "path", "occlude", "house", "rocks", "meadowDress"] },
-  { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater"] },
+  { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater", "farmExtend"] },
   { id: "druid", label: "Druid", keys: ["idle", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },

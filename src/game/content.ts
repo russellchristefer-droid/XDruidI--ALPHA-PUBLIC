@@ -4,8 +4,8 @@ export const WORLD_H = 960;
 /** The frame that fits on screen. The yard stays this size; the meadow is below it. */
 export const VIEW_W = 347;
 export const VIEW_H = 194;
-/** South of the farm. The meadow is gone. This is the void under the rock. */
-export const MEADOW = { x: 0, y: 192, w: 347, h: 768 } as const;
+/** South of the new field. Under this line is the void. */
+export const MEADOW = { x: 0, y: 528, w: 347, h: 432 } as const;
 export const TILE = 8;
 export const PACK_SLOTS = 28;
 export const VAULT_SLOTS = 40;
@@ -782,8 +782,8 @@ export function footBlocked(x: number, y: number): boolean {
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
   if (box.y < 36) return true;
-  const onSouthPath = x > 156 && x < 186 && y > 150;
-  if (box.y > 170 && !onSouthPath) return true;
+  const onSouthPath = x > 156 && x < 186;
+  if (y > 170 && y < 192 && !onSouthPath) return true;
   for (const s of SOLIDS) if (overlap(box, s)) return true;
   for (const s of PROP_SOLIDS) if (overlap(box, s)) return true;
   for (const s of tileBlocks()) if (overlap(box, s)) return true;
