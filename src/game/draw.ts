@@ -6,6 +6,10 @@ const CHAR = 0.42;
 const PLATE = 192;
 const FARM_H = MEADOW.y;
 
+function isState(v: object): v is GameState {
+  return typeof (v as GameState).clock === "number" && typeof (v as GameState).x === "number";
+}
+
 function rowOf(dir: Dir): { row: number; flip: boolean } {
   if (dir === "n") return { row: 2, flip: false };
   if (dir === "w") return { row: 1, flip: true };
@@ -77,16 +81,15 @@ function drawUnderside(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-export function drawWorld(
+function paintWorld(
   ctx: CanvasRenderingContext2D,
   s: GameState,
   sheets: Sheets,
   hover: { x: number; y: number } | null,
-  _showTill: boolean,
 ) {
   const wing = s.wing ?? 0;
   if (wing !== 0) {
-    applyLokaPaint(ctx, wing, s.clock);
+    applyLokaPaint(ctx, wing, s.clock, { svarga: sheets.svarga, naraka: sheets.naraka });
     if (sheets.idle) paintPlayer(ctx, sheets, s);
     return;
   }
@@ -121,4 +124,16 @@ export function drawWorld(
   }
 
   drawUnderside(ctx);
+}
+
+/** Accept either (ctx, state, sheets) or the older (ctx, sheets, state). */
+export function drawWorld(
+  ctx: CanvasRenderingContext2D,
+  a: GameState | Sheets,
+  b: Sheets | GameState,
+  hover: { x: number; y: number } | null = null,
+  _showTill = false,
+) {
+  if (isState(a)) paintWorld(ctx, a, b as Sheets, hover);
+  else paintWorld(ctx, b as GameState, a, hover);
 }
