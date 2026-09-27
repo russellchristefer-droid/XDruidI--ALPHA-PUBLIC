@@ -14,6 +14,7 @@ import {
   isNight,
   itemMass,
   placeFarmer,
+  setRealm,
   type Animal,
   type CropId,
   type GameState,
@@ -64,11 +65,11 @@ export function sideGate(s: GameState): SideGate | null {
   const by = (cx: number) => s.y > 170 && s.y < 260 && Math.hypot(s.x - cx, s.y - 202) <= GATE_REACH;
   if (s.x < 130 && by(40) && wing !== -1) {
     const dest: -1 | 0 = wing === 1 ? 0 : -1;
-    return { x: 40, y: 202, wing: dest, landX: 284, dir: "w", name: dest === 0 ? "the home land" : "the west land" };
+    return { x: 40, y: 202, wing: dest, landX: 284, dir: "w", name: dest === 0 ? "the home land" : "Naraka" };
   }
   if (s.x > 220 && by(308) && wing !== 1) {
     const dest: 0 | 1 = wing === -1 ? 0 : 1;
-    return { x: 308, y: 202, wing: dest, landX: 64, dir: "e", name: dest === 0 ? "the home land" : "the east land" };
+    return { x: 308, y: 202, wing: dest, landX: 64, dir: "e", name: dest === 0 ? "the home land" : "Svarga" };
   }
   return null;
 }
@@ -1231,6 +1232,7 @@ function moveAxis(s: GameState, dx: number, dy: number) {
 export function step(s: GameState, dt: number, input: Input) {
   const stepDt = Math.min(0.05, Math.max(0, dt));
   s.clock += stepDt;
+  setRealm(s.wing ?? 0);
   placeFarmer(s);
   if (s.cat.petCd > 0) s.cat.petCd = Math.max(0, s.cat.petCd - stepDt);
   stepFlowers(s, stepDt);
@@ -1239,6 +1241,7 @@ export function step(s: GameState, dt: number, input: Input) {
     s.cross.t += stepDt;
     if (!s.cross.moved && s.cross.t >= 0.42) {
       s.wing = s.cross.wing;
+      setRealm(s.wing);
       s.x = s.cross.x;
       s.y = s.cross.y;
       s.dir = s.cross.dir;
@@ -1313,7 +1316,10 @@ export function step(s: GameState, dt: number, input: Input) {
   s.time = Math.min(0.999, s.time + stepDt / 90);
   stepWeather(s, stepDt);
   tendSelf(s, stepDt, input);
+  const wing = s.wing ?? 0;
+  setRealm(0);
   stepCritters(s, stepDt);
+  setRealm(wing);
 }
 
 function tendSelf(s: GameState, dt: number, input: Input) {
@@ -1360,6 +1366,11 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     life.face = "need";
   }
 
+  if ((s.wing ?? 0) !== 0) {
+    life.errand = null;
+    life.route = [];
+    return;
+  }
   const night = isNight(s.time);
   const spot =
     life.thirst > 62

@@ -76,7 +76,7 @@ test("sidewalk ends cross onto a matching land", () => {
   s.x = 64;
   s.y = 212;
   const west = interact(s, 40, 212);
-  assert.match(west.msg ?? "", /west land/);
+  assert.match(west.msg ?? "", /Naraka/);
   assert.equal(s.wing, 0);
   finish(s);
   assert.equal(s.wing, -1);
@@ -89,7 +89,7 @@ test("sidewalk ends cross onto a matching land", () => {
   s.x = 292;
   s.y = 212;
   const east = interact(s, 308, 212);
-  assert.match(east.msg ?? "", /east land/);
+  assert.match(east.msg ?? "", /Svarga/);
   finish(s);
   assert.equal(s.wing, 1);
   assert.equal(s.x, 64);
@@ -101,7 +101,7 @@ test("sidewalk ends cross onto a matching land", () => {
   s.x = 48;
   s.y = 240;
   const fromCourt = interact(s, 40, 202);
-  assert.match(fromCourt.msg ?? "", /west land/);
+  assert.match(fromCourt.msg ?? "", /Naraka/);
   finish(s);
   assert.equal(s.wing, -1);
 });

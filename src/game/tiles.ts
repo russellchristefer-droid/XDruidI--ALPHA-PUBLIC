@@ -104,8 +104,8 @@ export type DevRead = {
 };
 
 function landName(wing: number | undefined): string {
-  if (wing === -1) return "west land";
-  if (wing === 1) return "east land";
+  if (wing === -1) return "Naraka";
+  if (wing === 1) return "Svarga";
   return "homestead";
 }
 

@@ -791,6 +791,32 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
+let realmWing: -1 | 0 | 1 = 0;
+
+/** Farm collision stays on the homestead. Svarga and Naraka have their own ground. */
+export function setRealm(wing: -1 | 0 | 1): void {
+  realmWing = wing === -1 || wing === 1 ? wing : 0;
+}
+
+function realmFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y + box.h > MEADOW.y) return true;
+  if (box.x < 22 || box.x + box.w > 330) return true;
+  if (box.y < 48) return true;
+  if (onPortal(x, y)) return true;
+  if (realmWing === 1) {
+    if (overlap(box, { x: 128, y: 52, w: 112, h: 72 })) return true;
+    if (overlap(box, { x: 158, y: 352, w: 64, h: 44 })) return true;
+    if (overlap(box, { x: 72, y: 158, w: 30, h: 16 })) return true;
+  } else {
+    const onBridge = y > 196 && y < 224;
+    if (!onBridge && overlap(box, { x: 214, y: 48, w: 34, h: 460 })) return true;
+    if (overlap(box, { x: 78, y: 270, w: 22, h: 16 })) return true;
+    if (overlap(box, { x: 36, y: 372, w: 78, h: 52 })) return true;
+  }
+  return false;
+}
+
 let extraFeet: (x: number, y: number) => boolean = () => false;
 
 export function setExtraFeet(fn: (x: number, y: number) => boolean): void {
@@ -802,6 +828,7 @@ export function overlap(a: Rect, b: Rect): boolean {
 }
 
 export function footBlocked(x: number, y: number): boolean {
+  if (realmWing !== 0) return realmFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
@@ -902,6 +929,7 @@ function make(next: { n: number }, defId: string, qty = 1): Item {
 }
 
 export function createGame(): GameState {
+  setRealm(0);
   const next = { n: 0 };
   const can = make(next, "can");
   const shovel = make(next, "shovel");

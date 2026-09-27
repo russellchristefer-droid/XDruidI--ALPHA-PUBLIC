@@ -600,6 +600,202 @@ function drawCampfire(ctx: CanvasRenderingContext2D, sheet: HTMLImageElement, cl
   ctx.drawImage(sheet, frame * 48, 56, 48, 40, 28, 58, 32, 27);
 }
 
+function drawSvarga(ctx: CanvasRenderingContext2D, clock: number): void {
+  const lease = 0.5 + 0.5 * Math.sin(clock * 0.35);
+  ctx.fillStyle = "#241808";
+  ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+  for (let y = 0; y < 48; y++) {
+    const t = y / 48;
+    ctx.fillStyle = t < 0.5 ? "#4a2a12" : "#c4783a";
+    ctx.fillRect(0, y, WORLD_W, 1);
+  }
+  ctx.fillStyle = "#f4e2a4";
+  ctx.fillRect(0, 48, WORLD_W, FARM_H - 48);
+  for (let y = 48; y < FARM_H; y += 16) {
+    for (let x = 0; x < WORLD_W; x += 16) {
+      const alt = ((x / 16) + (y / 16)) % 2 === 0;
+      ctx.fillStyle = alt ? "#fff6d2" : "#e7c56a";
+      ctx.fillRect(x + 1, y + 1, 14, 14);
+      ctx.fillStyle = "#b8893a";
+      ctx.fillRect(x, y, 16, 1);
+      ctx.fillRect(x, y, 1, 16);
+    }
+  }
+  ctx.fillStyle = "#d7e6b0";
+  ctx.fillRect(16, 188, 92, 44);
+  ctx.fillStyle = "#b7c888";
+  for (let i = 0; i < 18; i++) ctx.fillRect(20 + ((i * 17) % 80), 192 + ((i * 5) % 32), 2, 3);
+  fillOval(ctx, 88, 176, 16, 10, "#f7f4ee");
+  fillOval(ctx, 104, 176, 8, 7, "#f7f4ee");
+  ctx.fillStyle = "#f4f1ea";
+  ctx.fillRect(70, 168, 28, 8);
+  ctx.fillStyle = "#e8e2d4";
+  ctx.fillRect(74, 162, 6, 8);
+  ctx.fillRect(92, 160, 5, 10);
+  ctx.fillStyle = "#f8f8f4";
+  ctx.fillRect(66, 174, 8, 2);
+  ctx.fillRect(108, 172, 7, 2);
+  ctx.fillStyle = "#d4af37";
+  ctx.fillRect(64, 173, 3, 1);
+  ctx.fillRect(114, 171, 3, 1);
+  ctx.fillStyle = "#2a241c";
+  ctx.fillRect(100, 176, 1, 1);
+  ctx.fillRect(103, 176, 1, 1);
+  ctx.fillStyle = "#fffaf0";
+  ctx.fillRect(118, 56, 124, 62);
+  ctx.fillStyle = "#f0d060";
+  ctx.fillRect(112, 46, 136, 14);
+  ctx.fillRect(124, 38, 112, 10);
+  ctx.fillStyle = "#fff6c8";
+  ctx.fillRect(150, 32, 60, 8);
+  ctx.fillStyle = "#c9a24a";
+  for (let i = 0; i < 6; i++) ctx.fillRect(128 + i * 18, 70, 4, 40);
+  ctx.fillStyle = "#8a6230";
+  ctx.fillRect(168, 86, 16, 32);
+  ctx.fillStyle = "#f4e2a0";
+  ctx.fillRect(172, 96, 8, 10);
+  ctx.fillStyle = `rgba(255, 244, 200, ${0.25 + lease * 0.35})`;
+  ctx.fillRect(150, 40, 60, 4);
+  const tree = (x: number, y: number, leaf: string, bloom: string) => {
+    ctx.fillStyle = "#8a5a28";
+    ctx.fillRect(x - 2, y - 16, 4, 16);
+    fillOval(ctx, x, y - 28, 16, 12, leaf);
+    fillOval(ctx, x - 6, y - 24, 8, 6, bloom);
+    fillOval(ctx, x + 6, y - 22, 7, 5, bloom);
+  };
+  tree(78, 320, "#7dba4a", "#f4c14a");
+  tree(86, 300, "#f7e27a", "#fff6c0");
+  tree(270, 250, "#fffaf0", "#f7c1d8");
+  tree(250, 286, "#fff4ea", "#f3b7cf");
+  tree(40, 360, "#9ed06a", "#ffe08a");
+  tree(300, 340, "#fff8ee", "#f8d0e0");
+  fillOval(ctx, 190, 374, 36, 16, "#d7f4f6");
+  fillOval(ctx, 190, 372, 28, 10, "#f4ffff");
+  ctx.fillStyle = `rgba(255, 255, 255, ${0.35 + lease * 0.25})`;
+  for (let i = 0; i < 8; i++) ctx.fillRect(166 + ((i * 9 + Math.floor(clock * 12)) % 48), 366 + (i % 3) * 3, 3, 1);
+  const kx = 210 + Math.sin(clock * 0.4) * 10;
+  const ky = 250 + Math.cos(clock * 0.3) * 4;
+  fillOval(ctx, kx, ky, 8, 5, "#fffaf2");
+  ctx.fillStyle = "#f0d060";
+  ctx.fillRect(kx - 2, ky - 7, 3, 3);
+  ctx.fillStyle = "#2a241c";
+  ctx.fillRect(kx + 4, ky - 1, 1, 1);
+  for (let i = 0; i < 3; i++) {
+    const ax = 120 + i * 36;
+    const ay = 230 + Math.sin(clock * 1.2 + i) * 3;
+    ctx.fillStyle = "#fff6ea";
+    ctx.fillRect(ax, ay, 3, 8);
+    ctx.fillStyle = "#f7c1d8";
+    ctx.fillRect(ax - 2, ay + 2, 7, 2);
+    ctx.fillStyle = `rgba(255, 236, 180, ${0.3 + lease * 0.4})`;
+    ctx.fillRect(ax, ay - 2, 1, 1);
+  }
+  ctx.fillStyle = `rgba(255, 236, 190, ${0.05 + lease * 0.06})`;
+  ctx.fillRect(0, 48, WORLD_W, FARM_H - 48);
+}
+
+function drawNaraka(ctx: CanvasRenderingContext2D, clock: number): void {
+  ctx.fillStyle = "#100806";
+  ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+  ctx.fillStyle = "#2a1812";
+  ctx.fillRect(0, 0, 18, FARM_H);
+  ctx.fillStyle = "#c8b8a4";
+  ctx.fillRect(8, 40, 1, 80);
+  ctx.fillRect(8, 200, 1, 40);
+  ctx.fillStyle = "#3a322c";
+  ctx.fillRect(0, 48, WORLD_W, FARM_H - 48);
+  ctx.fillStyle = "#2a2420";
+  for (let y = 64; y < FARM_H; y += 18) {
+    for (let x = 28; x < 200; x += 22) {
+      if (((x + y) % 5) === 0) ctx.fillRect(x, y, 8, 2);
+    }
+  }
+  ctx.fillStyle = "#4a4638";
+  ctx.fillRect(248, 188, 82, 44);
+  ctx.fillStyle = "#2c2a22";
+  ctx.fillRect(300, 196, 6, 4);
+  ctx.fillRect(286, 210, 4, 3);
+  ctx.fillStyle = "#1a1814";
+  ctx.fillRect(270, 200, 2, 2);
+  ctx.fillRect(278, 188, 3, 1);
+  ctx.fillRect(292, 186, 2, 1);
+  for (let y = 48; y < FARM_H; y++) {
+    const drift = Math.floor((clock * 10 + y * 0.4) % 6);
+    ctx.fillStyle = y % 7 === 0 ? "#6a1c18" : y % 5 === 0 ? "#3a1014" : "#4a1814";
+    ctx.fillRect(214, y, 34, 1);
+    ctx.fillStyle = "rgba(90, 20, 16, 0.65)";
+    ctx.fillRect(216 + drift, y, 4, 1);
+  }
+  ctx.fillStyle = "#8a8074";
+  ctx.fillRect(210, 198, 42, 8);
+  ctx.fillStyle = "#5c564e";
+  ctx.fillRect(214, 206, 34, 3);
+  ctx.fillRect(218, 196, 3, 12);
+  ctx.fillRect(240, 196, 3, 12);
+  ctx.fillStyle = "#070604";
+  ctx.fillRect(36, 56, 90, 78);
+  ctx.fillStyle = "#050304";
+  ctx.fillRect(40, 150, 70, 48);
+  ctx.fillStyle = "#5a2a18";
+  ctx.fillRect(130, 70, 70, 64);
+  ctx.fillStyle = "#3a1c12";
+  for (let i = 0; i < 5; i++) ctx.fillRect(136 + i * 12, 78, 6, 48);
+  ctx.fillStyle = "#6a4a32";
+  fillOval(ctx, 90, 286, 12, 6, "#5c4030");
+  ctx.fillStyle = "#2a1c14";
+  ctx.fillRect(84, 278, 12, 6);
+  ctx.fillStyle = "#1a100c";
+  fillOval(ctx, 90, 280, 6, 3, "#120c0a");
+  ctx.fillStyle = "#3a2a22";
+  for (let i = 0; i < 7; i++) {
+    const x = 48 + (i % 4) * 22;
+    const y = 340 + Math.floor(i / 4) * 36;
+    ctx.fillRect(x, y, 2, 22);
+    ctx.fillStyle = "#6a6a6e";
+    ctx.fillRect(x - 6, y + 2, 8, 1);
+    ctx.fillRect(x - 4, y + 6, 7, 1);
+    ctx.fillRect(x + 2, y + 4, 6, 1);
+    ctx.fillStyle = "#3a2a22";
+  }
+  ctx.fillStyle = "#1a1412";
+  ctx.fillRect(36, 372, 84, 56);
+  ctx.fillStyle = "#2a201c";
+  ctx.fillRect(48, 360, 60, 16);
+  fillOval(ctx, 58, 400, 10, 6, "#2c241c");
+  ctx.fillStyle = "#1a1614";
+  ctx.fillRect(48, 396, 8, 6);
+  ctx.fillStyle = "#c8beb0";
+  ctx.fillRect(78, 392, 16, 12);
+  ctx.fillStyle = "#1a100c";
+  for (let i = 0; i < 4; i++) ctx.fillRect(80, 394 + i * 3, 12, 1);
+  ctx.fillStyle = "#8a9098";
+  ctx.fillRect(86, 396, 1, 1);
+  ctx.fillStyle = `rgba(180, 160, 140, ${0.15 + 0.1 * Math.sin(clock * 0.5)})`;
+  ctx.fillRect(0, 80, 6, 120);
+}
+
+function drawRealmGate(ctx: CanvasRenderingContext2D, s: GameState): void {
+  const wing = s.wing ?? 0;
+  const gold = wing === 1;
+  const pulse = 0.55 + 0.45 * Math.sin(s.clock * 2);
+  for (const cx of gateXs(wing)) {
+    const cy = 202;
+    fillOval(ctx, cx, cy + 22, 14, 4, gold ? "rgba(90, 60, 20, 0.45)" : "rgba(0, 0, 0, 0.55)");
+    fillOval(ctx, cx, cy, 16, 26, gold ? "#f4e2a8" : "#2a2420");
+    fillOval(ctx, cx, cy, 13, 22, gold ? "#fff6d4" : "#1a1412");
+    fillOval(ctx, cx, cy, 10, 18, gold ? "#1a1408" : "#070404");
+    fillOval(ctx, cx, cy + 1, 7, 14, gold ? `rgba(255, 220, 140, ${0.45 + pulse * 0.35})` : `rgba(120, 48, 28, ${0.35 + pulse * 0.2})`);
+    ctx.fillStyle = gold ? "#c9a24a" : "#3a3028";
+    ctx.fillRect(cx - 14, cy - 8, 4, 24);
+    ctx.fillRect(cx + 11, cy - 8, 4, 24);
+    ctx.fillRect(cx - 16, cy + 18, 33, 4);
+    ctx.fillStyle = gold ? "#fff6c8" : "#8a7048";
+    ctx.fillRect(cx - 12, cy - 20, 25, 3);
+    ctx.fillStyle = gold ? "#fffaf0" : "#c46a3a";
+    ctx.fillRect(cx - 1, cy - 22, 3, 2);
+  }
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   s: GameState,
@@ -607,6 +803,21 @@ export function drawWorld(
   hover: { x: number; y: number } | null,
   showTill: boolean,
 ) {
+  const wing = s.wing ?? 0;
+  if (wing !== 0) {
+    if (wing === 1) drawSvarga(ctx, s.clock);
+    else drawNaraka(ctx, s.clock);
+    if (sheets.idle) paintPlayer(ctx, sheets, s);
+    drawRealmGate(ctx, s);
+    if (sheets.idle && playerInPortal(s)) paintPlayer(ctx, sheets, s);
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = wing === 1 ? `rgba(255, 228, 160, ${0.12 + a * 0.78})` : `rgba(20, 8, 6, ${0.2 + a * 0.75})`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+    return;
+  }
   drawSpace(ctx, s.clock);
   const yard = sheets.yard;
   if (yard) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
