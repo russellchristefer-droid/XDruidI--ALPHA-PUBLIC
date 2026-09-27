@@ -419,20 +419,25 @@ function drawCourtLife(ctx: CanvasRenderingContext2D, s: GameState): void {
 function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
   const wing = s.wing ?? 0;
   const gates: number[] = [];
-  if (wing !== -1) gates.push(28);
-  if (wing !== 1) gates.push(304);
-  const pulse = 0.45 + 0.55 * Math.sin(s.clock * 3);
-  for (const x of gates) {
-    ctx.fillStyle = "#3a322c";
-    ctx.fillRect(x, 198, 20, 28);
-    ctx.fillStyle = "#8a7058";
-    ctx.fillRect(x + 2, 200, 16, 8);
-    ctx.fillStyle = "#c4b08a";
-    ctx.fillRect(x + 4, 202, 5, 4);
-    ctx.fillRect(x + 11, 202, 5, 4);
-    ctx.fillStyle = `rgba(255, 214, 120, ${0.4 + pulse * 0.6})`;
-    ctx.fillRect(x + 8, 206, 4, 4);
-    ctx.fillRect(x + 9, 204, 2, 12);
+  if (wing !== -1) gates.push(40);
+  if (wing !== 1) gates.push(308);
+  const pulse = 0.5 + 0.5 * Math.sin(s.clock * 4);
+  const rise = Math.floor(s.clock * 7) % 10;
+  for (const cx of gates) {
+    const x = cx - 7;
+    const y = 198;
+    ctx.fillStyle = "#0c3d24";
+    ctx.fillRect(x, y + 4, 2, 22);
+    ctx.fillRect(x + 12, y + 4, 2, 22);
+    ctx.fillRect(x + 2, y + 2, 10, 2);
+    ctx.fillRect(x + 4, y, 6, 2);
+    ctx.fillStyle = `rgba(36, 168, 78, ${0.55 + pulse * 0.35})`;
+    ctx.fillRect(x + 2, y + 4, 10, 22);
+    ctx.fillStyle = `rgba(170, 255, 150, ${0.35 + pulse * 0.5})`;
+    ctx.fillRect(x + 4, y + 6 + rise, 6, 2);
+    ctx.fillRect(x + 5, y + 8 + ((rise + 5) % 12), 4, 1);
+    ctx.fillStyle = "#1f8a46";
+    ctx.fillRect(x - 1, y + 26, 16, 2);
   }
 }
 
