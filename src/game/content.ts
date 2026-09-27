@@ -58,6 +58,74 @@ const V = (x: number, y: number): IconRef => ({ sheet: "veg", x, y, w: 32, h: 32
 const C = (x: number, y: number): IconRef => ({ sheet: "cooked", x, y, w: 32, h: 32 });
 const R = (x: number, y: number): IconRef => ({ sheet: "res", x, y, w: 16, h: 16 });
 
+const FISH_ROWS: ReadonlyArray<readonly [number, number]> = [
+  [3, 28],
+  [36, 58],
+  [68, 91],
+  [99, 124],
+  [131, 155],
+  [163, 188],
+  [195, 220],
+  [228, 251],
+  [259, 285],
+  [294, 315],
+  [329, 343],
+];
+const FISH_COLS: ReadonlyArray<readonly [number, number]> = [
+  [3, 28],
+  [36, 60],
+  [68, 91],
+  [99, 124],
+  [131, 156],
+  [163, 188],
+  [195, 220],
+  [227, 253],
+  [259, 285],
+  [291, 316],
+];
+
+function fishIcon(ri: number, ci: number): IconRef {
+  const [x0, x1] = FISH_COLS[ci]!;
+  const [y0, y1] = FISH_ROWS[ri]!;
+  return { sheet: "fish", x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
+/** Thin poles on the first row of the sheet. The rest of the cells are the catch. */
+const ROD_AT: ReadonlyArray<readonly [number, number]> = [
+  [0, 0],
+  [0, 1],
+  [0, 2],
+  [0, 3],
+  [0, 4],
+  [0, 5],
+  [0, 6],
+];
+const FISH_AT: Array<readonly [number, number]> = [];
+for (let ri = 0; ri < FISH_ROWS.length; ri++) {
+  for (let ci = 0; ci < FISH_COLS.length; ci++) {
+    if (ri === 10 && ci > 0) continue;
+    if (ri === 0 && ci <= 6) continue;
+    FISH_AT.push([ri, ci]);
+  }
+}
+
+const FISH_NAMES = [
+  "Gold carp",
+  "Copper trout",
+  "Green perch",
+  "Blue dart",
+  "Red snapper",
+  "Violet eel",
+  "Silver bream",
+  "Amber fish",
+  "Moss bass",
+  "Dusk fish",
+];
+
+export function isFishId(id: string): boolean {
+  return id === "fish" || id.startsWith("fish_");
+}
+
 export const DEFS: Record<string, Def> = {
   can: {
     id: "can",
@@ -142,7 +210,7 @@ export const DEFS: Record<string, Def> = {
     quality: 46,
     stack: false,
     tool: "rod",
-    icon: T(64, 32),
+    icon: fishIcon(0, 0),
     blurb: "Cast into the farm pond. The line needs open water.",
   },
   loaf: {
@@ -210,14 +278,14 @@ export const DEFS: Record<string, Def> = {
   },
   fish: {
     id: "fish",
-    name: "Pond fish",
+    name: "Gold carp",
     kind: "product",
     weight: 0.35,
     floor: 8,
     quality: 40,
     stack: true,
     stamina: 8,
-    icon: V(64, 32),
+    icon: fishIcon(0, 7),
     blurb: "Caught in the fishing pond. Eats, and it sells for Floor.",
   },
   seed_tomato: {
@@ -384,6 +452,42 @@ export const DEFS: Record<string, Def> = {
     blurb: "Paper for one stack. No weight, no use, sells for Floor.",
   },
 };
+
+export const POND_FISH: string[] = ["fish"];
+export const ROD_FRAMES: IconRef[] = ROD_AT.map(([ri, ci]) => fishIcon(ri, ci));
+for (let i = 1; i < FISH_AT.length; i++) {
+  const id = `fish_${i}`;
+  const [ri, ci] = FISH_AT[i]!;
+  POND_FISH.push(id);
+  DEFS[id] = {
+    id,
+    name: FISH_NAMES[i % FISH_NAMES.length]!,
+    kind: "product",
+    weight: 0.35,
+    floor: 8,
+    quality: 40,
+    stack: true,
+    stamina: 8,
+    icon: fishIcon(ri, ci),
+    blurb: "Caught in the fishing pond. Eats, and it sells for Floor.",
+  };
+}
+for (let i = 1; i < ROD_AT.length; i++) {
+  const id = `rod_${i}`;
+  const [ri, ci] = ROD_AT[i]!;
+  DEFS[id] = {
+    id,
+    name: "Fishing rod",
+    kind: "tool",
+    weight: 1.2,
+    floor: 16,
+    quality: 46,
+    stack: false,
+    tool: "rod",
+    icon: fishIcon(ri, ci),
+    blurb: "Cast into the farm pond. The line needs open water.",
+  };
+}
 
 export type Item = {
   id: string;
@@ -707,7 +811,7 @@ export type Life = {
   mood: number;
   face: Face;
   emote: number;
-  errand: "eat" | "drink" | "wash" | "rest" | "look" | null;
+  errand: "eat" | "drink" | "wash" | "rest" | "look" | "svarga" | null;
   tx: number;
   ty: number;
   pause: number;

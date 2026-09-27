@@ -99,6 +99,7 @@ const SHEET = {
   eggs: { url: `/game/icons/eggs.png?v=${ART}`, w: 96, h: 64 },
   dairy: { url: `/game/icons/dairy.png?v=${ART}`, w: 256, h: 96 },
   res: { url: `/game/icons/resources.png?v=${ART}`, w: 176, h: 32 },
+  fish: { url: `/game/icons/fish.png?v=${ART}`, w: 320, h: 352 },
 } as const;
 
 const CONTROLS = `WASD or arrows    Move. 4 directions.
@@ -2052,6 +2053,13 @@ export function AssayGame() {
             {panel === "pause" && (
               <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 12 }}>{CONTROLS}</pre>
             )}
+            <details style={{ fontSize: 13, margin: "8px 0" }}>
+              <summary>Legal and security</summary>
+              <p>XDruid I is a game. Play it in a browser on a phone or a computer. Do not open the files as an app.</p>
+              <p>The yard is saved in this browser only. There is no account required to play, and the save is not sent to a server.</p>
+              <p>The fish and rod pictures are third-party art. They may be used inside this game. They are not a separate download, and they are not licensed for reuse on their own.</p>
+              <p>Do not put passwords, keys, or private notes in the yard. Report a security problem in the GitHub repository under Security, not in a public issue with exploit details.</p>
+            </details>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button className="slot" style={{ width: "auto", padding: "6px 10px" }} onClick={() => { panelRef.current = null; setPanel(null); }}>
                 {panel === "summary" ? "Keep going" : "Resume"}

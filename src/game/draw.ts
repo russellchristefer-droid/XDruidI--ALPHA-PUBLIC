@@ -1,4 +1,4 @@
-import { CHAR_FOOT_Y, CHAR_H, CHAR_W, FISH_WATER, MEADOW, REAPER_FRAMES, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { CHAR_FOOT_Y, CHAR_H, CHAR_W, DEFS, FISH_WATER, MEADOW, POND_FISH, REAPER_FRAMES, ROD_FRAMES, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
@@ -149,6 +149,7 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
     ctx.globalAlpha = 0.62;
   }
   blit(ctx, sheet, pose.col * CHAR_W, row * CHAR_H, CHAR_W, CHAR_H, s.x, s.y, CHAR, flip, footX, CHAR_FOOT_Y);
+  paintTackle(ctx, sheets, s);
   ctx.globalAlpha = 1;
   if (court) {
     for (let i = 0; i < 7; i++) {
@@ -160,6 +161,38 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   }
   drawEffect(ctx, sheets, s);
   ctx.restore();
+}
+
+function paintTackle(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
+  const img = sheets.fish;
+  if (!img || img.width <= 0) return;
+  const act = s.action;
+  const fishing = act?.kind === "fish";
+  const held = findItem(s, s.activeId);
+  const worn = s.body.hands;
+  const rodItem = held && defOf(held).tool === "rod" ? held : worn && defOf(worn).tool === "rod" ? worn : null;
+  if (!fishing && !rodItem) return;
+  const icon = rodItem ? defOf(rodItem).icon : ROD_FRAMES[0];
+  if (!icon) return;
+  const t = fishing && act ? Math.max(0, Math.min(1, act.elapsed / Math.max(0.05, act.dur))) : 0;
+  const reach = fishing ? Math.sin(t * Math.PI) * 4 : 0;
+  const bob = !fishing && s.speed > 1 ? Math.sin(s.clock * 10) : 0;
+  const face = s.dir === "w" ? -1 : 1;
+  const hand =
+    s.dir === "n"
+      ? { x: -5, y: -16 }
+      : s.dir === "s"
+        ? { x: 5, y: -13 }
+        : { x: face * 3, y: -14 };
+  const hx = s.x + hand.x + face * reach;
+  const hy = s.y + hand.y + bob - reach * 0.5;
+  const sc = 0.9;
+  blit(ctx, img, icon.x, icon.y, icon.w, icon.h, hx, hy, sc, face < 0, 5, icon.h - 4);
+  if (!fishing || t < 0.62) return;
+  const caught = POND_FISH[Math.abs(Math.floor(s.x + s.y)) % POND_FISH.length] ?? "fish";
+  const fish = DEFS[caught]?.icon ?? DEFS.fish?.icon;
+  if (!fish) return;
+  blit(ctx, img, fish.x, fish.y, fish.w, fish.h, hx + face * 14, hy - 14, 0.45, false, fish.w / 2, fish.h);
 }
 
 const SPELL_KIND: Record<SpellId, "bolt" | "burst" | "strike" | "drip"> = {
@@ -260,8 +293,21 @@ function drawCastRite(ctx: CanvasRenderingContext2D, s: GameState): void {
   }
   for (let i = 0; i < 8; i++) {
     const p = (t * 0.9 + i / 8) % 1;
-    ctx.fillStyle = i % 2 === 0 ? pale : "#e7b8bc";
+    const mote = (s.wing ?? 0) === 1 ? "#e87898" : (s.wing ?? 0) === -1 ? "#c46a4a" : "#e7b8bc";
+    ctx.fillStyle = i % 2 === 0 ? pale : mote;
     ctx.fillRect(cx - 8 + i * 2, Math.round(cy - 2 - p * 18), 1, 1);
+  }
+  if ((s.wing ?? 0) === 1) {
+    ctx.fillStyle = "#c9a24a";
+    ctx.fillRect(cx - 2, cy + 2, 2, 1);
+    ctx.fillRect(cx + 1, cy + 2, 2, 1);
+    ctx.fillStyle = "#7ec8c3";
+    ctx.fillRect(cx + 4, cy + 1, 1, 1);
+  } else if ((s.wing ?? 0) === -1) {
+    ctx.fillStyle = "#4a1016";
+    ctx.fillRect(cx - 2, cy + 2, 5, 1);
+    ctx.fillStyle = "#c46a4a";
+    ctx.fillRect(cx, cy + 1, 1, 1);
   }
 }
 
@@ -748,9 +794,17 @@ function drawPortal(
     const dh = Math.max(1, Math.round(img.height * scale));
     const x = Math.max(1, Math.min(WORLD_W - dw - 1, Math.round(cx - dw / 2)));
     const y = Math.round(PORTAL_BASE - dh);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, dw, dh);
+    const mouthL = x + Math.round(dw * 0.22);
+    const mouthW = Math.max(1, dw - Math.round(dw * 0.44));
+    ctx.rect(mouthL, y + dh - 8, mouthW, 8);
+    ctx.clip("evenodd");
     ctx.drawImage(img, 0, 0, img.width, img.height, x, y, dw, dh);
+    ctx.restore();
     paintPortalMouth(ctx, x, y, dw, dh, east, clock);
-    paintThreshold(ctx, cx, east, clock);
+    seatArchInSidewalk(ctx, x, dw);
     return;
   }
   if (east) drawEastGate(ctx, cx, cy, clock);
@@ -766,56 +820,213 @@ function paintPortalMouth(
   east: boolean,
   clock: number,
 ): void {
+  const cx = x + dw * 0.5;
+  const rx = Math.max(6, Math.round(dw * 0.16));
+  const top = y + dh * 0.34;
+  const bot = y + dh * 0.76;
   ctx.save();
   ctx.imageSmoothingEnabled = false;
-  if (east) {
-    const stars: Array<[number, number]> = [
-      [0.42, 0.5],
-      [0.58, 0.46],
-      [0.5, 0.62],
-    ];
-    for (let i = 0; i < stars.length; i++) {
-      if (Math.floor(clock * 1.6 + i * 1.7) % 4 === 0) continue;
-      const [sx, sy] = stars[i]!;
-      ctx.fillStyle = "rgba(255, 252, 232, 0.95)";
-      ctx.fillRect(Math.round(x + dw * sx), Math.round(y + dh * sy), 1, 1);
-    }
-  } else {
-    const stars: Array<[number, number]> = [
-      [0.44, 0.58],
-      [0.56, 0.66],
-      [0.5, 0.74],
-    ];
-    const span = Math.max(8, Math.round(dh * 0.28));
-    for (let i = 0; i < stars.length; i++) {
-      const [sx, sy] = stars[i]!;
-      const rise = Math.floor(clock * 6 + i * 5) % span;
-      ctx.fillStyle = "rgba(255, 150, 48, 0.95)";
-      ctx.fillRect(Math.round(x + dw * sx), Math.round(y + dh * sy) - rise, 1, 1);
+  ctx.beginPath();
+  ctx.moveTo(cx - rx, bot);
+  ctx.lineTo(cx - rx, top + rx * 0.7);
+  ctx.quadraticCurveTo(cx - rx, top, cx, top - rx * 0.2);
+  ctx.quadraticCurveTo(cx + rx, top, cx + rx, top + rx * 0.7);
+  ctx.lineTo(cx + rx, bot);
+  ctx.closePath();
+  ctx.clip();
+  ctx.fillStyle = "rgba(10, 6, 4, 0.8)";
+  const span = bot - top;
+  for (let i = 0; i < span; i++) {
+    const py = top + i;
+    const u = i / span;
+    const crown = u < 0.28 ? Math.round((0.28 - u) * rx) : 0;
+    ctx.fillRect(Math.round(cx - rx + crown), Math.round(py), 1, 1);
+    if (i % 2 === 0) ctx.fillRect(Math.round(cx + rx - 1 - crown), Math.round(py), 1, 1);
+  }
+  for (let i = -rx; i <= rx; i += 2) {
+    const u = 1 - (i * i) / (rx * rx);
+    ctx.fillRect(Math.round(cx + i), Math.round(top + (1 - u) * rx * 0.45), 1, 1);
+  }
+  ctx.restore();
+  paintMouthSunAndLand(ctx, x, y, dw, dh, east, clock);
+}
+
+function diskRamp(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  colors: readonly string[],
+): void {
+  const last = colors.length - 1;
+  for (let dy = -r; dy <= r; dy++) {
+    const span = Math.sqrt(r * r - dy * dy);
+    const half = Math.floor(span);
+    for (let dx = -half; dx <= half; dx++) {
+      const dist = Math.sqrt(dx * dx + dy * dy) / r;
+      const light = (-dx - dy) / (r * 1.6);
+      let band = Math.min(last, Math.floor(dist * colors.length));
+      if (light > 0.45 && band > 0) band -= 1;
+      if (light < -0.2 && band < last) band += 1;
+      ctx.fillStyle = colors[band]!;
+      ctx.fillRect(cx + dx, cy + dy, 1, 1);
     }
   }
+}
+
+function dither(colors: readonly string[], u: number, x: number, y: number): string {
+  const last = colors.length - 1;
+  const f = Math.max(0, Math.min(0.999, u)) * last;
+  const i = Math.floor(f);
+  const frac = f - i;
+  if (i >= last) return colors[last]!;
+  const bayer = (x & 1) + ((y & 1) << 1);
+  const gate = [0.2, 0.6, 0.8, 0.4][bayer]!;
+  return frac > gate ? colors[i + 1]! : colors[i]!;
+}
+
+const mouthPlates = new Map<string, HTMLCanvasElement>();
+
+function paintMouthSunAndLand(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dw: number,
+  dh: number,
+  east: boolean,
+  clock: number,
+): void {
+  const key = `${east ? "e" : "w"}:${dw}x${dh}`;
+  let plate = mouthPlates.get(key);
+  if (!plate && typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = dw;
+    canvas.height = dh;
+    const g = canvas.getContext("2d");
+    if (g) {
+      paintMouthScene(g, 0, 0, dw, dh, east, 0);
+      plate = canvas;
+      mouthPlates.set(key, canvas);
+    }
+  }
+  if (plate) {
+    ctx.drawImage(plate, x, y);
+    const glow = Math.floor(clock * 2) % 2 === 0;
+    const cx = Math.round(x + dw * 0.5);
+    const top = Math.round(y + dh * 0.3);
+    const bot = Math.round(y + dh * 0.8);
+    const horizon = top + Math.round(Math.max(1, bot - top) * 0.58);
+    const gemY = horizon + 5;
+    ctx.fillStyle = glow ? (east ? "#fff6d4" : "#fff0c8") : east ? "#7ec8c8" : "#ff5018";
+    ctx.fillRect(cx - 1, gemY, 3, 1);
+    ctx.fillRect(cx, gemY - 1, 1, 3);
+    return;
+  }
+  paintMouthScene(ctx, x, y, dw, dh, east, clock);
+}
+
+function paintMouthScene(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dw: number,
+  dh: number,
+  east: boolean,
+  clock: number,
+): void {
+  const cx = Math.round(x + dw * 0.5);
+  const rx = Math.max(10, Math.round(dw * 0.2));
+  const top = Math.round(y + dh * 0.3);
+  const bot = Math.round(y + dh * 0.8);
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx - rx, bot);
+  ctx.lineTo(cx - rx, top + rx * 0.45);
+  ctx.quadraticCurveTo(cx - rx, top, cx, top - 3);
+  ctx.quadraticCurveTo(cx + rx, top, cx + rx, top + rx * 0.45);
+  ctx.lineTo(cx + rx, bot);
+  ctx.closePath();
+  ctx.clip();
+
+  const sky = east
+    ? ["#1c2448", "#24386e", "#3a5898", "#c08898", "#e8b878", "#f8e6b8"]
+    : ["#100818", "#281028", "#501820", "#882028", "#c04028", "#e06838"];
+  const height = Math.max(1, bot - top);
+  for (let row = 0; row < height; row++) {
+    const py = top + row;
+    const u = row / height;
+    for (let col = -rx - 2; col <= rx + 2; col++) {
+      ctx.fillStyle = dither(sky, u, cx + col, py);
+      ctx.fillRect(cx + col, py, 1, 1);
+    }
+  }
+
+  const sy = top + Math.round(height * 0.3);
+  const sunR = east ? 6 : 5;
+  const halo = east ? "#f8e6b8" : "#e06838";
+  ctx.fillStyle = halo;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.fillRect(Math.round(cx + Math.cos(a) * (sunR + 2)), Math.round(sy + Math.sin(a) * (sunR + 2)), 1, 1);
+  }
+  const sun = east
+    ? ["#fffaf0", "#fff0c8", "#f0c080", "#d08848"]
+    : ["#fff4d8", "#ffb060", "#e04820", "#801818"];
+  diskRamp(ctx, cx, sy, sunR, sun);
+  ctx.fillStyle = "#fffaf0";
+  ctx.fillRect(cx - 2, sy - 2, 2, 1);
+  ctx.fillRect(cx - 2, sy - 1, 1, 1);
+
+  const horizon = top + Math.round(height * 0.58);
+  const far = east ? ["#d8b888", "#b09068"] : ["#682020", "#401010"];
+  const near = east ? ["#6a7848", "#3e4c28"] : ["#30100c", "#180808"];
+  for (let py = horizon; py < bot; py++) {
+    const u = (py - horizon) / Math.max(1, bot - horizon);
+    if (u < 0.42) {
+      const half = Math.round(rx * (0.45 + u * 0.8) + Math.sin(py * 0.8) * 1.5);
+      ctx.fillStyle = (py & 1) === 0 ? far[0]! : far[1]!;
+      ctx.fillRect(cx - half, py, half * 2 + 1, 1);
+    }
+    const half = Math.round((rx - 1) * (0.62 + u * 0.4) + Math.sin(py * 0.45 + 1) * 1.2);
+    ctx.fillStyle = u > 0.72 ? near[1]! : (py & 1) === 0 ? near[0]! : near[1]!;
+    ctx.fillRect(cx - half, py, half * 2 + 1, 1);
+  }
+  ctx.fillStyle = east ? "#f8e6b8" : "#ffb070";
+  ctx.fillRect(cx - 5, horizon, 11, 1);
+
+  const beam = east ? "#fff6d4" : "#ff7840";
+  const glow = Math.floor(clock * 2) % 2 === 0;
+  for (let py = sy + sunR + 1; py < horizon; py += 2) {
+    ctx.fillStyle = glow && py % 4 === 0 ? "#fffaf0" : beam;
+    ctx.fillRect(cx, py, 1, 1);
+  }
+  const gemY = horizon + 5;
+  ctx.fillStyle = east ? "#1e3470" : "#4a1016";
+  ctx.fillRect(cx - 2, gemY, 5, 1);
+  ctx.fillRect(cx, gemY - 2, 1, 5);
+  ctx.fillStyle = glow ? (east ? "#fff6d4" : "#fff0c8") : east ? "#7ec8c8" : "#ff5018";
+  ctx.fillRect(cx - 1, gemY, 3, 1);
+  ctx.fillRect(cx, gemY - 1, 1, 3);
   ctx.restore();
 }
 
-function paintThreshold(ctx: CanvasRenderingContext2D, cx: number, east: boolean, clock: number): void {
-  const y = PORTAL_BASE - 1;
-  if (east) {
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * Math.PI * 2;
-      ctx.fillStyle = i % 2 === 0 ? "#fff6d4" : "#e2b657";
-      ctx.fillRect(Math.round(cx + Math.cos(a) * 8), Math.round(y + Math.sin(a) * 3), 1, 1);
-    }
-    ctx.fillStyle = "#fffaf0";
-    ctx.fillRect(Math.round(cx), y, 1, 1);
-    return;
+/** The arch stays. The sidewalk's curb turns up into the posts, and the pavement runs through the opening. */
+function seatArchInSidewalk(ctx: CanvasRenderingContext2D, x: number, dw: number): void {
+  const foot = PORTAL_BASE;
+  const left = x + Math.round(dw * 0.22);
+  const right = x + dw - Math.round(dw * 0.22);
+  ctx.fillStyle = "#302418";
+  ctx.fillRect(left, foot - 1, right - left, 1);
+  ctx.fillStyle = "#e2b657";
+  ctx.fillRect(x, foot - 10, 1, 9);
+  ctx.fillRect(x + dw - 1, foot - 10, 1, 9);
+  ctx.fillStyle = "#785018";
+  ctx.fillRect(x + 1, foot - 2, 4, 1);
+  ctx.fillRect(x + dw - 5, foot - 2, 4, 1);
+  for (let px = left + 2; px < right; px += 8) {
+    ctx.fillStyle = Math.floor(px / 4) % 2 === 0 ? "#e2b657" : "#3a5280";
+    ctx.fillRect(px, foot + 1, 1, 1);
   }
-  ctx.fillStyle = "#5a4630";
-  ctx.fillRect(cx - 7, y, 6, 1);
-  ctx.fillRect(cx - 7, y - 5, 1, 5);
-  ctx.fillRect(cx + 2, y, 6, 1);
-  ctx.fillRect(cx + 7, y - 5, 1, 5);
-  ctx.fillStyle = "#4a1016";
-  ctx.fillRect(cx - 1, y - (Math.floor(clock * 3) % 4), 1, 1);
 }
 
 function portalIsEast(wing: number, cx: number): boolean {
@@ -845,6 +1056,40 @@ function noise(x: number, y: number): number {
   return (n >>> 24) & 255;
 }
 
+function ditherRgb(
+  colors: readonly (readonly [number, number, number])[],
+  u: number,
+  x: number,
+  y: number,
+): readonly [number, number, number] {
+  const last = colors.length - 1;
+  const f = Math.max(0, Math.min(0.999, u)) * last;
+  const i = Math.floor(f);
+  if (i >= last) return colors[last]!;
+  const bayer = (x & 1) + ((y & 1) << 1);
+  const gate = [0.2, 0.6, 0.8, 0.4][bayer]!;
+  return f - i > gate ? colors[i + 1]! : colors[i]!;
+}
+
+function shade(
+  rgb: readonly [number, number, number],
+  x: number,
+  y: number,
+  amp: number,
+): readonly [number, number, number] {
+  const block = ((noise(x >> 2, y >> 2) & 7) - 3) * amp;
+  const fine = (noise(x, y) & 3) - 1;
+  return [rgb[0] + block + fine, rgb[1] + block + fine, rgb[2] + block + fine];
+}
+
+function putPix(d: Uint8ClampedArray, w: number, x: number, y: number, rgb: readonly [number, number, number], a = 255): void {
+  const i = (y * w + x) * 4;
+  d[i] = Math.max(0, Math.min(255, rgb[0]));
+  d[i + 1] = Math.max(0, Math.min(255, rgb[1]));
+  d[i + 2] = Math.max(0, Math.min(255, rgb[2]));
+  d[i + 3] = a;
+}
+
 function ensureVoid(): HTMLCanvasElement | null {
   if (voidPlate) return voidPlate;
   if (typeof document === "undefined") return null;
@@ -856,51 +1101,44 @@ function ensureVoid(): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
+  const sky: ReadonlyArray<readonly [number, number, number]> = [
+    [5, 6, 16],
+    [10, 14, 36],
+    [18, 24, 58],
+    [28, 32, 72],
+    [16, 18, 42],
+  ];
+  const gold: ReadonlyArray<readonly [number, number, number]> = [
+    [42, 32, 18],
+    [92, 64, 28],
+    [168, 120, 48],
+    [232, 196, 110],
+  ];
+  const rust: ReadonlyArray<readonly [number, number, number]> = [
+    [28, 12, 16],
+    [72, 24, 22],
+    [120, 42, 32],
+    [168, 72, 48],
+  ];
+  const blob = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => {
+    const dx = (x - cx) / rx;
+    const dy = (y - cy) / ry;
+    return Math.max(0, 1 - (dx * dx + dy * dy));
+  };
   for (let y = 0; y < h; y++) {
+    const u = y / h;
     for (let x = 0; x < WORLD_W; x++) {
-      const i = (y * WORLD_W + x) * 4;
-      const east = x / WORLD_W;
-      const n = noise(x, y);
-      let r = 8 + east * 22;
-      let gr = 10 + (1 - east) * 8;
-      let b = 18 + (1 - east) * 14;
-      const blob = (cx: number, cy: number, rx: number, ry: number) => {
-        const dx = (x - cx) / rx;
-        const dy = (y - cy) / ry;
-        return Math.max(0, 1 - (dx * dx + dy * dy));
-      };
-      const gold = blob(250, 70, 90, 36) + blob(280, 180, 70, 28);
-      const rust = blob(70, 90, 80, 40) + blob(40, 220, 60, 30);
-      const ink = blob(174, 200, 120, 50);
-      r += gold * 48 + rust * 36;
-      gr += gold * 28 + rust * 10;
-      b += gold * 8 + ink * 10;
-      const lane = Math.exp(-((y - h * 0.42) * (y - h * 0.42)) / 1800);
-      r += lane * (10 + east * 18);
-      gr += lane * 8;
-      b += lane * (14 - east * 6);
-      if (n % 97 === 0) {
-        r = east > 0.5 ? 255 : 210;
-        gr = east > 0.5 ? 236 : 180;
-        b = east > 0.5 ? 190 : 160;
-      }
-      r += (n % 17) - 8;
-      gr += ((n >> 2) % 15) - 7;
-      b += ((n >> 4) % 11) - 5;
-      if (n % 5 === 0) {
-        r += 14;
-        gr += 10;
-        b += 6;
-      }
-      if (n % 47 === 0) {
-        r += 30;
-        gr += east > 0.5 ? 22 : 8;
-        b += east > 0.5 ? 6 : 16;
-      }
-      d[i] = Math.max(0, Math.min(255, r));
-      d[i + 1] = Math.max(0, Math.min(255, gr));
-      d[i + 2] = Math.max(0, Math.min(255, b));
-      d[i + 3] = 255;
+      const gld = blob(x, y, 262, 86, 110, 48) * 0.85 + blob(x, y, 300, 200, 80, 36) * 0.55;
+      const ash = blob(x, y, 70, 100, 96, 52) * 0.8 + blob(x, y, 48, 240, 70, 40) * 0.5;
+      const wisp = 0.5 + 0.5 * Math.sin(x * 0.045 + y * 0.02);
+      let rgb = ditherRgb(sky, Math.min(0.95, u * 0.7 + wisp * 0.12), x, y);
+      if (gld > 0.35) rgb = ditherRgb(gold, Math.min(0.95, (gld - 0.35) * 1.6 + wisp * 0.15), x, y);
+      else if (ash > 0.32) rgb = ditherRgb(rust, Math.min(0.95, (ash - 0.32) * 1.5 + wisp * 0.12), x, y);
+      rgb = shade(rgb, x, y, 1);
+      const clump = noise(x >> 3, y >> 3);
+      if (clump % 8 === 0 && (gld > 0.25 || ash > 0.25)) rgb = [rgb[0] + 18, rgb[1] + 12, rgb[2] + 6];
+      if (noise(x, y) % 211 === 0) rgb = x > 174 ? [255, 244, 210] : [198, 206, 224];
+      putPix(d, WORLD_W, x, y, rgb);
     }
   }
   g.putImageData(img, 0, 0);
@@ -911,7 +1149,7 @@ function ensureVoid(): HTMLCanvasElement | null {
 function ensureRock(): HTMLCanvasElement | null {
   if (rockPlate) return rockPlate;
   if (typeof document === "undefined") return null;
-  const h = 72;
+  const h = 84;
   const canvas = document.createElement("canvas");
   canvas.width = WORLD_W;
   canvas.height = h;
@@ -919,58 +1157,40 @@ function ensureRock(): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
+  const grass: ReadonlyArray<readonly [number, number, number]> = [
+    [214, 196, 120],
+    [122, 154, 64],
+    [74, 108, 42],
+  ];
+  const crust: ReadonlyArray<readonly [number, number, number]> = [
+    [168, 132, 72],
+    [120, 88, 48],
+    [74, 54, 32],
+    [42, 30, 20],
+    [22, 16, 12],
+  ];
   for (let x = 0; x < WORLD_W; x++) {
-    const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
-    const depth = 16 + Math.round(dome ** 0.65 * 34) + (noise(x, 1) % 6);
-    const crack = noise(x, 4) % 29 === 0;
+    const t = x / (WORLD_W - 1);
+    const dome = Math.sin(t * Math.PI);
+    const belly = 20 + Math.round(dome ** 0.55 * 46);
+    const jag = (noise(x, 3) % 5) - 2;
+    const stone = Math.min(h - 2, belly + jag);
+    const east = x > 200;
     for (let y = 0; y < h; y++) {
-      const i = (y * WORLD_W + x) * 4;
-      if (y > depth + 8) continue;
-      const n = noise(x, y);
-      const east = x > 174;
-      let r = 28;
-      let gr = 18;
-      let b = 12;
-      if (y < 2) {
-        r = 78 + (n % 28);
-        gr = 112 + (n % 22);
-        b = 38;
-      } else if (y < 5) {
-        r = 96 + (n % 18);
-        gr = 64 + (n % 10);
-        b = 36;
-      } else if (y < 12) {
-        r = 72 + (n % 16);
-        gr = 46 + (n % 8);
-        b = 26;
-      } else if (y < 28) {
-        r = 48 + (n % 14) + (east ? 12 : 0);
-        gr = 30 + (n % 8);
-        b = 16;
-      } else {
-        r = 22 + (n % 10);
-        gr = 14 + (n % 6);
-        b = 10;
+      if (y > stone) continue;
+      const u = y / Math.max(1, stone);
+      let rgb: readonly [number, number, number];
+      if (y < 3) rgb = ditherRgb(grass, y / 3, x, y);
+      else rgb = ditherRgb(crust, Math.min(0.98, (y - 3) / Math.max(4, stone - 3)), x, y);
+      rgb = shade(rgb, x, y, y < 6 ? 4 : 3);
+      if (u > 0.8) rgb = [rgb[0] - 20, rgb[1] - 16, rgb[2] - 10];
+      if (y < 6 && noise(x, 2) % 4 === 0) rgb = noise(x, 5) % 2 === 0 ? [186, 214, 96] : [58, 92, 36];
+      if (y > 8 && (x % 11 === 0 || (y + (x >> 3)) % 8 === 0)) rgb = [rgb[0] - 18, rgb[1] - 14, rgb[2] - 8];
+      if (y % 13 === 10 && y > 12) rgb = [rgb[0] - 10, rgb[1] - 8, rgb[2] - 4];
+      if (noise(x >> 3, y >> 3) % 11 === 0 && y > 14 && y < stone - 8) {
+        rgb = east ? [196, 154, 78] : [92, 48, 36];
       }
-      if ((y + Math.floor(x / 17)) % 9 === 0 && y > 8) {
-        r -= 10;
-        gr -= 8;
-        b -= 4;
-      }
-      if (crack && y > 6) {
-        r = Math.floor(r * 0.45);
-        gr = Math.floor(gr * 0.45);
-        b = Math.floor(b * 0.45);
-      }
-      if (n % 23 === 0 && y > 10 && y < 26) {
-        r = east ? 168 : 86;
-        gr = east ? 124 : 40;
-        b = east ? 54 : 24;
-      }
-      d[i] = Math.max(0, Math.min(255, r));
-      d[i + 1] = Math.max(0, Math.min(255, gr));
-      d[i + 2] = Math.max(0, Math.min(255, b));
-      d[i + 3] = y > depth ? 0 : 255;
+      putPix(d, WORLD_W, x, y, rgb);
     }
   }
   g.putImageData(img, 0, 0);
@@ -983,18 +1203,13 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   const nebula = ensureVoid();
   if (nebula) ctx.drawImage(nebula, 0, FARM_H);
-  for (let i = 0; i < 280; i++) {
+  for (let i = 0; i < 96; i++) {
     const x = (i * 53 + 9) % WORLD_W;
-    const y = FARM_H + 6 + ((i * 37) % (WORLD_H - FARM_H - 12));
+    const y = FARM_H + 8 + ((i * 37) % (WORLD_H - FARM_H - 16));
     const east = x > 174;
-    const tw = (i + Math.floor(clock * 2)) % 11 === 0;
-    ctx.fillStyle = east ? (i % 8 === 0 ? "#f6d48a" : "#fff6d0") : i % 8 === 0 ? "#c46a4a" : "#b7c0d4";
+    const tw = (i + Math.floor(clock)) % 17 === 0;
+    ctx.fillStyle = east ? (i % 9 === 0 ? "#f6d48a" : "#fff6d0") : i % 9 === 0 ? "#c46a4a" : "#d7deee";
     ctx.fillRect(x, y, tw ? 2 : 1, 1);
-    if (i % 17 === 0) {
-      ctx.fillStyle = east ? "#e2b657" : "#6a4038";
-      ctx.fillRect(x - 2, y, 5, 1);
-      ctx.fillRect(x, y - 2, 1, 5);
-    }
   }
   const ringY = FARM_H + 118;
   for (let i = 0; i < 56; i++) {
@@ -1036,45 +1251,46 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
     }
   }
   const bob = Math.sin(clock * 0.35);
-  paintOrb(ctx, 56, FARM_H + 46 + bob, 11, "#e8eef8", "#6a7a90");
-  paintOrb(ctx, 300, FARM_H + 78 - bob, 15, "#7eb0d4", "#243848");
-  ctx.fillStyle = "#d5e4f0";
+  paintOrb(ctx, 56, FARM_H + 46 + bob, 11, "#f4f7ff", "#9aabbe", "#3a4a5e");
+  paintOrb(ctx, 300, FARM_H + 78 - bob, 15, "#d7e8f4", "#6a98b8", "#1c3044");
+  ctx.fillStyle = "#3a5870";
+  ctx.fillRect(290, Math.round(FARM_H + 76 - bob), 16, 1);
+  ctx.fillRect(292, Math.round(FARM_H + 82 - bob), 12, 1);
+  ctx.fillStyle = "#e7f1f8";
   ctx.fillRect(248, Math.round(FARM_H + 76 - bob), 92, 1);
-  ctx.fillRect(258, Math.round(FARM_H + 80 - bob), 72, 1);
   ctx.fillStyle = "#8aa4c0";
-  ctx.fillRect(270, Math.round(FARM_H + 82 - bob), 48, 1);
-  paintOrb(ctx, 168, FARM_H + 150, 18, "#e6c878", "#7a5a30");
-  ctx.fillStyle = "#f3e6c0";
-  ctx.fillRect(128, FARM_H + 148, 80, 1);
+  ctx.fillRect(262, Math.round(FARM_H + 80 - bob), 64, 1);
+  paintOrb(ctx, 168, FARM_H + 150, 18, "#fff0c0", "#e2b657", "#6a4820");
+  ctx.fillStyle = "#a87830";
+  ctx.fillRect(156, FARM_H + 146, 20, 1);
+  ctx.fillRect(158, FARM_H + 156, 16, 1);
+  ctx.fillStyle = "#fff6d4";
+  ctx.fillRect(132, FARM_H + 148, 72, 1);
   ctx.fillStyle = "#a88858";
-  ctx.fillRect(140, FARM_H + 152, 56, 1);
-  paintOrb(ctx, 40, FARM_H + 220, 7, "#c46a4a", "#4a241c");
-  paintOrb(ctx, 250, FARM_H + 280, 5, "#d8d2ea", "#5a5878");
-  for (let i = 0; i < 110; i++) {
-    const x = (i * 11 + Math.floor(clock * 0.6)) % WORLD_W;
-    const y = FARM_H + 12 + ((i * 13) % (WORLD_H - FARM_H - 20));
-    ctx.fillStyle = i % 4 === 0 ? "rgba(220, 226, 250, 0.5)" : "rgba(90, 110, 160, 0.28)";
-    ctx.fillRect(x, y, 1, 1);
-  }
-  const comet = (clock * 22) % (WORLD_W + 40);
-  ctx.fillStyle = "#9ecbff";
-  ctx.fillRect(comet - 14, FARM_H + 64, 14, 1);
-  ctx.fillStyle = "#f4f7ff";
+  ctx.fillRect(146, FARM_H + 152, 44, 1);
+  paintOrb(ctx, 40, FARM_H + 220, 7, "#f0a080", "#c46a4a", "#3a1814");
+  paintOrb(ctx, 250, FARM_H + 280, 5, "#f0eef8", "#b0a8c8", "#3a3858");
+  const comet = (clock * 18) % (WORLD_W + 48);
+  ctx.fillStyle = "#6a88b0";
+  ctx.fillRect(comet - 18, FARM_H + 65, 8, 1);
+  ctx.fillStyle = "#cfe0ff";
+  ctx.fillRect(comet - 10, FARM_H + 64, 10, 1);
+  ctx.fillStyle = "#fffaf0";
   ctx.fillRect(comet, FARM_H + 63, 2, 2);
-  ctx.fillStyle = "rgba(158, 203, 255, 0.45)";
-  ctx.fillRect(comet - 8, FARM_H + 65, 6, 1);
 }
 
-function paintOrb(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, fill: string, shade: string): void {
-  for (let dy = -r; dy <= r; dy++) {
-    const span = Math.round(Math.sqrt(Math.max(0, r * r - dy * dy)));
-    ctx.fillStyle = dy > r * 0.2 ? shade : fill;
-    ctx.fillRect(cx - span, cy + dy, span * 2, 1);
-  }
-  ctx.fillStyle = "rgba(255, 250, 240, 0.85)";
-  ctx.fillRect(cx - Math.floor(r * 0.35), cy - Math.floor(r * 0.45), 2, 1);
-  ctx.fillStyle = shade;
-  ctx.fillRect(cx + Math.floor(r * 0.25), cy + Math.floor(r * 0.15), 2, 1);
+function paintOrb(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  lit: string,
+  mid: string,
+  shade: string,
+): void {
+  diskRamp(ctx, Math.round(cx), Math.round(cy), r, [lit, lit, mid, shade]);
+  ctx.fillStyle = "#fffaf0";
+  ctx.fillRect(Math.round(cx - r * 0.35), Math.round(cy - r * 0.4), 2, 1);
 }
 
 function drawUnderside(ctx: CanvasRenderingContext2D): void {
@@ -1344,23 +1560,28 @@ function ensureRealmSky(east: boolean): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
+  const colors: ReadonlyArray<readonly [number, number, number]> = east
+    ? [
+        [12, 16, 40],
+        [28, 36, 78],
+        [92, 64, 88],
+        [176, 120, 72],
+        [232, 196, 128],
+      ]
+    : [
+        [10, 6, 14],
+        [28, 10, 18],
+        [72, 18, 20],
+        [120, 36, 24],
+        [168, 64, 36],
+      ];
   for (let y = 0; y < h; y++) {
+    const u = y / h;
     for (let x = 0; x < WORLD_W; x++) {
-      const i = (y * WORLD_W + x) * 4;
-      const n = noise(x + (east ? 0 : 90), y + 40);
-      const mote = n % 5 === 0;
-      let r = east ? 16 + (n % 22) : 10 + (n % 14);
-      let gr = east ? 12 + (n % 14) : 7 + (n % 8);
-      let b = east ? 6 + (n % 8) : 5 + (n % 5);
-      if (mote) {
-        r += east ? 36 : 22;
-        gr += east ? 24 : 6;
-        b += east ? 8 : 4;
-      }
-      d[i] = r;
-      d[i + 1] = gr;
-      d[i + 2] = b;
-      d[i + 3] = 255;
+      let rgb = shade(ditherRgb(colors, Math.min(0.98, u * 0.85 + (0.5 + 0.5 * Math.sin(x * 0.04)) * 0.1), x, y), x, y, 1);
+      if (noise(x >> 3, y >> 3) % 9 === 0) rgb = [rgb[0] + (east ? 14 : 10), rgb[1] + 6, rgb[2] + 2];
+      if (noise(x, y) % 240 === 0) rgb = east ? [255, 246, 220] : [196, 120, 88];
+      putPix(d, WORLD_W, x, y, rgb);
     }
   }
   g.putImageData(img, 0, 0);
@@ -1369,117 +1590,190 @@ function ensureRealmSky(east: boolean): HTMLCanvasElement | null {
   return canvas;
 }
 
-function drawRealmCliff(ctx: CanvasRenderingContext2D, east: boolean): void {
+let eastCliff: HTMLCanvasElement | null = null;
+let westCliff: HTMLCanvasElement | null = null;
+
+function ensureCliff(east: boolean): HTMLCanvasElement | null {
+  const cached = east ? eastCliff : westCliff;
+  if (cached) return cached;
+  if (typeof document === "undefined") return null;
+  const h = 52;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = h;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  const img = g.createImageData(WORLD_W, h);
+  const d = img.data;
+  const stone: ReadonlyArray<readonly [number, number, number]> = east
+    ? [
+        [243, 226, 168],
+        [230, 197, 106],
+        [168, 136, 72],
+        [106, 78, 40],
+        [58, 42, 22],
+      ]
+    : [
+        [90, 70, 52],
+        [58, 36, 28],
+        [36, 24, 18],
+        [18, 12, 10],
+        [8, 6, 6],
+      ];
   for (let x = 0; x < WORLD_W; x++) {
     const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
-    const depth = 10 + Math.round(dome ** 0.65 * 22) + (noise(x, 3) % 5);
-    for (let y = 0; y < depth + 8; y++) {
-      const py = ABYSS - 2 + y;
-      if (y > depth) continue;
-      const n = noise(x, y + 9);
-      let color = "#3a2a18";
-      if (east) {
-        if (y < 2) color = n % 3 === 0 ? "#f3e2a8" : "#e6c56a";
-        else if (y < 6) color = n % 2 === 0 ? "#c9a24a" : "#a88848";
-        else color = n % 5 === 0 ? "#fff1c4" : "#6a4e28";
-      } else if (y < 2) color = n % 3 === 0 ? "#5a4634" : "#3a2418";
-      else if (y < 6) color = n % 4 === 0 ? "#6a2818" : "#2a1c14";
-      else color = n % 6 === 0 ? "#8a4030" : "#120c0a";
-      ctx.fillStyle = color;
-      ctx.fillRect(x, py, 1, 1);
+    const depth = 12 + Math.round(dome ** 0.6 * 24);
+    for (let y = 0; y < depth; y++) {
+      let rgb = shade(ditherRgb(stone, y / depth, x, y), x, y, 3);
+      if (y > 3 && (x % 11 === 0 || (y + (x >> 3)) % 7 === 0)) rgb = [rgb[0] - 16, rgb[1] - 12, rgb[2] - 8];
+      putPix(d, WORLD_W, x, y, rgb);
     }
-    if (noise(x, 8) % 31 === 0) {
-      ctx.fillStyle = east ? "#3a2a14" : "#0c0806";
-      ctx.fillRect(x, ABYSS + 4, 1, 18 + (noise(x, 9) % 10));
+    if (noise(x, 8) % 28 === 0) {
+      const drop = 8 + (noise(x, 9) % 12);
+      for (let y = depth; y < Math.min(h, depth + drop); y++) {
+        putPix(d, WORLD_W, x, y, stone[4]!);
+      }
     }
   }
+  g.putImageData(img, 0, 0);
+  if (east) eastCliff = canvas;
+  else westCliff = canvas;
+  return canvas;
 }
 
-function drawHeavenBelow(ctx: CanvasRenderingContext2D, clock: number, sheet?: HTMLImageElement): void {
-  if (sheet && sheet.width > 0) {
-    const bob = Math.sin(clock * 0.4) > 0 ? 0 : 1;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(sheet, Math.round((WORLD_W - sheet.width) / 2), ABYSS + 56 + bob);
-    return;
-  }
-  const cx = 174;
-  const top = ABYSS + 78;
-  const bob = Math.sin(clock * 0.4) > 0 ? 0 : 1;
-  for (let x = 48; x < 300; x++) {
-    const t = (x - 48) / 252;
-    const edge = Math.sin(t * Math.PI);
-    const body = Math.round(edge ** 0.55 * 36);
-    for (let y = 0; y < body + 16; y++) {
-      const py = top + bob + y;
-      const n = noise(x, y);
-      let color = "#5a4020";
-      if (y < 3) color = n % 2 === 0 ? "#fff6d4" : "#f3e2a8";
-      else if (y < 8) color = "#e6c56a";
-      else if (y < body) color = n % 7 === 0 ? "#fff1c4" : "#a88848";
-      else if (y < body + 8) color = "#6a4e28";
-      else color = "#3a2a16";
-      if (y > body + 10 && n % 3 !== 0) continue;
-      ctx.fillStyle = color;
-      ctx.fillRect(x, py, 1, 1);
-    }
-  }
-  ctx.fillStyle = "#f7fffd";
-  ctx.fillRect(cx - 18, top + bob + 6, 36, 8);
-  ctx.fillStyle = "#d5ebe8";
-  ctx.fillRect(cx - 14, top + bob + 8, 28, 4);
-  ctx.fillStyle = "#e87898";
-  ctx.fillRect(cx - 2, top + bob + 4, 2, 2);
-  ctx.fillRect(cx + 4, top + bob + 9, 2, 2);
-  ctx.fillStyle = "#fffaf0";
-  ctx.fillRect(cx - 1, top + bob - 8, 3, 10);
-  ctx.fillStyle = "#e6c86a";
-  ctx.fillRect(cx - 4, top + bob - 10, 9, 3);
-  ctx.fillStyle = "#fff6d4";
-  ctx.fillRect(cx - 1, top + bob - 14, 3, 4);
-  const glow = 0.35 + 0.2 * Math.sin(clock * 1.4);
-  ctx.fillStyle = `rgba(255, 246, 212, ${glow})`;
-  ctx.fillRect(cx - 2, top + bob - 6, 5, 2);
+function drawRealmCliff(ctx: CanvasRenderingContext2D, east: boolean): void {
+  const cliff = ensureCliff(east);
+  if (cliff) ctx.drawImage(cliff, 0, ABYSS - 2);
 }
 
-function drawEvilBelow(ctx: CanvasRenderingContext2D, clock: number, sheet?: HTMLImageElement): void {
-  if (sheet && sheet.width > 0) {
-    const bob = Math.sin(clock * 0.55) > 0 ? 0 : 1;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(sheet, Math.round((WORLD_W - sheet.width) / 2), ABYSS + 64 + bob);
-    return;
-  }
-  const top = ABYSS + 86;
-  const bob = Math.sin(clock * 0.55) > 0 ? 0 : 1;
-  for (let x = 70; x < 278; x++) {
-    const t = (x - 70) / 208;
-    const edge = Math.sin(t * Math.PI);
-    const body = 14 + Math.round(edge * 28) + (noise(x, 2) % 4);
+let heavenPlate: HTMLCanvasElement | null = null;
+let hellPlate: HTMLCanvasElement | null = null;
+
+function ensureHeavenLand(): HTMLCanvasElement | null {
+  if (heavenPlate) return heavenPlate;
+  if (typeof document === "undefined") return null;
+  const h = 120;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = h;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  fillOval(g, 174, 86, 128, 26, "#d5e6e2");
+  fillOval(g, 150, 80, 78, 18, "#f7fffd");
+  fillOval(g, 214, 90, 64, 14, "#e7f3ef");
+  const turf = ["#f3e6b8", "#c6a45a", "#7a9848", "#567438", "#3a5228"];
+  const top = 24;
+  for (let x = 46; x < 302; x++) {
+    const t = (x - 46) / 256;
+    const body = Math.round(Math.sin(t * Math.PI) ** 0.55 * 40);
     for (let y = 0; y < body; y++) {
-      const n = noise(x, y + 4);
-      let color = "#1a100c";
-      if (y < 2) color = n % 4 === 0 ? "#6a2818" : "#2a1c14";
-      else if (y < 7) color = n % 5 === 0 ? "#4a2018" : "#241610";
-      else color = n % 8 === 0 ? "#8a4030" : "#0c0806";
-      ctx.fillStyle = color;
-      ctx.fillRect(x, top + bob + y, 1, 1);
+      const onPath = Math.abs(x - 174) < 7 && y > 8 && y < body - 6;
+      const tuft = !onPath && y < 6 && noise(x, y) % 3 === 0;
+      g.fillStyle = onPath
+        ? noise(x, y) % 5 === 0
+          ? "#e6d090"
+          : "#f7e7b0"
+        : tuft
+          ? noise(x, 4) % 2 === 0
+            ? "#d8eea0"
+            : "#3e6a28"
+          : dither(turf, y / body, x, y);
+      g.fillRect(x, top + y, 1, 1);
+      if (!onPath && noise(x >> 2, y >> 2) % 14 === 0 && y > 8) {
+        g.fillStyle = "#c6a45a";
+        g.fillRect(x, top + y, 1, 1);
+      }
     }
   }
-  ctx.fillStyle = "#1a0c08";
-  ctx.fillRect(150, top + bob + 8, 48, 16);
-  const coal = 0.25 + 0.2 * Math.sin(clock * 3);
-  ctx.fillStyle = `rgba(160, 48, 24, ${coal})`;
-  ctx.fillRect(162, top + bob + 12, 24, 6);
-  ctx.fillStyle = "#8a4030";
-  ctx.fillRect(168, top + bob + 4, 2, 8);
-  ctx.fillRect(178, top + bob + 2, 2, 10);
-  for (const x of [158, 174, 188]) {
-    const drip = Math.floor(clock * 6 + x) % 7;
-    ctx.fillStyle = "#6a1820";
-    ctx.fillRect(x, top + bob + 22 + drip, 1, 2);
+  const sx = 168;
+  const sy = top + 6;
+  g.fillStyle = "#a88848";
+  g.fillRect(sx - 8, sy, 22, 3);
+  g.fillStyle = "#fff6d4";
+  g.fillRect(sx - 6, sy + 1, 18, 1);
+  for (const col of [sx - 4, sx + 2, sx + 8]) {
+    g.fillStyle = "#f4e2a8";
+    g.fillRect(col, sy + 3, 3, 16);
+    g.fillStyle = "#fffaf0";
+    g.fillRect(col, sy + 3, 1, 16);
   }
-  ctx.fillStyle = "#5a4630";
-  ctx.fillRect(96, top + bob + 6, 2, 14);
-  ctx.fillRect(248, top + bob + 4, 2, 16);
+  g.fillStyle = "#7ec8c8";
+  g.fillRect(sx + 1, sy + 10, 3, 3);
+  g.fillStyle = "#fffaf0";
+  g.fillRect(sx + 2, sy + 11, 1, 1);
+  for (let i = 0; i < 28; i++) {
+    g.fillStyle = i % 2 === 0 ? "#ffffff" : "#b7d0cb";
+    g.fillRect(110 + ((i * 19) % 150), 76 + (i % 6), 2, 1);
+  }
+  heavenPlate = canvas;
+  return canvas;
+}
+
+function ensureHellLand(): HTMLCanvasElement | null {
+  if (hellPlate) return hellPlate;
+  if (typeof document === "undefined") return null;
+  const h = 120;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = h;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  const rock = ["#5a3828", "#3a2418", "#241610", "#120c0a", "#080604"];
+  const top = 28;
+  for (let x = 64; x < 284; x++) {
+    const t = (x - 64) / 220;
+    const peak = Math.abs(x - 174) < 18 ? 10 : 0;
+    const body = 18 + Math.round(Math.sin(t * Math.PI) * 30) + peak + ((noise(x, 2) % 5) - 2);
+    for (let y = 0; y < body; y++) {
+      const coal = Math.abs(x - 174) < 16 && y > 10 && y < 22;
+      const crack = !coal && (noise(x, y) % 17 === 0 || (y % 7 === 4 && noise(x, 1) % 4 === 0));
+      g.fillStyle = coal
+        ? y < 14
+          ? noise(x, y) % 3 === 0
+            ? "#fff0c8"
+            : "#ffb060"
+          : "#c03818"
+        : crack
+          ? "#080604"
+          : dither(rock, y / body, x, y);
+      g.fillRect(x, top + y, 1, 1);
+      if (!coal && noise(x >> 2, y >> 2) % 12 === 0 && y > 6) {
+        g.fillStyle = "#4a3024";
+        g.fillRect(x, top + y, 1, 1);
+      }
+    }
+  }
+  g.fillStyle = "#2a1c14";
+  g.fillRect(108, top + 2, 3, 22);
+  g.fillRect(236, top + 4, 3, 26);
+  g.fillStyle = "#6a4030";
+  g.fillRect(108, top + 2, 1, 22);
+  g.fillRect(236, top + 4, 1, 26);
+  hellPlate = canvas;
+  return canvas;
+}
+
+function drawHeavenBelow(ctx: CanvasRenderingContext2D, clock: number, _sheet?: HTMLImageElement): void {
+  const plate = ensureHeavenLand();
+  const bob = Math.sin(clock * 0.4) > 0 ? 0 : 1;
+  if (plate) ctx.drawImage(plate, 0, ABYSS + 48 + bob);
+  const glow = Math.floor(clock * 2) % 2 === 0;
+  ctx.fillStyle = glow ? "#fffaf0" : "#7ec8c8";
+  ctx.fillRect(171, ABYSS + 48 + bob + 40, 1, 1);
+}
+
+function drawEvilBelow(ctx: CanvasRenderingContext2D, clock: number, _sheet?: HTMLImageElement): void {
+  const plate = ensureHellLand();
+  const bob = Math.sin(clock * 0.55) > 0 ? 0 : 1;
+  if (plate) ctx.drawImage(plate, 0, ABYSS + 56 + bob);
+  const coal = Math.floor(clock * 3) % 2 === 0;
+  ctx.fillStyle = coal ? "#fff0c8" : "#ff7840";
+  ctx.fillRect(170, ABYSS + 56 + bob + 42, 8, 2);
+  for (const x of [158, 174, 188]) {
+    const drip = Math.floor(clock * 4 + x) % 6;
+    ctx.fillStyle = "#6a1820";
+    ctx.fillRect(x, ABYSS + 56 + bob + 70 + drip, 1, 2);
+  }
 }
 
 function drawRealmBelow(ctx: CanvasRenderingContext2D, wing: -1 | 1, clock: number, sheets: Sheets): void {
@@ -1843,6 +2137,7 @@ export function drawWorld(
       drawSvarga(ctx, s.clock, sheets.svarga);
       const angels = svargaAngels(s.clock).sort((a, b) => a.y - b.y);
       for (const a of angels) if (a.y <= s.y) paintAngel(ctx, sheets, a);
+      if (sheets.idle) drawCastRite(ctx, s);
       if (sheets.idle) paintPlayer(ctx, sheets, s);
       for (const a of angels) if (a.y > s.y) paintAngel(ctx, sheets, a);
       drawRealmBelow(ctx, 1, s.clock, sheets);
@@ -1850,12 +2145,14 @@ export function drawWorld(
       drawNaraka(ctx, s.clock, sheets.naraka);
       const demon = sheets.demonMage ? narakaDemon(s.clock) : null;
       if (demon && demon.y <= s.y && sheets.demonMage) paintDemon(ctx, sheets.demonMage, demon);
+      if (sheets.idle) drawCastRite(ctx, s);
       if (sheets.idle) paintPlayer(ctx, sheets, s);
       if (demon && demon.y > s.y && sheets.demonMage) paintDemon(ctx, sheets.demonMage, demon);
       drawRealmBelow(ctx, -1, s.clock, sheets);
     }
     drawRealmGate(ctx, s, sheets);
     if (sheets.idle && playerInPortal(s)) paintPlayer(ctx, sheets, s);
+    if (sheets.idle) drawSpell(ctx, sheets, s);
     if (s.cross) {
       const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
       const a = u < 0.5 ? u * 2 : (1 - u) * 2;

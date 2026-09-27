@@ -9,6 +9,8 @@ import {
   createGame,
   defaultFlowers,
   defOf,
+  isFishId,
+  POND_FISH,
   ensureLife,
   ensureFishing,
   ensureMagic,
@@ -918,13 +920,14 @@ export function resolveAction(s: GameState): string {
   }
   if (act.kind === "fish") {
     if (!hasRod(s)) return "Requires the fishing rod.";
-    const fish = makeItem(s, "fish");
+    const id = POND_FISH[Math.floor(unitRand(s) * POND_FISH.length)] ?? "fish";
+    const fish = makeItem(s, id);
     if (!hasRoom(s, fish)) return "Pack is full.";
     giveItem(s, fish);
     ensureFishing(s);
     s.fishing += 1;
     cost(6, 0.2);
-    return `Caught a pond fish. Fishing ${s.fishing}.${grant(s, "fishing", 14)}`;
+    return `Caught a ${defOf(fish).name.toLowerCase()}. Fishing ${s.fishing}.${grant(s, "fishing", 14)}`;
   }
   if (act.kind === "harvest") {
     const p = s.plots.find((pl) => pl.id === act.target);
@@ -1109,7 +1112,7 @@ function eat(s: GameState, it: Item): string {
   ensureHealth(s);
   const empty = s.life.hunger > 55;
   s.stamina = Math.min(100, s.stamina + (d.stamina ?? 0));
-  if (it.defId === "fish") {
+  if (isFishId(it.defId)) {
     s.life.hunger = Math.max(0, s.life.hunger - 24);
     s.stamina = Math.max(0, s.stamina - 4);
   } else if ((d.stamina ?? 0) > 0) {
@@ -1332,6 +1335,7 @@ export function step(s: GameState, dt: number, input: Input) {
     s.speed = 0;
     return;
   }
+  const swinging = s.action !== null;
   if (s.action) {
     s.action.elapsed += stepDt;
     s.speed = 0;
@@ -1387,7 +1391,7 @@ export function step(s: GameState, dt: number, input: Input) {
   }
   s.time = Math.min(0.999, s.time + stepDt / 90);
   stepWeather(s, stepDt);
-  tendSelf(s, stepDt, input);
+  if (!swinging) tendSelf(s, stepDt, input);
   const wing = s.wing ?? 0;
   setRealm(0);
   stepCritters(s, stepDt);
@@ -1473,9 +1477,13 @@ function tendSelf(s: GameState, dt: number, input: Input) {
           ? { kind: "rest" as const, x: 64, y: 116 }
           : null;
   if (!spot) {
+    if (s.cast || life.chore === "magic") {
+      if (practiceMagic(s, dt)) return;
+    }
+    if (tendFarm(s, dt)) return;
+    if (walkToSvarga(s, dt)) return;
     life.errand = null;
     if (practiceMagic(s, dt)) return;
-    if (tendFarm(s, dt)) return;
     stroll(s, dt);
     return;
   }
@@ -1509,6 +1517,36 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     life.route = [];
     life.pause = 0.6;
   }
+}
+
+const SVARGA_GATE = { x: 308, y: 202 };
+
+function walkToSvarga(s: GameState, dt: number): boolean {
+  const life = s.life;
+  if ((s.wing ?? 0) !== 0) return false;
+  if (s.cast || life.chore === "magic") return false;
+  if (life.skip === "svarga" && s.clock < life.skipUntil) return false;
+  if (life.chore !== "svarga") {
+    life.chore = "svarga";
+    life.errand = "svarga";
+    life.route = [];
+    s.message = "He walks toward Svarga.";
+  }
+  const atGate = s.x > 220 && s.y > 170 && s.y < 260 && Math.hypot(s.x - SVARGA_GATE.x, s.y - SVARGA_GATE.y) <= 42;
+  if (atGate) {
+    s.speed = 0;
+    life.route = [];
+    life.errand = null;
+    life.chore = "";
+    life.skip = "svarga";
+    life.skipUntil = s.clock + 8;
+    s.cross = { t: 0, wing: 1, x: 86, y: 212, dir: "e", name: "Svarga", moved: false };
+    s.message = "He walks through the east gate into Svarga.";
+    return true;
+  }
+  const step = followGoal(s, dt, 268, 208, 36);
+  if (step === "stuck") life.route = [];
+  return true;
 }
 
 function practiceMagic(s: GameState, dt: number): boolean {
@@ -1693,13 +1731,13 @@ function listChores(s: GameState): Chore[] {
     out.push({ id: `${dull.id}:sharpen`, x: grind.x + grind.w / 2, y: grind.y + grind.h / 2, hold: dull.id, say: `He sharpens the ${defOf(dull).name.toLowerCase()}.` });
   }
   const rod = toolItem(s, "rod");
-  const fishHeld = s.pack.filter((p) => p?.defId === "fish").length;
+  const fishHeld = s.pack.filter((p) => p && isFishId(p.defId)).length;
   if (rod && fishHeld < 3 && s.pack.some((p) => p === null)) {
     const pond = SPOTS.find((sp) => sp.id === "pond")!;
     out.push({ id: "fish", x: pond.x + pond.w / 2, y: pond.y + pond.h / 2, hold: rod.id, say: "He casts into the pond." });
   }
-  const catchFish = s.pack.find((p) => p?.defId === "fish");
-  if (catchFish && s.life.hunger > 36 && produceItem(s)?.defId === "fish") {
+  const catchFish = s.pack.find((p) => p && isFishId(p.defId));
+  if (catchFish && s.life.hunger > 36 && isFishId(produceItem(s)?.defId ?? "")) {
     const fire = SPOTS.find((sp) => sp.id === "fire")!;
     out.push({ id: "cook", x: fire.x + fire.w / 2, y: fire.y + fire.h / 2, hold: catchFish.id, say: "He cooks the catch." });
   }

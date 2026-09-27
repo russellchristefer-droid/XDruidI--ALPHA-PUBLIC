@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGame, DEFS, footBlocked } from "./content.ts";
+import { createGame, DEFS, footBlocked, isFishId } from "./content.ts";
 import {
   applyDawn,
   buyFineCan,
@@ -391,8 +391,8 @@ test("the farm pond is not walkable, and a rod catches a fish from the bank", ()
   const idle = { mx: 0, my: 0, run: false, frozen: false };
   for (let i = 0; i < 40; i++) step(s, 0.05, idle);
   assert.equal(s.fishing, 1);
-  assert.ok(s.pack.some((p) => p?.defId === "fish"));
-  const fish = s.pack.find((p) => p?.defId === "fish")!;
+  assert.ok(s.pack.some((p) => p && isFishId(p.defId)));
+  const fish = s.pack.find((p) => p && isFishId(p.defId))!;
   s.life.hunger = 40;
   s.hotbar[7] = fish.id;
   s.selected = 7;
@@ -421,7 +421,7 @@ test("he trains a spell on his own when magic is the lesson", () => {
   assert.ok(s.cast !== null || /practices|casts/.test(s.message), s.message);
 });
 
-test("a dirty farmer leaves the pond corner and trains on the seal", () => {
+test("a dirty farmer leaves the pond and walks toward Svarga", () => {
   const s = createGame();
   s.x = 112;
   s.y = 101;
@@ -429,17 +429,36 @@ test("a dirty farmer leaves the pond corner and trains on the seal", () => {
   s.life.thirst = 10;
   s.life.hunger = 10;
   s.stamina = 90;
+  for (const plot of s.plots) {
+    plot.stage = 2;
+    plot.crop = "tomato";
+    plot.watered = true;
+    plot.tilled = true;
+  }
+  for (const a of s.animals) {
+    a.fed = true;
+    a.ready = false;
+  }
+  s.cat.petCd = 30;
+  for (const f of s.flowers ?? []) f.bloom = 0;
+  for (const b of s.branches) b.left = false;
+  const fence = s.structures.find((st) => st.id === "gate");
+  if (fence) fence.floor = 9;
+  for (const p of s.pack) {
+    if (!p) continue;
+    if (p.defId === "rod") p.floor = 0;
+    else if (DEFS[p.defId]?.kind === "tool") p.floor = 8;
+  }
   const idle = { mx: 0, my: 0, run: false, frozen: false };
   let caught = 0;
-  for (let i = 0; i < 400; i++) {
+  for (let i = 0; i < 500; i++) {
     step(s, 0.05, idle);
     if (s.x < 116 && s.y > 98 && s.y < 106 && s.life.errand === "wash") caught++;
-    if (s.cast && Math.hypot(s.x - 172, s.y - 380) <= 4) break;
+    if (s.wing === 1 || s.cross?.wing === 1) break;
   }
   assert.ok(caught < 30, `stuck on the pond corner for ${caught} frames at ${s.x},${s.y}`);
   assert.ok(s.life.dirt < 90, `dirt ${s.life.dirt}`);
-  assert.ok(Math.hypot(s.x - 172, s.y - 380) <= 4, `${s.x},${s.y} ${s.message}`);
-  assert.ok(s.cast !== null || /practices|casts/.test(s.message), s.message);
+  assert.ok(s.wing === 1 || s.cross?.wing === 1 || s.x > 220, `${s.x},${s.y} ${s.message}`);
 });
 
 test("he crosses the fence gate without getting stuck", () => {

@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260927fresh";
+export const ART = "20260927fish";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -59,6 +59,7 @@ const URLS: Record<string, string> = {
   bee: art("/game/animals/bee.png"),
   butterfly: art("/game/animals/butterfly.png"),
   res: art("/game/icons/resources.png"),
+  fish: art("/game/icons/fish.png"),
   tomato: art("/game/crops/tomato.png"),
   cabbage: art("/game/crops/cabbage.png"),
   greens: art("/game/crops/greens.png"),
@@ -233,9 +234,11 @@ export function loadSheets(): Promise<Sheets> {
   const sheets: Sheets = {};
   const first = FIRST.filter((key) => URLS[key]);
   const rest = Object.keys(URLS).filter((key) => !first.includes(key));
-  return loadQueue(first, sheets, 4, 6000).then(() => {
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  const firstLimit = coarse ? 2 : 4;
+  return loadQueue(first, sheets, firstLimit, coarse ? 8000 : 6000).then(() => {
     const later = () => {
-      void loadQueue(rest, sheets, 2, 12000);
+      void loadQueue(rest, sheets, coarse ? 1 : 2, 12000);
     };
     const idle = window.requestIdleCallback;
     if (typeof idle === "function") idle(() => later(), { timeout: 1200 });

@@ -648,10 +648,10 @@
 
 .assay.touch .touch-actions {
   top: auto;
-  bottom: 176px;
+  bottom: calc(156px + env(safe-area-inset-bottom));
   left: 4px;
   right: 4px;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 3px;
 }
 
@@ -665,10 +665,23 @@
 .assay.touch .hotbar-wrap {
   left: 4px;
   right: 4px;
-  bottom: 84px;
+  bottom: calc(78px + env(safe-area-inset-bottom));
   transform: none;
   width: auto;
   gap: 3px;
+}
+
+.assay.touch .prompt {
+  font-size: 12px;
+  line-height: 1.25;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  box-sizing: border-box;
 }
 
 .assay.touch .hotbar {
@@ -688,17 +701,6 @@
 
 .assay.touch .slot .idx {
   display: none;
-}
-
-.assay.touch .prompt {
-  font-size: 12px;
-  line-height: 1.25;
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  box-sizing: border-box;
 }
 
 .assay.touch .slot .idx,
