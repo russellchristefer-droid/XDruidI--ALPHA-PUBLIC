@@ -624,20 +624,22 @@ export function drawWorld(
 
   if (s.weather === "rain" || s.weather === "storm") {
     const storm = s.weather === "storm";
-    const drops = storm ? 170 : 80;
-    const span = FARM_H - 3;
+    const drops = storm ? 210 : 120;
+    const span = FARM_H + 16;
     for (let i = 0; i < drops; i++) {
       const n = (i * 1103515245 + 12345) >>> 0;
-      const speed = (storm ? 55 : 28) + ((n >>> 16) % (storm ? 80 : 46));
-      const len = 1 + ((n >>> 21) % (storm ? 3 : 2));
-      const x = n % WORLD_W;
-      const y = Math.floor((((n >>> 8) % span) + s.clock * speed) % span);
-      const fade = 0.28 + ((n >>> 24) % 45) / 100;
-      ctx.fillStyle = `rgba(206, 224, 236, ${fade})`;
-      ctx.fillRect(x, y, 1, len);
-      if ((n & 63) === 0 && y + len < FARM_H) {
-        ctx.fillStyle = "rgba(220, 236, 246, 0.45)";
-        ctx.fillRect(x - 1, y + len, 2, 1);
+      const speed = (storm ? 320 : 210) + ((n >>> 16) % (storm ? 80 : 50));
+      const len = (storm ? 8 : 6) + ((n >>> 21) % 3);
+      const x0 = n % WORLD_W;
+      const y0 = Math.floor((((n >>> 8) % span) + s.clock * speed) % span) - 8;
+      const fade = 0.5 + ((n >>> 24) % 35) / 100;
+      for (let k = 0; k < len; k++) {
+        const px = x0 - (k >> 1);
+        const py = y0 + k;
+        if (py < 0 || py >= FARM_H || px < 0 || px >= WORLD_W) continue;
+        const head = k >= len - 2;
+        ctx.fillStyle = head ? `rgba(236, 244, 252, ${fade})` : `rgba(160, 190, 210, ${fade * 0.4})`;
+        ctx.fillRect(px, py, 1, 1);
       }
     }
   }
