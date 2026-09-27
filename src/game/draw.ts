@@ -436,37 +436,74 @@ function gateXs(wing: number): number[] {
 
 function drawSideGates(ctx: CanvasRenderingContext2D, s: GameState): void {
   const pulse = 0.55 + 0.45 * Math.sin(s.clock * 3);
+  const vines: Array<[number, number]> = [
+    [-14, -14], [-15, -8], [-14, -2], [-15, 6], [-13, 12],
+    [14, -12], [15, -4], [14, 4], [15, 10],
+  ];
+  const runes: Array<[number, number]> = [
+    [-10, -12], [-10, -4], [-10, 4], [-10, 12],
+    [9, -10], [9, -1], [9, 7], [9, 13],
+  ];
   for (const cx of gateXs(s.wing ?? 0)) {
     const cy = 202;
-    fillOval(ctx, cx, cy + 22, 12, 3, "rgba(10, 28, 14, 0.5)");
-    fillOval(ctx, cx, cy, 16, 26, `rgba(36, 130, 68, ${0.14 + pulse * 0.1})`);
-    fillOval(ctx, cx, cy, 13, 23, "#163628");
-    fillOval(ctx, cx, cy, 12, 22, "#3d7a4c");
-    fillOval(ctx, cx, cy - 1, 12, 21, "#245636");
-    fillOval(ctx, cx, cy, 10, 19, "#04180e");
-    fillOval(ctx, cx, cy + 1, 8, 16, `rgba(28, 150, 68, ${0.82 + pulse * 0.12})`);
-    fillOval(ctx, cx + 1, cy + 2, 4, 11, `rgba(214, 255, 196, ${0.28 + pulse * 0.4})`);
+    fillOval(ctx, cx + 2, cy + 23, 13, 3, "rgba(8, 20, 10, 0.55)");
+    fillOval(ctx, cx, cy, 17, 27, `rgba(48, 150, 74, ${0.12 + pulse * 0.1})`);
+    fillOval(ctx, cx, cy, 14, 24, "#10261c");
+    fillOval(ctx, cx, cy, 13, 23, "#2a5a38");
+    fillOval(ctx, cx - 1, cy - 1, 13, 22, "#3f7d50");
+    fillOval(ctx, cx, cy, 11, 20, "#173222");
+    fillOval(ctx, cx, cy, 10, 19, "#03140c");
+    fillOval(ctx, cx, cy + 1, 8, 16, `rgba(22, 128, 58, ${0.9})`);
+    fillOval(ctx, cx, cy + 2, 6, 13, `rgba(54, 196, 92, ${0.55 + pulse * 0.25})`);
+    fillOval(ctx, cx + 1, cy + 3, 3, 8, `rgba(220, 255, 200, ${0.25 + pulse * 0.45})`);
+    ctx.fillStyle = "#0c1c14";
+    for (let i = 0; i < 16; i++) {
+      const a = -Math.PI / 2 + (i / 16) * Math.PI * 2;
+      ctx.fillRect(Math.round(cx + Math.cos(a) * 12), Math.round(cy + Math.sin(a) * 21), 1, 1);
+    }
     ctx.fillStyle = "#d8ffc4";
-    ctx.fillRect(cx - 1, cy - 23, 3, 2);
-    ctx.fillStyle = "#10281c";
-    ctx.fillRect(cx - 12, cy - 4, 2, 18);
-    ctx.fillRect(cx + 11, cy - 4, 2, 18);
+    ctx.fillRect(cx - 1, cy - 24, 3, 2);
+    ctx.fillRect(cx, cy - 25, 1, 1);
+    ctx.fillStyle = `rgba(255, 236, 140, ${0.4 + pulse * 0.6})`;
+    ctx.fillRect(cx, cy - 23, 1, 1);
+    ctx.fillStyle = "#0e2418";
+    ctx.fillRect(cx - 13, cy - 6, 3, 20);
+    ctx.fillRect(cx + 11, cy - 6, 3, 20);
+    ctx.fillStyle = "#6fbf78";
+    ctx.fillRect(cx - 12, cy - 4, 1, 12);
+    ctx.fillStyle = "#1a4030";
+    ctx.fillRect(cx + 12, cy - 4, 1, 12);
     ctx.fillStyle = "#8ed98a";
-    ctx.fillRect(cx - 11, cy - 2, 1, 10);
-    ctx.fillStyle = `rgba(230, 255, 200, ${0.45 + pulse * 0.5})`;
-    for (const [dx, dy] of [[-9, -10], [-9, -2], [-9, 6], [8, -8], [8, 0], [8, 8]] as const) {
-      ctx.fillRect(cx + dx, cy + dy, 1, 1);
+    for (const [dx, dy] of vines) ctx.fillRect(cx + dx, cy + dy, 1, 1);
+    ctx.fillStyle = "#143024";
+    ctx.fillRect(cx - 15, cy - 16, 2, 2);
+    ctx.fillRect(cx + 13, cy - 14, 2, 2);
+    ctx.fillStyle = `rgba(236, 255, 210, ${0.4 + pulse * 0.55})`;
+    for (const [dx, dy] of runes) ctx.fillRect(cx + dx, cy + dy, 1, 1);
+    for (let i = 0; i < 7; i++) {
+      const a = s.clock * 2.2 + i * 0.9;
+      ctx.fillStyle = i % 2 === 0 ? "#f4ffe8" : "#9ae6a0";
+      ctx.fillRect(Math.round(cx + Math.cos(a) * (3 + (i % 3))), Math.round(cy + Math.sin(a) * (10 - (i % 2))), 1, 1);
     }
-    for (let i = 0; i < 6; i++) {
-      const a = s.clock * 2.4 + i * 1.05;
-      const px = Math.round(cx + Math.cos(a) * (3 + (i % 3)));
-      const py = Math.round(cy + Math.sin(a) * (11 - (i % 2) * 2));
-      ctx.fillRect(px, py, 1, 1);
+    for (let i = 0; i < 4; i++) {
+      const p = (s.clock * 0.45 + i * 0.25) % 1;
+      ctx.fillStyle = `rgba(230, 255, 210, ${0.3 + p * 0.5})`;
+      ctx.fillRect(cx - 4 + ((i * 3) % 8), Math.round(cy + 14 - p * 26), 1, 1);
     }
-    ctx.fillStyle = "#1a4630";
-    ctx.fillRect(cx - 15, cy + 21, 31, 3);
-    ctx.fillStyle = "#4e9a62";
-    ctx.fillRect(cx - 13, cy + 21, 26, 1);
+    ctx.fillStyle = "#163828";
+    ctx.fillRect(cx - 16, cy + 21, 33, 4);
+    ctx.fillStyle = "#3f8f58";
+    ctx.fillRect(cx - 14, cy + 21, 28, 1);
+    ctx.fillStyle = "#0e2818";
+    ctx.fillRect(cx - 10, cy + 23, 2, 1);
+    ctx.fillRect(cx - 4, cy + 23, 2, 1);
+    ctx.fillRect(cx + 2, cy + 23, 2, 1);
+    ctx.fillRect(cx + 8, cy + 23, 2, 1);
+    ctx.fillStyle = "#6aaa58";
+    ctx.fillRect(cx - 16, cy + 24, 2, 2);
+    ctx.fillRect(cx + 15, cy + 24, 2, 2);
+    ctx.fillRect(cx - 17, cy + 25, 1, 1);
+    ctx.fillRect(cx + 16, cy + 25, 1, 1);
   }
 }
 
