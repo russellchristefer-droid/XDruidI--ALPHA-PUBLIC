@@ -625,27 +625,35 @@ export function drawWorld(
   if (s.weather === "rain" || s.weather === "storm") {
     const storm = s.weather === "storm";
     const drops = storm ? 150 : 90;
+    const landTop = 36;
+    const landH = Math.max(1, FARM_H - landTop);
     for (let i = 0; i < drops; i++) {
       const n = (i * 1103515245 + 12345) >>> 0;
-      const cycle = (storm ? 0.42 : 0.62) + ((n >>> 16) % 18) / 100;
+      const cycle = (storm ? 0.45 : 0.7) + ((n >>> 16) % 16) / 100;
       const t = ((s.clock / cycle) + ((n >>> 8) % 1000) / 1000) % 1;
       const x = n % WORLD_W;
-      const y = Math.floor(t * (FARM_H - 2));
-      const len = 2 + Math.floor(t * (storm ? 9 : 6));
-      const fade = 0.55 + ((n >>> 24) % 30) / 100;
-      for (let k = 0; k < len; k++) {
-        const py = y - k;
-        const px = x + (k >> 1);
-        if (py < 0 || py >= FARM_H || px < 0 || px >= WORLD_W) continue;
-        ctx.fillStyle = k < 2 ? `rgba(236, 244, 252, ${fade})` : `rgba(150, 186, 208, ${fade * 0.35})`;
-        ctx.fillRect(px, py, 1, 1);
-      }
-      if (t > 0.9 && y < FARM_H) {
-        const frame = Math.min(2, Math.floor(((t - 0.9) / 0.1) * 3));
+      const ground = landTop + ((n >>> 12) % landH);
+      const fall = t < 0.78;
+      if (fall) {
+        const u = t / 0.78;
+        const y = Math.floor(ground - (1 - u) * (storm ? 36 : 26));
+        const len = 2 + Math.floor(u * (storm ? 8 : 5));
+        const fade = 0.55 + ((n >>> 24) % 30) / 100;
+        for (let k = 0; k < len; k++) {
+          const py = y - k;
+          const px = x + (k >> 1);
+          if (py < 0 || py >= FARM_H || px < 0 || px >= WORLD_W) continue;
+          ctx.fillStyle = k < 2 ? `rgba(236, 244, 252, ${fade})` : `rgba(150, 186, 208, ${fade * 0.35})`;
+          ctx.fillRect(px, py, 1, 1);
+        }
+      } else if ((n & 3) === 0) {
+        const frame = Math.min(3, Math.floor(((t - 0.78) / 0.22) * 4));
         const w = 1 + frame * 2;
-        ctx.fillStyle = `rgba(220, 236, 246, ${0.75 - frame * 0.22})`;
-        ctx.fillRect(x - (w >> 1), y, w, 1);
-        if (frame > 0) ctx.fillRect(x, y - 1, 1, 1);
+        ctx.fillStyle = `rgba(214, 232, 244, ${0.8 - frame * 0.18})`;
+        ctx.fillRect(x - (w >> 1), ground, w, 1);
+        if (frame > 0) ctx.fillRect(x, ground - 1, 1, 1);
+        if (frame > 1) ctx.fillRect(x - (w >> 1) - 1, ground + 1, 1, 1);
+        if (frame > 1) ctx.fillRect(x + (w >> 1) + 1, ground + 1, 1, 1);
       }
     }
   }
