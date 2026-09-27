@@ -193,12 +193,25 @@ test("a swing out of reach stops at the contact marker and does not water", () =
   assert.equal(s.action?.kind, "water");
   s.x = 300;
   s.y = 40;
-  s.action!.elapsed = 0.34;
+  s.action!.elapsed = 0.52;
   step(s, 0.05, { mx: 0, my: 0, run: false, frozen: false });
   assert.equal(s.action, null);
   assert.equal(plot.watered, false);
   assert.match(s.message, /Out of reach/);
   assert.equal(contactFail(s), null);
+});
+
+test("a tool swing faces the work and plays every frame of the strip", () => {
+  const s = createGame();
+  const plot = s.plots[2]!;
+  const scythe = s.pack.find((p) => p?.defId === "scythe")!;
+  s.activeId = scythe.id;
+  s.x = plot.x + 20;
+  s.y = plot.y + 4;
+  interact(s, plot.x, plot.y);
+  assert.equal(s.action?.kind, "harvest");
+  assert.equal(s.dir, "w");
+  assert.equal(s.action?.dur, 5 / 8);
 });
 
 test("rain waters the beds and the grove", () => {

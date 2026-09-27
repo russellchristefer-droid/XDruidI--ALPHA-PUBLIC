@@ -1,6 +1,7 @@
-import { FISH_CROWN, FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, type Dir, type GameState, type Plot } from "./content.ts";
+import { FISH_CROWN, FISH_WATER, MEADOW, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Dir, type GameState, type Plot } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
+import { TOOL_ANIM, findItem } from "./logic.ts";
 
 const CHAR = 0.42;
 
@@ -41,26 +42,26 @@ function blit(
   ctx.restore();
 }
 
+function heldTool(s: GameState): string | null {
+  const it = findItem(s, s.activeId);
+  const tool = it ? defOf(it).tool : null;
+  if (tool === "water") return "water";
+  if (tool === "shovel") return "shovel";
+  if (tool === "scythe") return "scythe";
+  if (tool === "axe") return "axe";
+  if (tool === "hammer") return "hammer";
+  return null;
+}
+
 function charPose(s: GameState): { sheet: string; frames: number; col: number } {
   const act = s.action;
   if (act) {
-    const map: Record<string, [string, number]> = {
-      water: ["water", 8],
-      fill: ["water", 8],
-      till: ["shovel", 7],
-      harvest: ["scythe", 5],
-      clear: ["scythe", 5],
-      chop: ["axe", 6],
-      repair: ["hammer", 6],
-      sharpen: ["hammer", 6],
-      plant: ["handsidle", 2],
-      cook: ["handsidle", 2],
-      feed: ["handsidle", 2],
-      collect: ["handsidle", 2],
-    };
-    const pair = map[act.kind] ?? ["handsidle", 2];
-    const col = Math.min(pair[1] - 1, Math.floor((act.elapsed / act.dur) * pair[1]));
-    return { sheet: pair[0], frames: pair[1], col };
+    const spec = TOOL_ANIM[act.kind];
+    if (spec) {
+      const col = Math.min(spec.frames - 1, Math.floor((act.elapsed / Math.max(0.05, act.dur)) * spec.frames));
+      return { sheet: spec.sheet, frames: spec.frames, col };
+    }
+    return { sheet: "handsidle", frames: 2, col: Math.floor(s.clock * 6) % 2 };
   }
   const hands = !!s.body.hands;
   if (s.speed > 1) {
@@ -70,6 +71,8 @@ function charPose(s: GameState): { sheet: string; frames: number; col: number } 
       col: Math.floor(s.clock * 10) % 8,
     };
   }
+  const held = heldTool(s);
+  if (held && !hands) return { sheet: held, frames: 1, col: 0 };
   return {
     sheet: hands ? "handsidle" : "idle",
     frames: 2,
@@ -122,9 +125,10 @@ function paintPlayer(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   const sheet = sheets[pose.sheet];
   if (!sheet) return;
   const { row, flip } = rowOf(s.dir);
+  const footX = row === 1 ? 37 : 35;
   ctx.save();
   if (s.downed) ctx.translate(0, 4);
-  blit(ctx, sheet, pose.col * 80, row * 112, 80, 112, s.x, s.y, CHAR, flip, 36, 96);
+  blit(ctx, sheet, pose.col * 80, row * 112, 80, 112, s.x, s.y, CHAR, flip, footX, 95);
   drawEffect(ctx, sheets, s);
   ctx.restore();
 }

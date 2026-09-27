@@ -40,6 +40,19 @@ export type Target = {
 
 const REACH = 36;
 const CONTACT_AT = 0.62;
+const TOOL_FPS = 8;
+
+/** Farm Life tool strips: 80×112 frames, rows down / side / up. `hit` is the strike frame. */
+export const TOOL_ANIM: Record<string, { sheet: string; frames: number; hit: number }> = {
+  water: { sheet: "water", frames: 8, hit: 4 },
+  fill: { sheet: "water", frames: 8, hit: 4 },
+  till: { sheet: "shovel", frames: 7, hit: 2 },
+  harvest: { sheet: "scythe", frames: 5, hit: 3 },
+  clear: { sheet: "scythe", frames: 5, hit: 3 },
+  chop: { sheet: "axe", frames: 6, hit: 4 },
+  repair: { sheet: "hammer", frames: 6, hit: 4 },
+  sharpen: { sheet: "hammer", frames: 6, hit: 4 },
+};
 
 type SideGate = { x: number; y: number; wing: -1 | 0 | 1; landX: number; dir: "e" | "w"; name: string };
 
@@ -575,7 +588,7 @@ export function examineAt(s: GameState, px: number, py: number): string {
   return `${t.name}. ${SPOTS.find((sp) => sp.id === t.id)?.kind === "well" ? "Water, a wash, a small second wind." : ""}`.trim();
 }
 
-function startAct(s: GameState, kind: string, target: string, dur = 0.6): InteractResult {
+function startAct(s: GameState, kind: string, target: string, fallback = 0.6): InteractResult {
   if (s.action) {
     s.pending = s.pending ?? { px: s.x, py: s.y };
     return { msg: "Queued." };
@@ -585,6 +598,17 @@ function startAct(s: GameState, kind: string, target: string, dur = 0.6): Intera
     return { msg: "The tool is spent. Repair it at the workbench." };
   }
   if (s.stamina < 4) return { msg: "Too tired to swing." };
+  const spec = TOOL_ANIM[kind];
+  const dur = spec ? spec.frames / TOOL_FPS : fallback;
+  const pt = aimPoint(s, kind, target);
+  if (pt) {
+    const dx = pt.x - s.x;
+    const dy = pt.y - s.y;
+    if (Math.hypot(dx, dy) > 3) {
+      if (Math.abs(dx) > Math.abs(dy)) s.dir = dx >= 0 ? "e" : "w";
+      else s.dir = dy >= 0 ? "s" : "n";
+    }
+  }
   s.action = { kind, target, elapsed: 0, dur };
   return { msg: "Working…" };
 }
@@ -1222,7 +1246,7 @@ export function step(s: GameState, dt: number, input: Input) {
   if (s.action) {
     s.action.elapsed += stepDt;
     s.speed = 0;
-    if (!s.action.hit && s.action.elapsed >= s.action.dur * CONTACT_AT) {
+    if (!s.action.hit && s.action.elapsed >= s.action.dur * (TOOL_ANIM[s.action.kind] ? (TOOL_ANIM[s.action.kind].hit + 0.45) / TOOL_ANIM[s.action.kind].frames : CONTACT_AT)) {
       s.action.hit = true;
       const fail = contactFail(s);
       if (fail) {
