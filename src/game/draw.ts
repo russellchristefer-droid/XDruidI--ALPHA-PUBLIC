@@ -1859,12 +1859,13 @@ function ensureVoid(): HTMLCanvasElement | null {
         8 + u * 12 + grit,
         22 + u * 18 + grit,
       ];
-      const arm = Math.abs(x * 0.22 + y - h * 0.42);
-      if (arm < 22 && noise(x, y) % 4 === 0) rgb = [28 + grit, 36 + grit, 78];
-      const veil = (x - 80) * (x - 80) / 9000 + (y - 70) * (y - 70) / 2800;
-      if (veil < 1 && noise(x, y) % 3 === 0) rgb = [88, 48, 110];
-      const coal = (x - 250) * (x - 250) / 7000 + (y - 180) * (y - 180) / 2400;
-      if (coal < 1 && noise(x, y) % 3 === 0) rgb = [120, 64, 36];
+      const arm = Math.abs(x * 0.18 + (y - 120) - 80);
+      if (arm < 16 && noise(x, y) % 6 === 0) rgb = [36 + grit, 48 + grit, 96];
+      if (arm < 6 && noise(x, y) % 11 === 0) rgb = [180, 190, 230];
+      const veil = (x - 70) * (x - 70) / 5200 + (y - 150) * (y - 150) / 1800;
+      if (veil < 1 && noise(x, y) % 5 === 0) rgb = [110, 62, 140];
+      const coal = (x - 260) * (x - 260) / 4200 + (y - 250) * (y - 250) / 1600;
+      if (coal < 1 && noise(x, y) % 5 === 0) rgb = [150, 78, 42];
       if (noise(x, y) % 220 === 0) rgb = noise(x, y + 1) % 4 === 0 ? [255, 244, 210] : [214, 222, 240];
       putPix(d, WORLD_W, x, y, rgb);
     }
@@ -1886,38 +1887,40 @@ function ensureRock(): HTMLCanvasElement | null {
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
   const strata: ReadonlyArray<readonly [number, number, number]> = [
-    [196, 168, 112],
-    [154, 118, 72],
-    [118, 84, 52],
-    [86, 62, 40],
-    [58, 42, 30],
-    [34, 24, 18],
+    [58, 44, 30],
+    [42, 32, 22],
+    [30, 22, 16],
+    [22, 16, 12],
+    [14, 10, 8],
+    [8, 6, 5],
   ];
   for (let x = 0; x < WORLD_W; x++) {
     const t = x / (WORLD_W - 1);
     const dome = Math.sin(t * Math.PI);
-    const lip = 5 + (noise(x, 1) % 3);
+    const lip = 4 + (noise(x, 1) % 2);
     const stone = Math.min(h - 1, 14 + Math.round(dome ** 0.6 * 56) + ((noise(x, 4) % 3) - 1));
     for (let y = 0; y < stone; y++) {
       const grit = (noise(x, y) & 3) - 1;
-      let rgb: readonly [number, number, number];
-      if (y < lip) {
-        rgb = noise(x, y) % 4 === 0 ? [214, 228, 112] : [78, 118, 46];
-      } else {
-        const depth = (y - lip) / Math.max(1, stone - lip);
-        const band = Math.min(strata.length - 1, Math.floor(depth * strata.length));
-        const base = strata[band]!;
-        rgb = [base[0] + grit, base[1] + grit, base[2] + grit];
-        if ((y - lip) % 8 === 0) rgb = [rgb[0] + 18, rgb[1] + 14, rgb[2] + 8];
-        if (noise(x, y) % 31 === 0) rgb = [rgb[0] - 18, rgb[1] - 14, rgb[2] - 8];
-      }
-      if (y === 0) rgb = [232, 214, 120];
-      if (y === stone - 1) rgb = [16, 12, 8];
+      const depth = y / Math.max(1, stone);
+      const band = Math.min(strata.length - 1, Math.floor(depth * strata.length));
+      const base = strata[band]!;
+      let rgb: readonly [number, number, number] = [base[0] + grit, base[1] + grit, base[2] + grit];
+      if (y < lip && noise(x, y) % 3 === 0) rgb = [36, 48, 28];
+      if ((y - lip) % 9 === 0 && y > lip) rgb = [rgb[0] + 10, rgb[1] + 8, rgb[2] + 4];
+      if (noise(x, y) % 27 === 0 && y > 8) rgb = [rgb[0] - 8, rgb[1] - 6, rgb[2] - 4];
+      if (y === 0) rgb = [72, 54, 36];
+      if (y === stone - 1) rgb = [6, 4, 4];
       putPix(d, WORLD_W, x, y, rgb);
     }
-    if (noise(x, 12) % 41 === 0 && stone > 24) {
-      const hang = 3 + (noise(x, 13) % 5);
-      for (let y = stone; y < Math.min(h, stone + hang); y++) putPix(d, WORLD_W, x, y, [48, 34, 22]);
+    if (noise(x, 12) % 23 === 0 && stone > 22) {
+      const hang = 4 + (noise(x, 13) % 7);
+      for (let y = 0; y < hang; y++) {
+        const py = stone + y;
+        if (py >= h) break;
+        const wide = y < 2 ? 1 : 0;
+        putPix(d, WORLD_W, x, py, [24, 16, 12]);
+        if (wide && x + 1 < WORLD_W) putPix(d, WORLD_W, x + 1, py, [16, 12, 8]);
+      }
     }
   }
   g.putImageData(img, 0, 0);
@@ -1930,49 +1933,71 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
   ctx.fillRect(0, 0, WORLD_W, WORLD_H);
   const nebula = ensureVoid();
   if (nebula) ctx.drawImage(nebula, 0, FARM_H);
-  for (let i = 0; i < 96; i++) {
-    const x = (i * 53 + 9) % WORLD_W;
-    const y = FARM_H + 8 + ((i * 37) % (WORLD_H - FARM_H - 16));
-    const east = x > 174;
-    const tw = (i + Math.floor(clock)) % 17 === 0;
-    ctx.fillStyle = east ? (i % 9 === 0 ? "#f6d48a" : "#fff6d0") : i % 9 === 0 ? "#c46a4a" : "#d7deee";
-    ctx.fillRect(x, y, tw ? 2 : 1, 1);
+  const skyTop = FARM_H + 72;
+  const skyH = WORLD_H - skyTop - 6;
+  for (let i = 0; i < 160; i++) {
+    const x = (i * 47 + 13) % WORLD_W;
+    const y = skyTop + ((i * 29) % skyH);
+    const bright = i % 11 === 0;
+    ctx.fillStyle = i % 9 === 0 ? "#fff6d0" : i % 5 === 0 ? "#9eb6ff" : "#d7deee";
+    ctx.fillRect(x, y, 1, 1);
+    if (bright) {
+      ctx.fillRect(x - 1, y, 1, 1);
+      ctx.fillRect(x + 1, y, 1, 1);
+      ctx.fillRect(x, y - 1, 1, 1);
+      ctx.fillRect(x, y + 1, 1, 1);
+    }
   }
-  const ringY = FARM_H + 118;
-  for (let i = 0; i < 56; i++) {
-    const a = clock * 0.12 + (i / 56) * Math.PI * 2;
-    ctx.fillStyle = i % 7 === 0 ? "#fff4d2" : i % 2 === 0 ? "#3a5280" : "#1c2436";
-    ctx.fillRect(Math.round(174 + Math.cos(a) * 96), Math.round(ringY + Math.sin(a) * 26), 1, 1);
-  }
-  ctx.fillStyle = "#fff4d2";
-  ctx.fillRect(174, ringY, 1, 1);
+  paintCrescent(ctx, 64, skyTop + 36, 10);
   const bob = Math.sin(clock * 0.35);
-  paintOrb(ctx, 56, FARM_H + 46 + bob, 11, "#f4f7ff", "#9aabbe", "#3a4a5e");
-  paintOrb(ctx, 300, FARM_H + 78 - bob, 15, "#d7e8f4", "#6a98b8", "#1c3044");
-  ctx.fillStyle = "#3a5870";
-  ctx.fillRect(290, Math.round(FARM_H + 76 - bob), 16, 1);
-  ctx.fillRect(292, Math.round(FARM_H + 82 - bob), 12, 1);
-  ctx.fillStyle = "#e7f1f8";
-  ctx.fillRect(248, Math.round(FARM_H + 76 - bob), 92, 1);
-  ctx.fillStyle = "#8aa4c0";
-  ctx.fillRect(262, Math.round(FARM_H + 80 - bob), 64, 1);
-  paintOrb(ctx, 168, FARM_H + 150, 18, "#fff0c0", "#e2b657", "#6a4820");
-  ctx.fillStyle = "#a87830";
-  ctx.fillRect(156, FARM_H + 146, 20, 1);
-  ctx.fillRect(158, FARM_H + 156, 16, 1);
-  ctx.fillStyle = "#fff6d4";
-  ctx.fillRect(132, FARM_H + 148, 72, 1);
-  ctx.fillStyle = "#a88858";
-  ctx.fillRect(146, FARM_H + 152, 44, 1);
-  paintOrb(ctx, 40, FARM_H + 220, 7, "#f0a080", "#c46a4a", "#3a1814");
-  paintOrb(ctx, 250, FARM_H + 280, 5, "#f0eef8", "#b0a8c8", "#3a3858");
-  const comet = (clock * 18) % (WORLD_W + 48);
+  paintOrb(ctx, 250, skyTop + 78 + bob, 14, "#fff0c0", "#e2b657", "#6a4820");
+  paintRing(ctx, 250, skyTop + 78 + bob, 28, 7);
+  paintOrb(ctx, 46, skyTop + 150, 6, "#f0a080", "#c46a4a", "#3a1814");
+  paintOrb(ctx, 300, skyTop + 190, 4, "#d7e8f4", "#6a98b8", "#1c3044");
+  paintGalaxy(ctx, 150, skyTop + 210);
+  const comet = (clock * 16) % (WORLD_W + 40);
   ctx.fillStyle = "#6a88b0";
-  ctx.fillRect(comet - 18, FARM_H + 65, 8, 1);
+  ctx.fillRect(comet - 16, skyTop + 48, 8, 1);
   ctx.fillStyle = "#cfe0ff";
-  ctx.fillRect(comet - 10, FARM_H + 64, 10, 1);
+  ctx.fillRect(comet - 8, skyTop + 47, 8, 1);
   ctx.fillStyle = "#fffaf0";
-  ctx.fillRect(comet, FARM_H + 63, 2, 2);
+  ctx.fillRect(comet, skyTop + 46, 2, 1);
+}
+
+function paintCrescent(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+  for (let y = -r; y <= r; y++) {
+    for (let x = -r; x <= r; x++) {
+      if (x * x + y * y > r * r) continue;
+      const bx = x - r * 0.45;
+      const by = y - r * 0.08;
+      if (bx * bx + by * by < (r * 0.78) * (r * 0.78)) continue;
+      ctx.fillStyle = x < 0 ? "#d5deef" : "#f7f9ff";
+      ctx.fillRect(cx + x, cy + y, 1, 1);
+    }
+  }
+}
+
+function paintRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number): void {
+  for (let y = -ry - 1; y <= ry + 1; y++) {
+    for (let x = -rx; x <= rx; x++) {
+      const e = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+      if (e < 0.82 || e > 1.16) continue;
+      if (x * x + y * y < 15 * 15 && y > -2) continue;
+      ctx.fillStyle = Math.abs(e - 1) < 0.08 ? "#fff6d4" : "#a88858";
+      ctx.fillRect(Math.round(cx + x), Math.round(cy + y), 1, 1);
+    }
+  }
+}
+
+function paintGalaxy(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+  for (let i = 0; i < 70; i++) {
+    const a = i * 0.45;
+    const rad = 2 + i * 0.16;
+    const x = Math.round(cx + Math.cos(a) * rad);
+    const y = Math.round(cy + Math.sin(a) * rad * 0.45);
+    ctx.fillStyle = i % 5 === 0 ? "#fff6d0" : i % 2 === 0 ? "#9eb6ff" : "#3a5280";
+    ctx.fillRect(x, y, 1, 1);
+  }
 }
 
 function paintOrb(
@@ -1987,6 +2012,49 @@ function paintOrb(
   diskRamp(ctx, Math.round(cx), Math.round(cy), r, [lit, lit, mid, shade]);
   ctx.fillStyle = "#fffaf0";
   ctx.fillRect(Math.round(cx - r * 0.35), Math.round(cy - r * 0.4), 2, 1);
+}
+
+function paintDayCloud(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = "#f4fbff";
+  ctx.fillRect(x, y, 14, 4);
+  ctx.fillRect(x + 4, y - 3, 10, 4);
+  ctx.fillStyle = "#d2e6f4";
+  ctx.fillRect(x + 2, y + 3, 12, 2);
+}
+
+function paintSun(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+  paintOrb(ctx, cx, cy, 7, "#fff6c8", "#ffd060", "#e09020");
+  ctx.fillStyle = "#fff6c8";
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const x = Math.round(cx + Math.cos(a) * 11);
+    const y = Math.round(cy + Math.sin(a) * 11);
+    ctx.fillRect(x, y, 2, 1);
+  }
+}
+
+function paintVoidCycle(ctx: CanvasRenderingContext2D, time: number): void {
+  const hour = 6 + time * 16;
+  let rgb = "72, 150, 214";
+  let alpha = 0.84;
+  if (hour < 8) {
+    rgb = "255, 168, 80";
+    alpha = 0.28 + ((8 - hour) / 2) * 0.36;
+  } else if (hour >= 17 && hour < 20) {
+    rgb = "92, 54, 92";
+    alpha = 0.22 + ((hour - 17) / 3) * 0.4;
+  } else if (hour >= 20) {
+    rgb = "8, 14, 36";
+    alpha = Math.min(0.38, 0.1 + ((hour - 20) / 2) * 0.16);
+  }
+  ctx.fillStyle = `rgba(${rgb}, ${alpha})`;
+  ctx.fillRect(0, FARM_H, WORLD_W, WORLD_H - FARM_H);
+  if (hour >= 8 && hour < 17) {
+    paintSun(ctx, 214, FARM_H + 118);
+    paintDayCloud(ctx, 48, FARM_H + 150);
+    paintDayCloud(ctx, 250, FARM_H + 210);
+    paintDayCloud(ctx, 130, FARM_H + 250);
+  }
 }
 
 function drawUnderside(ctx: CanvasRenderingContext2D): void {
@@ -3194,6 +3262,7 @@ export function drawWorld(
     ctx.fillStyle = `rgba(${sky}, ${skyA})`;
     ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
+  paintVoidCycle(ctx, s.time);
   if (s.wet > 0.04) {
     ctx.fillStyle = `rgba(28, 58, 72, ${Math.min(0.28, s.wet * 0.26)})`;
     ctx.fillRect(0, 0, WORLD_W, FARM_H);
