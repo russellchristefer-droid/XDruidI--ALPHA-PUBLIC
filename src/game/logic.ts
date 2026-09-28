@@ -29,8 +29,11 @@ import {
   skillLevel,
   SKILL_NAME,
   footBlocked,
+  onBed,
+  bedInset,
   FENCE,
   GOAT_PEN,
+  HERD_HOME,
   onFenceRail,
   isNight,
   itemMass,
@@ -1330,16 +1333,23 @@ export function moveFromBackpack(s: GameState, inner: number): string {
   return `Took ${defOf(it).name}.`;
 }
 
+function canStep(s: GameState, nx: number, ny: number): boolean {
+  if (fenceHop(s.x, s.y, nx, ny)) return false;
+  if (!onBed(s.x, s.y)) return !footBlocked(nx, ny);
+  if (!onBed(nx, ny)) return !footBlocked(nx, ny);
+  return bedInset(nx, ny) < bedInset(s.x, s.y) - 0.2;
+}
+
 function moveAxis(s: GameState, dx: number, dy: number) {
   const nx = s.x + dx;
   const ny = s.y + dy;
-  if (!fenceHop(s.x, s.y, nx, ny) && !footBlocked(nx, ny)) {
+  if (canStep(s, nx, ny)) {
     s.x = nx;
     s.y = ny;
     return;
   }
-  if (!fenceHop(s.x, s.y, nx, s.y) && !footBlocked(nx, s.y)) s.x = nx;
-  else if (!fenceHop(s.x, s.y, s.x, ny) && !footBlocked(s.x, ny)) s.y = ny;
+  if (canStep(s, nx, s.y)) s.x = nx;
+  else if (canStep(s, s.x, ny)) s.y = ny;
 }
 
 export function step(s: GameState, dt: number, input: Input) {
@@ -2523,6 +2533,10 @@ function followRoute(body: { x: number; y: number; route?: number[]; dir?: "n" |
 
 function herdGoal(s: GameState, a: Animal): { x: number; y: number; intent: Animal["intent"] } {
   if (a.kind === "goat") {
+    if (s.goatPen === 2) {
+      const spot = pickSpot(s, COURT_SPOTS);
+      return { intent: "court", x: spot.x, y: spot.y };
+    }
     return {
       intent: "graze",
       x: GOAT_PEN.x + 8 + unitRand(s) * (GOAT_PEN.w - 16),
@@ -2921,6 +2935,7 @@ function stepHand(s: GameState, dt: number) {
 }
 
 function stepCritters(s: GameState, dt: number) {
+  stepGoatVisit(s, dt);
   ensureGoatPen(s);
   ensureCourtHerd(s);
   stepCat(s, dt);
@@ -2966,6 +2981,60 @@ function stepCritters(s: GameState, dt: number) {
     else a.pause = 0.2 + unitRand(s) * 0.35;
     if (a.intent === "graze") a.dir = "s";
   }
+}
+
+function cutGoat(s: GameState, x: number, y: number) {
+  if (!s.goatSlash) s.goatSlash = [];
+  s.goatSlash.push({ x, y, t: 0.36 });
+}
+
+function parkGoat(s: GameState, g: Animal) {
+  g.x = HERD_HOME.goat.x;
+  g.y = HERD_HOME.goat.y;
+  g.tx = HERD_HOME.goat.x;
+  g.ty = HERD_HOME.goat.y;
+  g.route = [];
+  g.pause = 0.8;
+  g.intent = "graze";
+  g.dir = "w";
+  s.goatPen = 1;
+  s.goatLoose = 0;
+}
+
+function stepGoatVisit(s: GameState, dt: number) {
+  if (s.goatSlash?.length) {
+    for (const fx of s.goatSlash) fx.t -= dt;
+    s.goatSlash = s.goatSlash.filter((fx) => fx.t > 0);
+    if (!s.goatSlash.length) s.goatSlash = undefined;
+  }
+  if (s.goatPen !== 2) return;
+  const g = s.animals.find((a) => a.kind === "goat");
+  if (!g) return;
+  s.goatLoose = (s.goatLoose ?? 30) - dt;
+  if (s.goatLoose > 0) return;
+  cutGoat(s, g.x, g.y);
+  cutGoat(s, HERD_HOME.goat.x, HERD_HOME.goat.y);
+  parkGoat(s, g);
+  s.message = "The slash closes. The goat is back in the pen.";
+}
+
+export function releaseGoat(s: GameState): string {
+  const g = s.animals.find((a) => a.kind === "goat");
+  if (!g) return "There is no goat.";
+  if (s.goatPen === 2 && (s.goatLoose ?? 0) > 0 && g.y >= 210 && g.y <= 510) return "The goat is already loose in the courtyard.";
+  cutGoat(s, g.x, g.y);
+  s.goatPen = 2;
+  s.goatLoose = 30;
+  g.x = 180;
+  g.y = 320;
+  g.tx = 180;
+  g.ty = 320;
+  g.route = [];
+  g.pause = 0.15;
+  g.intent = "court";
+  g.dir = "s";
+  cutGoat(s, g.x, g.y);
+  return "A slash of light. The goat walks the courtyard.";
 }
 
 export function bedsAlive(s: GameState): number {

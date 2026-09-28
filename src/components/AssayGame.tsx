@@ -58,6 +58,7 @@ import {
   takeItem,
   totalMass,
   withdraw,
+  releaseGoat,
   type InteractResult,
 } from "@/game/logic";
 import { BAK1, BAK2, readSaveFrom, writeSave, type SaveStore } from "@/game/save";
@@ -137,6 +138,22 @@ function placeName(s: GameState): string {
 }
 
 type Menu = { x: number; y: number; rows: { label: string; run: () => void }[] };
+
+const KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "KeyB", "KeyA"];
+
+function feedKonami(buf: { current: string[] }, code: string): boolean {
+  const next = KONAMI[buf.current.length];
+  if (code === next) {
+    buf.current.push(code);
+    if (buf.current.length === KONAMI.length) {
+      buf.current = [];
+      return true;
+    }
+    return false;
+  }
+  buf.current = code === KONAMI[0] ? [code] : [];
+  return false;
+}
 
 function store(): SaveStore {
   return {
@@ -328,6 +345,7 @@ export function AssayGame() {
   const runHold = useRef(false);
   const skipTap = useRef(false);
   const padRef = useRef<boolean[]>(Array.from({ length: 16 }, () => false));
+  const konamiRef = useRef<string[]>([]);
   const [tick, setTick] = useState(0);
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState("");
@@ -638,14 +656,27 @@ export function AssayGame() {
               my += ay;
             }
             if (gp.buttons[6]?.pressed || (gp.axes[4] ?? 0) > 0.45) run = true;
-            const edge = (i: number) => !!gp.buttons[i]?.pressed && !padRef.current[i];
-            if (edge(0)) api.current.useAt(facingPoint(s).x, facingPoint(s).y);
-            if (edge(1) && panelRef.current) api.current.toggle(panelRef.current);
-            if (edge(2)) api.current.toggle("pack");
-            if (edge(3)) api.current.toggle("body");
-            if (edge(4)) selectHotbar(s, s.selected - 1);
-            if (edge(5)) selectHotbar(s, s.selected + 1);
-            if (edge(9)) api.current.toggle("pause");
+            const hit = (i: number) => !!gp.buttons[i]?.pressed && !padRef.current[i];
+            const freed = (code: string) => {
+              if (!feedKonami(konamiRef, code)) return false;
+              s.message = releaseGoat(s);
+              persist(s);
+              return true;
+            };
+            if (hit(12)) freed("ArrowUp");
+            if (hit(13)) freed("ArrowDown");
+            if (hit(14)) freed("ArrowLeft");
+            if (hit(15)) freed("ArrowRight");
+            if (hit(1)) {
+              const done = freed("KeyB");
+              if (!done && konamiRef.current.length === 0 && panelRef.current) api.current.toggle(panelRef.current);
+            }
+            if (hit(0) && !freed("KeyA")) api.current.useAt(facingPoint(s).x, facingPoint(s).y);
+            if (hit(2)) api.current.toggle("pack");
+            if (hit(3)) api.current.toggle("body");
+            if (hit(4)) selectHotbar(s, s.selected - 1);
+            if (hit(5)) selectHotbar(s, s.selected + 1);
+            if (hit(9)) api.current.toggle("pause");
             for (let i = 0; i < 16; i++) padRef.current[i] = !!gp.buttons[i]?.pressed;
           }
           if (screenRef.current === "play" && s) {
@@ -750,6 +781,12 @@ export function AssayGame() {
       if (code === "Escape") setPanel(null);
       return;
     }
+    if (feedKonami(konamiRef, code)) {
+      cur.message = releaseGoat(cur);
+      persist(cur);
+      bump();
+      return;
+    }
     if (code === "Escape") {
       if (menu) setMenu(null);
       else toggle("pause");
@@ -759,6 +796,7 @@ export function AssayGame() {
     if (code === "KeyC") return toggle("body");
     if (code === "KeyM") return toggle("map");
     if (code === "KeyB") {
+      if (konamiRef.current.length > 0) return;
       if (Math.hypot(cur.x - 260, cur.y - 146) > 40) {
         cur.message = "Stand at the house.";
         bump();

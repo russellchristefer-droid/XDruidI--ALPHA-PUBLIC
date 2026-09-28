@@ -2423,6 +2423,95 @@ function paintOrb(
   ctx.fillRect(Math.round(cx - r * 0.35), Math.round(cy - r * 0.4), 2, 1);
 }
 
+const GOAT_SLASH = [
+  "..............k............",
+  ".............kck...........",
+  "............kcwck..........",
+  "...........kcwgck..........",
+  "..........kcwggck..........",
+  ".........kcwg.gck..........",
+  "........kcwg...gck.........",
+  ".......kcwg.....gck........",
+  "......kcwg.......gck.......",
+  ".....kcwg.........gck......",
+  "....kcwg...........gck.....",
+  "...kcwg.............gc.....",
+  "..kcwg...............c.....",
+  ".kcwg......................",
+  ".kcg.......................",
+  ".kc........................",
+  ".k.........................",
+].join("\n");
+
+const SLASH_COLOR: Record<string, string> = {
+  k: "#14081c",
+  c: "#7a32b8",
+  g: "#f0c44a",
+  w: "#fff8e4",
+};
+
+function drawGoatSlash(ctx: CanvasRenderingContext2D, s: GameState): void {
+  const list = s.goatSlash;
+  if (!list?.length || (s.wing ?? 0) !== 0) return;
+  const rows = GOAT_SLASH.split("\n");
+  const stamp = (ox: number, oy: number, tint?: string) => {
+    for (let y = 0; y < rows.length; y++) {
+      const row = rows[y] ?? "";
+      for (let x = 0; x < row.length; x++) {
+        const ch = row[x];
+        if (!ch || ch === "." || ch === " ") continue;
+        ctx.fillStyle = tint ?? SLASH_COLOR[ch] ?? "#fff8e4";
+        ctx.fillRect(ox + x, oy + y, 1, 1);
+      }
+    }
+  };
+  for (const fx of list) {
+    const u = Math.max(0, Math.min(1, fx.t / 0.36));
+    const alpha = u > 0.4 ? 1 : u / 0.4;
+    const ox = Math.round(fx.x) - 11;
+    const oy = Math.round(fx.y) - 22;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.55;
+    stamp(ox + 3, oy + 2, "#5a2088");
+    ctx.globalAlpha = alpha;
+    stamp(ox, oy);
+    if (u > 0.72) {
+      ctx.fillStyle = "#fff8e4";
+      ctx.fillRect(ox + 7, oy + 1, 2, 11);
+      ctx.fillRect(ox + 3, oy + 6, 11, 2);
+      ctx.fillStyle = "#9ee7ff";
+      ctx.fillRect(ox + 7, oy + 6, 2, 2);
+    }
+    const fly = (1 - u) * 7;
+    const sparks: Array<[number, number, string]> = [
+      [-7, -9, "#fff8e4"],
+      [16, -5, "#f0c44a"],
+      [-5, 9, "#d070f0"],
+      [15, 11, "#9ee7ff"],
+      [1, -13, "#fff8e4"],
+      [11, 7, "#f0c44a"],
+      [-12, 1, "#7a32b8"],
+    ];
+    for (const [sx, sy, color] of sparks) {
+      const px = Math.round(ox + 11 + sx + Math.sign(sx || 1) * fly);
+      const py = Math.round(oy + 11 + sy + Math.sign(sy || -1) * fly);
+      ctx.fillStyle = "#14081c";
+      ctx.fillRect(px - 1, py, 3, 1);
+      ctx.fillRect(px, py - 1, 1, 3);
+      ctx.fillStyle = color;
+      ctx.fillRect(px, py, 1, 1);
+    }
+    ctx.fillStyle = "#14081c";
+    ctx.fillRect(ox + 9, oy + 17, 5, 3);
+    ctx.fillStyle = "#f0c44a";
+    ctx.fillRect(ox + 10, oy + 18, 3, 1);
+    ctx.fillRect(ox + 11, oy + 17, 1, 3);
+    ctx.fillStyle = "#fff8e4";
+    ctx.fillRect(ox + 11, oy + 18, 1, 1);
+    ctx.restore();
+  }
+}
+
 function drawUnderside(ctx: CanvasRenderingContext2D): void {
   const rock = ensureRock();
   if (rock) ctx.drawImage(rock, 0, FARM_H);
@@ -3592,12 +3681,12 @@ export function drawWorld(
     stage(s.y, () => paintPlayer(ctx, sheets, s), s.x);
   }
   const cover: Array<() => void> = [];
-  const inGrown = (x: number, y: number) => {
+  const behindCrop = (x: number, y: number) => {
     for (const p of s.plots) {
-      if (!p.crop || p.stage < 2) continue;
+      if (!p.crop || p.stage < 1) continue;
       const w = p.w || 20;
-      const h = p.h || 16;
-      if (x >= p.x - w / 2 && x <= p.x + w / 2 && y >= p.y - h / 2 && y <= p.y + h / 2 + 10) return true;
+      const front = p.y + (p.h || 16) / 2;
+      if (x >= p.x - w / 2 - 8 && x <= p.x + w / 2 + 8 && y < front) return true;
     }
     return false;
   };
@@ -3646,7 +3735,7 @@ export function drawWorld(
   drawFarmFrame(ctx, s.clock);
   drawSideGates(ctx, s, sheets);
   for (const d of over) {
-    if (d.x == null || inGrown(d.x, d.y)) continue;
+    if (d.x == null || behindCrop(d.x, d.y)) continue;
     d.paint();
   }
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y)) && !onFarmFrame(s.y)) paintPlayer(ctx, sheets, s);
@@ -3756,4 +3845,5 @@ export function drawWorld(
     ctx.strokeRect(tx + 0.5, ty + 0.5, TILE - 1, TILE - 1);
   }
   drawUnderside(ctx);
+  drawGoatSlash(ctx, s);
 }

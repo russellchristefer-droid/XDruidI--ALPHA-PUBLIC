@@ -563,6 +563,24 @@ const STARTER: Record<string, CropId> = {
   "bed-e": "greens",
 };
 
+export function onBed(x: number, y: number): boolean {
+  for (const bed of BEDS) {
+    if (x >= bed.x0 && x < bed.x0 + bed.w && y >= bed.y0 && y < bed.y0 + bed.h) return true;
+  }
+  return false;
+}
+
+/** How far a point sits inside a crop bed. Zero when he is off the soil. */
+export function bedInset(x: number, y: number): number {
+  let best = 0;
+  for (const bed of BEDS) {
+    if (x < bed.x0 || x >= bed.x0 + bed.w || y < bed.y0 || y >= bed.y0 + bed.h) continue;
+    const inset = Math.min(x - bed.x0, bed.x0 + bed.w - x, y - bed.y0, bed.y0 + bed.h - y);
+    if (inset > best) best = inset;
+  }
+  return best;
+}
+
 export function freshPlots(): Plot[] {
   return BEDS.map((bed) => ({
     id: bed.id,
@@ -1042,8 +1060,12 @@ export type GameState = {
   courtSpawn?: boolean | 2 | 3 | 4;
   /** 3 = field hand works the farm beds. */
   handPlace?: number;
-  /** 1 = goat lives in the 7×3 pen on the upper farm. */
+  /** 1 = goat lives in the pen. 2 = the old code let him roam the courtyard. */
   goatPen?: number;
+  /** Seconds left on the courtyard visit. Then the slash takes him home. */
+  goatLoose?: number;
+  /** Magic slashes. Each one lives for a fraction of a second. */
+  goatSlash?: { x: number; y: number; t: number }[];
   /** Xiang Su at 64, walking the courtyard and the sidewalk. */
   xiang64?: XiangSu;
 };
@@ -1244,6 +1266,18 @@ export function placeFarmer(s: GameState): void {
 export function ensureGoatPen(s: GameState): void {
   const g = s.animals.find((a) => a.kind === "goat");
   if (!g) return;
+  if (s.goatPen === 2) {
+    if (g.y < 210 || g.y > 510 || g.x < 36 || g.x > 320) {
+      g.x = 180;
+      g.y = 340;
+      g.tx = 180;
+      g.ty = 340;
+      g.route = [];
+      g.pause = 0.3;
+      g.intent = "court";
+    }
+    return;
+  }
   const inside = g.x >= GOAT_PEN.x && g.x < GOAT_PEN.x + GOAT_PEN.w && g.y >= GOAT_PEN.y && g.y < GOAT_PEN.y + GOAT_PEN.h;
   if (s.goatPen === 1 && inside) return;
   g.x = HERD_HOME.goat.x;
@@ -1420,6 +1454,7 @@ export function footBlocked(x: number, y: number): boolean {
     if (overlap(box, { x: r.x - w / 2, y: r.y - h, w, h })) return true;
   }
   if (overlap(box, FISH_WATER)) return true;
+  if (onBed(x, y)) return true;
   if (onPortal(x, y)) return true;
   if (extraFeet(x, y)) return true;
   return false;
