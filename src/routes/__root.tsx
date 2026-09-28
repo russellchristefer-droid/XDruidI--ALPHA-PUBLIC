@@ -13,7 +13,7 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "One fenced yard. A 28-slot pack, tool Floor, and fourteen spring days.",
+        content: "One fenced yard. Farm, fish, and train magic on the courtyard.",
       },
       { name: "theme-color", content: "#24301c" },
     ],

@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260927fish";
+export const ART = "20260927cast2";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -11,6 +11,7 @@ const URLS: Record<string, string> = {
   hellIsle: art("/game/land/hell-isle.png"),
   meadow: art("/game/the-meadow.png"),
   idle: art("/game/char/idle.png"),
+  rod: "/game/char/rod.png?v=20260927rod7",
   goddess: art("/game/char/goddess.png"),
   goddessFront: art("/game/char/goddess-front.png"),
   goddessBack: art("/game/char/goddess-back.png"),
@@ -132,6 +133,12 @@ const URLS: Record<string, string> = {
   reaperAxe: art("/game/char/reaper/axe.png"),
   reaperHammer: art("/game/char/reaper/hammer.png"),
   reaperPickaxe: art("/game/char/reaper/pickaxe.png"),
+  handIdle: art("/game/char/hand/idle.png"),
+  handWalk: art("/game/char/hand/walk.png"),
+  handHandsIdle: art("/game/char/hand/handsidle.png"),
+  handWater: art("/game/char/hand/water.png"),
+  handShovel: art("/game/char/hand/shovel.png"),
+  handScythe: art("/game/char/hand/scythe.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
@@ -155,7 +162,8 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
       "reaperPickaxe",
     ],
   },
-  { id: "druid", label: "Druid", keys: ["idle", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
+  { id: "hand", label: "Field hand", keys: ["handIdle", "handWalk", "handHandsIdle", "handWater", "handShovel", "handScythe"] },
+  { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
   { id: "covers", label: "Covers", keys: ["tree-nw", "tree-n", "tree-ne", "tree-e", "tree-sw", "tree-s", "tree-se", "bush-w", "bush-e"] },
@@ -182,11 +190,31 @@ const FIRST = [
   "occlude",
   "rocks",
   "idle",
+  "rod",
   "walk",
   "plainIdle",
   "plainWalk",
   "portalSvarga",
   "portalNaraka",
+];
+
+/** The other farmer. Loaded with the yard, not after every other picture. */
+const SOON = [
+  "handIdle",
+  "handWalk",
+  "handHandsIdle",
+  "handWater",
+  "handScythe",
+  "handShovel",
+  "fireball",
+  "nova",
+  "holy",
+  "ice",
+  "iceball",
+  "bolt",
+  "spark",
+  "poison",
+  "drip",
 ];
 
 function loadOne(key: string, sheets: Sheets, ms: number): Promise<void> {
@@ -233,10 +261,12 @@ async function loadQueue(keys: string[], sheets: Sheets, limit: number, ms: numb
 export function loadSheets(): Promise<Sheets> {
   const sheets: Sheets = {};
   const first = FIRST.filter((key) => URLS[key]);
-  const rest = Object.keys(URLS).filter((key) => !first.includes(key));
+  const soon = SOON.filter((key) => URLS[key]);
+  const rest = Object.keys(URLS).filter((key) => !first.includes(key) && !soon.includes(key));
   const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
   const firstLimit = coarse ? 2 : 4;
   return loadQueue(first, sheets, firstLimit, coarse ? 8000 : 6000).then(() => {
+    void loadQueue(soon, sheets, coarse ? 2 : 3, 8000);
     const later = () => {
       void loadQueue(rest, sheets, coarse ? 1 : 2, 12000);
     };

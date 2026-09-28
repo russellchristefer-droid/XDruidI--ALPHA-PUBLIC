@@ -1,5 +1,6 @@
 import { soundState } from "./audio.ts";
 import { tickBirdsong } from "./birdsong.ts";
+import { mewNow, tickCatVoice } from "./catsound.ts";
 import {
   DEFS,
   MASS_CAP,
@@ -17,6 +18,8 @@ import {
   ensureWeather,
   ensureBirds,
   ensureReaper,
+  ensureHand,
+  HAND_HOME,
   ensureSkills,
   ensureHealth,
   skillLevel,
@@ -66,6 +69,12 @@ export type Target = {
 const REACH = 36;
 const CONTACT_AT = 0.62;
 const TOOL_FPS = 8;
+let jog = false;
+
+function gait(speed: number): number {
+  const walk = Math.max(64, speed);
+  return jog ? walk * 1.7 : walk;
+}
 
 /** Farm Life tool strips: 80×112 frames, rows down / side / up. `hit` is the strike frame. */
 export const TOOL_ANIM: Record<string, { sheet: string; frames: number; hit: number }> = {
@@ -438,6 +447,9 @@ export function targets(s: GameState): Target[] {
     list.push({ id: a.id, name: a.name, kind: "animal", x: a.x - 10, y: a.y - 12, w: 20, h: 16 });
   }
   list.push({ id: "cat", name: "Cat", kind: "cat", x: s.cat.x - 8, y: s.cat.y - 8, w: 16, h: 12 });
+  if (s.hand && (s.wing ?? 0) === 0) {
+    list.push({ id: "hand", name: "Field hand", kind: "hand", x: s.hand.x - 8, y: s.hand.y - 6, w: 16, h: 10 });
+  }
   for (const g of s.ground) {
     list.push({
       id: g.id,
@@ -543,7 +555,7 @@ function verb(s: GameState, t: Target): string {
   }
   if (t.kind === "fire") return "Cook at campfire";
   if (t.kind === "hearth") return "Sit by the fire";
-  if (t.kind === "shed") return isNight(s.time) ? "Sleep in the house" : "Open the house";
+  if (t.kind === "shed") return "Open the house stores";
   if (t.kind === "bench") return "Use workbench";
   if (t.kind === "grind") return "Sharpen tool";
   if (t.kind === "gate") return toolKind(s) === "hammer" ? "Repair gate" : "Check gate";
@@ -556,6 +568,7 @@ function verb(s: GameState, t: Target): string {
   }
   if (t.kind === "cat") return "Pet the cat";
   if (t.kind === "reaper") return "Greet the wizard";
+  if (t.kind === "hand") return "Greet the field hand";
   if (t.kind === "flower") {
     const f = s.flowers?.find((fl) => fl.id === t.id);
     return f && f.bloom >= 2 ? `Pick ${f.name.toLowerCase()}` : t.name;
@@ -676,9 +689,8 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
     return { msg: "You sit by the fire. The warmth settles in.", save: true };
   }
   if (t.kind === "shed") {
-    if (isNight(s.time)) return sleepNow(s);
     shaveStruct(s, "shed", 0.2);
-    return { panel: "vault", save: true, msg: "The door opens. The ledger sits just inside." };
+    return { panel: "vault", save: true, msg: "The door opens. The stores sit just inside." };
   }
   if (t.kind === "bench") {
     shaveStruct(s, "bench", 0.3);
@@ -690,6 +702,7 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (t.kind === "animal") return useAnimal(s, t.id);
   if (t.kind === "cat") return petCat(s);
   if (t.kind === "reaper") return greetReaper(s);
+  if (t.kind === "hand") return greetHand(s);
   if (t.kind === "flower") return pickFlower(s, t.id);
   return { msg: "Nothing to use here." };
 }
@@ -827,6 +840,7 @@ function petCat(s: GameState): InteractResult {
   if (s.cat.petCd > 0) return { msg: "The cat is busy being a cat." };
   s.cat.petCd = 20;
   s.stamina = Math.min(100, s.stamina + 4);
+  mewNow(s, Math.random() < 0.5 ? "long" : "trill");
   return { msg: `The cat allows it. A little of the day comes back.${grant(s, "husbandry", 8)}` };
 }
 
@@ -843,6 +857,21 @@ function greetReaper(s: GameState): InteractResult {
   r.greet = 1.8;
   r.route = [];
   return { msg: `The masked wizard lifts both hands. He is a friend of the courtyard.${grant(s, "ritual", 4)}` };
+}
+
+function greetHand(s: GameState): InteractResult {
+  ensureHand(s);
+  const h = s.hand;
+  const dx = s.x - h.x;
+  const dy = s.y - h.y;
+  if (Math.abs(dx) >= Math.abs(dy)) h.dir = dx >= 0 ? "e" : "w";
+  else h.dir = dy >= 0 ? "s" : "n";
+  h.pose = "handsidle";
+  h.poseT = 0;
+  h.pause = 1.6;
+  h.greet = 1.6;
+  h.route = [];
+  return { msg: `The field hand nods. He works the beds and leaves the seal to you.${grant(s, "farming", 4)}` };
 }
 
 function pickFlower(s: GameState, id: string): InteractResult {
@@ -1303,10 +1332,12 @@ export function step(s: GameState, dt: number, input: Input) {
   const stepDt = Math.min(0.05, Math.max(0, dt));
   s.clock += stepDt;
   if (s.catchFlash) s.catchFlash = Math.max(0, s.catchFlash - stepDt);
+  jog = input.run && !s.downed;
   ensureMagic(s);
   ensureSkills(s);
   ensureHealth(s);
   ensureReaper(s);
+  ensureHand(s);
   if (input.frozen || s.cross) s.speed = 0;
   regenMana(s, stepDt);
   setRealm(s.wing ?? 0);
@@ -1374,10 +1405,10 @@ export function step(s: GameState, dt: number, input: Input) {
     }
     const mass = totalMass(s);
     const crawl = s.downed || mass >= MASS_CAP - 0.05;
-    const jogging = input.run && !crawl;
+    const jogging = jog;
     const onCourt = s.y >= 232 && s.y < 528 && s.x >= 8 && s.x < 344;
     const wetDrag = onCourt && s.wet > 0.12 ? 1 - Math.min(0.22, s.wet * 0.22) : 1;
-    const speed = (crawl ? 22 : jogging ? 54 : 42) * wetDrag;
+    const speed = (s.downed ? 22 : jogging ? 112 : crawl ? 36 : 64) * wetDrag;
     if (mag > 0.08) {
       if (Math.abs(mx) > Math.abs(my)) s.dir = mx > 0 ? "e" : "w";
       else s.dir = my > 0 ? "s" : "n";
@@ -1392,7 +1423,7 @@ export function step(s: GameState, dt: number, input: Input) {
     }
     if (s.stamina <= 0) down(s);
   }
-  s.time = Math.min(0.999, s.time + stepDt / 90);
+  s.time = Math.min(0.999, s.time + stepDt / 720);
   stepWeather(s, stepDt);
   if (!swinging) tendSelf(s, stepDt, input);
   const wing = s.wing ?? 0;
@@ -1406,6 +1437,7 @@ export function step(s: GameState, dt: number, input: Input) {
       s.mana = Math.min(MANA_MAX, s.mana + tone.mana);
       s.message = "A bird sang the old tone. The hurt loosens.";
     }
+    tickCatVoice(s, stepDt);
   }
 }
 
@@ -1475,55 +1507,86 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     return;
   }
   const night = isNight(s.time);
-  const spot =
-    life.thirst > 84
-      ? { kind: "drink" as const, x: 150, y: 120 }
-      : life.dirt > 90
-        ? { kind: "wash" as const, x: 128, y: 104 }
-        : s.stamina < 16 || (night && s.stamina < 22)
-          ? { kind: "rest" as const, x: 64, y: 116 }
-          : null;
-  if (!spot) {
-    if (s.cast || life.chore === "magic") {
-      if (practiceMagic(s, dt)) return;
-    }
-    if (tendFarm(s, dt)) return;
-    if (walkToSvarga(s, dt)) return;
-    life.errand = null;
-    if (practiceMagic(s, dt)) return;
-    stroll(s, dt);
-    return;
-  }
-  life.errand = spot.kind;
-  if (life.emote <= 0) life.face = spot.kind === "rest" ? "tired" : "need";
-  if (Math.hypot(spot.x - s.x, spot.y - s.y) < 12) {
-    if (spot.kind === "drink") {
+  if (life.thirst > 84) {
+    life.errand = "drink";
+    if (life.emote <= 0) life.face = "need";
+    if (Math.hypot(150 - s.x, 120 - s.y) < 12) {
       life.thirst = Math.max(0, life.thirst - 50);
       s.stamina = Math.min(100, s.stamina + 6);
       s.message = "He drinks at the well.";
-    } else if (spot.kind === "wash") {
-      life.dirt = Math.max(0, life.dirt - 55);
-      s.stamina = Math.min(100, s.stamina + 8);
-      s.message = "He washes at the pond.";
-    } else if (night) {
-      s.message = sleepNow(s).msg ?? s.message;
-    } else {
+      life.face = "heart";
+      life.emote = 2.2;
+      life.errand = null;
+      life.route = [];
+      return;
+    }
+    if (followGoal(s, dt, 150, 120, 32) === "stuck") {
+      life.route = [];
+      life.pause = 0.6;
+    }
+    return;
+  }
+  if (night) {
+    const bedX = 118;
+    const bedY = 70;
+    life.errand = "rest";
+    if (life.emote <= 0) life.face = "tired";
+    if (Math.hypot(bedX - s.x, bedY - s.y) < 16) {
+      s.cast = null;
+      const slept = sleepNow(s);
+      s.message = `He lies down in the house. ${slept.msg ?? "Dawn comes."}`;
+      life.face = "heart";
+      life.emote = 2.2;
+      life.errand = null;
+      life.route = [];
+      return;
+    }
+    s.message = "He heads in to sleep.";
+    if (followGoal(s, dt, bedX, bedY, 36) === "stuck") {
+      life.route = [];
+      life.pause = 0.6;
+    }
+    return;
+  }
+  if (s.stamina < 16) {
+    life.errand = "rest";
+    if (life.emote <= 0) life.face = "tired";
+    if (Math.hypot(64 - s.x, 116 - s.y) < 12) {
       s.stamina = Math.min(100, s.stamina + dt * 22);
       s.message = "He rests by the fire.";
       life.face = "tired";
       return;
     }
-    life.face = "heart";
-    life.emote = 2.2;
-    life.errand = null;
-    life.route = [];
+    if (followGoal(s, dt, 64, 116, 32) === "stuck") {
+      life.route = [];
+      life.pause = 0.6;
+    }
     return;
   }
-  const step = followGoal(s, dt, spot.x, spot.y, 32);
-  if (step === "stuck") {
-    life.route = [];
-    life.pause = 0.6;
+  if (life.dirt > 90) {
+    life.errand = "wash";
+    if (life.emote <= 0) life.face = "need";
+    if (Math.hypot(128 - s.x, 104 - s.y) < 12) {
+      life.dirt = Math.max(0, life.dirt - 55);
+      s.stamina = Math.min(100, s.stamina + 8);
+      s.message = "He washes at the pond.";
+      life.face = "heart";
+      life.emote = 2.2;
+      life.errand = null;
+      life.route = [];
+      return;
+    }
+    if (followGoal(s, dt, 128, 104, 32) === "stuck") {
+      life.route = [];
+      life.pause = 0.6;
+    }
+    return;
   }
+  if (practiceMagic(s, dt)) return;
+  if (tendFarm(s, dt)) return;
+  if (walkToSvarga(s, dt)) return;
+  life.errand = null;
+  stroll(s, dt);
 }
 
 const SVARGA_GATE = { x: 308, y: 202 };
@@ -1595,6 +1658,7 @@ function practiceMagic(s: GameState, dt: number): boolean {
     }
     return false;
   }
+  if (life.chore === "svarga" || life.chore === "home") return false;
   if (s.cast || life.chore === "magic") {
     if (trainMagic(s, dt)) return true;
   }
@@ -1702,7 +1766,7 @@ function trainMagic(s: GameState, dt: number): boolean {
     life.chore = "";
     life.route = [];
     life.skip = "magic";
-    life.skipUntil = s.clock + 2;
+    life.skipUntil = s.clock + 18;
     return false;
   }
   if (life.pause > 0) {
@@ -2134,7 +2198,7 @@ function followGoal(s: GameState, dt: number, x: number, y: number, speed: numbe
     const dx = wx - s.x;
     const dy = wy - s.y;
     const mag = Math.hypot(dx, dy) || 1;
-    const step = Math.min(mag, speed * dt);
+    const step = Math.min(mag, gait(speed) * dt);
     const nx = s.x + (dx / mag) * step;
     const ny = s.y + (dy / mag) * step;
     if (!autoBlocked(nx, ny)) {
@@ -2151,7 +2215,7 @@ function followGoal(s: GameState, dt: number, x: number, y: number, speed: numbe
       life.route = [];
       return "stuck";
     }
-    s.speed = speed;
+    s.speed = gait(speed);
     if (Math.abs(dx) > Math.abs(dy)) s.dir = dx > 0 ? "e" : "w";
     else s.dir = dy > 0 ? "s" : "n";
     return "walk";
@@ -2195,17 +2259,17 @@ function stepWeather(s: GameState, dt: number) {
   s.weatherLeft -= dt;
   if (s.weatherLeft <= 0) {
     const roll = unitRand(s);
-    const next = roll < 0.8 ? "clear" : roll < 0.95 ? "rain" : "storm";
+    const next = roll < 0.52 ? "clear" : roll < 0.8 ? "rain" : "storm";
     if (next !== s.weather) {
       s.message =
         next === "storm"
-          ? "Thunder. Rain soaks the grass, the beds, and the trees."
+          ? "Heavy rain. The yard takes a real soaking."
           : next === "rain"
             ? "Rain. The soil, the plants, and the trees take the water."
             : "The rain passes. The sun is back.";
     }
     s.weather = next;
-    s.weatherLeft = next === "clear" ? 48 + unitRand(s) * 36 : 8 + unitRand(s) * 8;
+    s.weatherLeft = next === "clear" ? 32 + unitRand(s) * 22 : next === "storm" ? 14 + unitRand(s) * 10 : 20 + unitRand(s) * 16;
   }
   if (s.weather === "clear") {
     s.wet = Math.max(0, s.wet - dt * 0.012);
@@ -2725,11 +2789,66 @@ function stepReaper(s: GameState, _dt: number) {
   ensureReaper(s);
 }
 
+const FARM_SPOTS: { x: number; y: number }[] = [
+  { x: 56, y: 150 },
+  { x: 118, y: 150 },
+  { x: 164, y: 150 },
+  { x: 90, y: 132 },
+  { x: 200, y: 140 },
+];
+
+function stepHand(s: GameState, dt: number) {
+  ensureHand(s);
+  const h = s.hand;
+  h.poseT += dt;
+  if ((s.wing ?? 0) !== 0) return;
+  if (h.greet > 0) {
+    h.greet -= dt;
+    h.pose = "handsidle";
+    h.route = [];
+    return;
+  }
+  if (h.pause > 0) {
+    h.pause -= dt;
+    if (h.pose === "walk") h.pose = "idle";
+    return;
+  }
+  if (h.y > 168) {
+    h.route = gateRoute(h, { x: HAND_HOME.x, y: HAND_HOME.y }, true);
+    h.pose = "walk";
+    return;
+  }
+  if (h.route.length >= 2) {
+    h.pose = "walk";
+    const moved = followRoute(h, 26, dt, true);
+    if (moved !== "walk") {
+      h.route = [];
+      h.pose = "idle";
+      h.pause = 0.2;
+    }
+    return;
+  }
+  if (h.pose !== "water" && h.pose !== "shovel") {
+    const bed = s.plots.find((p) => Math.hypot(p.x - h.x, p.y - h.y) < 36);
+    const thirsty = bed && bed.crop && bed.stage > 0 && bed.stage < 5 && !bed.watered;
+    h.pose = thirsty || unitRand(s) < 0.72 ? "water" : "shovel";
+    if (thirsty && bed) bed.watered = true;
+    h.poseT = 0;
+    h.dir = "n";
+    h.pause = 1.6;
+    return;
+  }
+  const dry = s.plots.find((p) => p.crop && p.stage > 0 && p.stage < 5 && !p.watered);
+  const spot = dry ? { x: Math.max(36, Math.min(210, dry.x)), y: 150 } : pickSpot(s, FARM_SPOTS);
+  h.route = gateRoute(h, spot, true);
+  h.pose = "walk";
+}
 
 function stepCritters(s: GameState, dt: number) {
   stepCat(s, dt);
   stepBirds(s, dt);
   stepReaper(s, dt);
+  stepHand(s, dt);
   for (const a of s.animals) {
     if (!a.route) a.route = [];
     if (a.pause > 0) {

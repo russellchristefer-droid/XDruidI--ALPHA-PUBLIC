@@ -29,6 +29,10 @@ const SUN = "#fff4d2";
 const PEARL = "#d8d0be";
 const TRI = "#e8c46e";
 const CURB = "#4e3824";
+const VIOLET = "#6a3a8a";
+const VIOLET_H = "#c49adf";
+const EMERALD = "#1f6a48";
+const EMERALD_H = "#8ed4ae";
 
 type Motif = "plain" | "diamond" | "square" | "cross" | "bars" | "medallion";
 
@@ -261,7 +265,10 @@ function bake(ctx: CanvasRenderingContext2D): void {
       const x0 = tx * 8;
       const y0 = courtTop + ty * 8;
       const rim = tx === 0 || tx === 42 || ty === 0 || ty === 36;
-      const tone = rim ? CURB : (tx + ty) % 2 === 0 ? IVORY : IVORY_B;
+      const dist = Math.hypot(tx - 21, ty - 18);
+      let tone = rim ? CURB : (tx + ty) % 2 === 0 ? IVORY : IVORY_B;
+      if (!rim && dist > 9 && dist < 11) tone = (tx + ty) % 2 === 0 ? LAPIS : LAPIS_D;
+      else if (!rim && dist > 13 && dist < 14.6) tone = (tx + ty) % 2 === 0 ? "#8a6230" : GOLD_D;
       ctx.fillStyle = tone;
       ctx.fillRect(x0, y0, 8, 8);
       if (rim) continue;
@@ -286,7 +293,11 @@ function bake(ctx: CanvasRenderingContext2D): void {
         px(ctx, mx - 1, my, GOLD);
         px(ctx, mx + 1, my, GOLD);
         px(ctx, mx, my + 1, GOLD_D);
+      } else if ((tx + ty) % 5 === 0) {
+        const pip = (tx + ty) % 10 === 0 ? EMERALD_H : (tx + ty) % 10 === 5 ? VIOLET_H : GOLD;
+        px(ctx, mx, my, pip);
       }
+      px(ctx, x0, y0, GROUT);
     }
   }
 
@@ -298,6 +309,13 @@ function bake(ctx: CanvasRenderingContext2D): void {
   band(ctx, cx, cy, 60, 72, LAPIS_D);
   band(ctx, cx, cy, 62, 70, LAPIS);
   band(ctx, cx, cy, 62, 63, LAPIS_H);
+  band(ctx, cx, cy, 84, 90, VIOLET);
+  band(ctx, cx, cy, 85, 87, VIOLET_H);
+  for (let i = 0; i < 16; i++) {
+    const a = (i * Math.PI) / 8;
+    const r0 = i % 2 === 0 ? 74 : 76;
+    line(ctx, cx + Math.cos(a) * r0, cy + Math.sin(a) * r0, cx + Math.cos(a) * (r0 + 4), cy + Math.sin(a) * (r0 + 4), i % 2 === 0 ? EMERALD_H : GOLD_H);
+  }
 
   for (const d of [118, 122]) {
     line(ctx, cx - d, cy - d, cx + d, cy - d, GOLD_D);
@@ -329,6 +347,8 @@ function bake(ctx: CanvasRenderingContext2D): void {
   strokePoly(ctx, up, GOLD_D);
   strokePoly(ctx, dn, GOLD_D);
 
+  fillPoly(ctx, starPts(cx, cy, 36, 16), EMERALD);
+  fillPoly(ctx, starPts(cx, cy, 32, 14), "#c6e090");
   fillPoly(ctx, starPts(cx, cy, 22, 9), GOLD);
   fillPoly(ctx, starPts(cx, cy, 20, 8), GOLD_H);
   disk(ctx, cx, cy, 7, SUN);
@@ -339,6 +359,14 @@ function bake(ctx: CanvasRenderingContext2D): void {
   }
   px(ctx, cx, cy, GOLD_D);
   px(ctx, cx - 1, cy - 1, WHITE_H);
+  for (let i = 0; i < 8; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 4;
+    const sx = Math.round(cx + Math.cos(a) * 46);
+    const sy = Math.round(cy + Math.sin(a) * 46);
+    disk(ctx, sx, sy, 4, INK);
+    band(ctx, sx, sy, 3, 4, i % 2 === 0 ? EMERALD_H : GOLD);
+    px(ctx, sx, sy, SUN);
+  }
 
   for (let i = 0; i < 24; i++) {
     const a = (i * Math.PI) / 12;
@@ -350,9 +378,9 @@ function bake(ctx: CanvasRenderingContext2D): void {
     const a = -Math.PI / 2 + (i * Math.PI) / 2;
     const sx = Math.round(cx + Math.cos(a) * 87);
     const sy = Math.round(cy + Math.sin(a) * 87);
-    disk(ctx, sx, sy, 7, INK);
-    band(ctx, sx, sy, 6, 7, GOLD);
-    fillPoly(ctx, starPts(sx, sy, 5, 2), GOLD_H);
+    disk(ctx, sx, sy, 10, INK);
+    band(ctx, sx, sy, 8, 10, GOLD);
+    fillPoly(ctx, starPts(sx, sy, 7, 3), GOLD_H);
     px(ctx, sx, sy, SUN);
   }
   for (let i = 0; i < 4; i++) {
@@ -389,6 +417,7 @@ function bake(ctx: CanvasRenderingContext2D): void {
   }
 
   courtRite(ctx, cx, cy);
+  plotBound(ctx);
 
   ctx.fillStyle = "#241810";
   ctx.fillRect(0, FLOOR_H - 6, W, 6);
@@ -466,6 +495,62 @@ function courtRite(ctx: CanvasRenderingContext2D, cx: number, cy: number): void 
   px(ctx, cx - 41, cy + 1, LAPIS_H);
 }
 
+function plotBound(ctx: CanvasRenderingContext2D): void {
+  const x0 = 16;
+  const y0 = SIDE_H;
+  const x1 = 331;
+  const y1 = SIDE_H + 287;
+  for (let x = x0; x <= x1; x++) {
+    px(ctx, x, y0, x % 4 === 0 ? GOLD_H : GOLD);
+    px(ctx, x, y0 + 1, x % 6 === 0 ? EMERALD_H : LAPIS);
+    px(ctx, x, y1, x % 4 === 0 ? GOLD_H : GOLD_D);
+    px(ctx, x, y1 - 1, x % 6 === 0 ? VIOLET_H : LAPIS_D);
+  }
+  for (let y = y0; y <= y1; y++) {
+    px(ctx, x0, y, y % 4 === 0 ? GOLD_H : GOLD);
+    px(ctx, x0 + 1, y, y % 6 === 0 ? EMERALD_H : LAPIS);
+    px(ctx, x1, y, y % 4 === 0 ? GOLD_H : GOLD_D);
+    px(ctx, x1 - 1, y, y % 6 === 0 ? VIOLET_H : LAPIS_D);
+  }
+  for (const [sx, sy] of [
+    [x0 + 4, y0 + 4],
+    [x1 - 4, y0 + 4],
+    [x0 + 4, y1 - 4],
+    [x1 - 4, y1 - 4],
+  ] as const) {
+    disk(ctx, sx, sy, 4, INK);
+    band(ctx, sx, sy, 3, 4, GOLD);
+    px(ctx, sx, sy, SUN);
+    px(ctx, sx, sy - 2, GOLD_H);
+    px(ctx, sx - 2, sy, LAPIS_H);
+    px(ctx, sx + 2, sy, EMERALD_H);
+    px(ctx, sx, sy + 2, VIOLET_H);
+  }
+  const ix0 = x0 + 12;
+  const iy0 = y0 + 12;
+  const ix1 = x1 - 12;
+  const iy1 = y1 - 12;
+  for (let x = ix0; x <= ix1; x += 2) {
+    px(ctx, x, iy0, GOLD_H);
+    px(ctx, x, iy1, GOLD_D);
+  }
+  for (let y = iy0; y <= iy1; y += 2) {
+    px(ctx, ix0, y, GOLD_H);
+    px(ctx, ix1, y, GOLD_D);
+  }
+  for (const [sx, sy] of [
+    [(x0 + x1) >> 1, y0 + 4],
+    [(x0 + x1) >> 1, y1 - 4],
+    [x0 + 4, (y0 + y1) >> 1],
+    [x1 - 4, (y0 + y1) >> 1],
+  ] as const) {
+    disk(ctx, sx, sy, 5, INK);
+    band(ctx, sx, sy, 4, 5, GOLD);
+    band(ctx, sx, sy, 2, 3, LAPIS_H);
+    px(ctx, sx, sy, SUN);
+  }
+}
+
 const STONE_LIGHT = new Set([0xece2cc, 0xfff8e8, 0xbeb08a]);
 const STONE_DARK = new Set([0x1c1814, 0x302820]);
 const STONE_COURT = new Set([0xd6c4a0, 0xc4ae86, 0xead8b4, 0x6e5438, 0x4e3824]);
@@ -514,8 +599,7 @@ function ensurePlate(svarga?: HTMLImageElement, naraka?: HTMLImageElement, yard?
   if (!ctx) return null;
   ctx.imageSmoothingEnabled = false;
   bake(ctx);
-  if (!svarga || !naraka) return canvas;
-  dress(ctx, svarga, naraka, yard);
+  dress(ctx);
   plate = canvas;
   return plate;
 }
@@ -642,6 +726,28 @@ export function drawMosaicFloors(
     ctx.fillRect(sealX + dx, sealY + dy, 1, 1);
     ctx.fillRect(sealX + dx, sealY + dy - 1, 1, 1);
   }
+  const perim = 316 * 2 + 288 * 2;
+  const glow = (clock * 48) % perim;
+  for (let i = 0; i < 8; i++) {
+    const t = (glow + i * (perim / 8)) % perim;
+    let x = 16;
+    let y = 232;
+    if (t < 316) x += t;
+    else if (t < 316 + 288) {
+      x = 332;
+      y += t - 316;
+    } else if (t < 316 * 2 + 288) {
+      x = 332 - (t - 316 - 288);
+      y = 520;
+    } else {
+      y = 520 - (t - 316 * 2 - 288);
+    }
+    ctx.globalAlpha = 0.35 + 0.65 * (1 - i / 8);
+    ctx.fillStyle = i % 3 === 0 ? "#fff6d4" : i % 3 === 1 ? "#c49adf" : "#8ed4ae";
+    ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+    ctx.fillRect(Math.round(x), Math.round(y) + 1, 1, 1);
+  }
+  ctx.globalAlpha = 1;
 
   if (wet > 0.08) {
     const a = Math.min(0.42, wet * 0.38);

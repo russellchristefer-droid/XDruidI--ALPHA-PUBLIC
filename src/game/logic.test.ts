@@ -147,6 +147,18 @@ test("watering keeps the painted bed, and night at the shed sleeps", () => {
   assert.equal(s.stats.daysSlept, 1);
 });
 
+test("the house stores open at night and do not skip to dawn", () => {
+  const s = createGame();
+  s.time = 0.92;
+  s.day = 1;
+  s.x = 250;
+  s.y = 146;
+  const r = interact(s, 250, 140);
+  assert.equal(r.panel, "vault");
+  assert.equal(s.day, 1);
+  assert.ok(s.time > 0.9);
+});
+
 function memoryStore(): SaveStore & { bag: Map<string, string> } {
   const bag = new Map<string, string>();
   return {

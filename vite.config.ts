@@ -142,6 +142,25 @@ function authPopupPlugin(): Plugin {
   };
 }
 
+function brandCachePlugin(): Plugin {
+  const stamp = (server: { middlewares: { use: (fn: (req: { url?: string }, res: { setHeader: (k: string, v: string) => void }, next: () => void) => void) => void } }) => {
+    server.middlewares.use((req, res, next) => {
+      const path = (req.url ?? "").split("?", 1)[0];
+      if (path === "/og.jpg" || path === "/x-banner.jpg" || path === "/favicon.svg") {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Pragma", "no-cache");
+      }
+      next();
+    });
+  };
+  return {
+    name: "app-builder:brand-cache",
+    enforce: "pre",
+    configureServer: stamp,
+    configurePreviewServer: stamp,
+  };
+}
+
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
@@ -158,6 +177,7 @@ export default defineConfig(({ command, isPreview }) => ({
   },
   resolve: { tsconfigPaths: true },
   plugins: [
+    brandCachePlugin(),
     pgliteBootstrapPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),

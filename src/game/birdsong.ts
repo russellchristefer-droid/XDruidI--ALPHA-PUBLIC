@@ -95,14 +95,14 @@ const DOVE: Note[][] = [
   ],
 ];
 
-/** Rising through every pitch, then the middle note returns. That return is the mend. */
+/** Rising through every recorded call, then the middle note returns. That return is the mend. */
 export const HEAL_TONE: Note[] = [
-  { p: "vl", at: 0, long: true, rate: 0.98, gain: 0.8 },
-  { p: "l", at: 0.62, long: true, rate: 1, gain: 0.82 },
-  { p: "m", at: 1.24, long: true, rate: 1, gain: 0.86 },
-  { p: "h", at: 1.86, long: true, rate: 1.02, gain: 0.84 },
-  { p: "vh", at: 2.48, long: true, rate: 1.04, gain: 0.72 },
-  { p: "m", at: 3.2, long: true, rate: 0.94, gain: 0.9 },
+  { p: "vl", at: 0, long: true, rate: 0.97, gain: 0.55 },
+  { p: "l", at: 0.55, long: true, rate: 1, gain: 0.58 },
+  { p: "m", at: 1.1, long: true, rate: 1, gain: 0.62 },
+  { p: "h", at: 1.65, long: true, rate: 1.03, gain: 0.52 },
+  { p: "vh", at: 2.2, long: true, rate: 1.05, gain: 0.4 },
+  { p: "m", at: 2.85, long: true, rate: 0.93, gain: 0.68 },
 ];
 
 const ALARM: Note[] = [

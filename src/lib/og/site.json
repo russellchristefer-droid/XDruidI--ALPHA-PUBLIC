@@ -1,6 +1,7 @@
 {
   "title": "XDruid I",
-  "type": "website",
+  "type": "x:game",
   "card": "custom",
-  "description": "A browser game. Open it in the phone's web browser. Nothing to install."
+  "description": "One fenced yard. Farm, fish, and train magic on the courtyard. Open it in the browser.",
+  "color": "24301C"
 }

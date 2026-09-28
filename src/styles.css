@@ -540,12 +540,27 @@
   margin: 0 0 8px;
 }
 
+.sound-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+  pointer-events: auto;
+}
+
 .sound-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 0;
   pointer-events: auto;
+}
+
+.sound-row span {
+  width: 58px;
+  flex: 0 0 58px;
+  font-size: 11px;
+  color: #f3e6c8;
 }
 
 .sound-row input[type="range"] {
@@ -642,8 +657,20 @@
   gap: 4px;
 }
 
+.assay.touch .sound-stack {
+  min-width: 0;
+  width: 100%;
+}
+
+.assay.touch .sound-row span {
+  width: 52px;
+  flex-basis: 52px;
+  font-size: 9px;
+}
+
 .assay.touch .sound-row input[type="range"] {
-  width: 56px;
+  width: auto;
+  flex: 1;
 }
 
 .assay.touch .touch-actions {

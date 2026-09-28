@@ -13,6 +13,7 @@ import {
   defOf,
   ensureHealth,
   ensureReaper,
+  ensureHand,
   ensureSkills,
   isNight,
   skyLabel,
@@ -25,7 +26,7 @@ import {
 } from "@/game/content";
 import { drawMarginSky } from "@/game/paint/marginSky";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
-import { armWind, heavyWind, onSound, playBirdsongs, setVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
+import { armWind, heavyWind, onSound, playBirdsongs, setAnimalVolume, setMusicVolume, setVolume, setWeatherVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
 import { drawWorld } from "@/game/draw";
 import {
   assignHotbar,
@@ -229,29 +230,52 @@ function itemLabel(it: Item): string {
   return `${d.name}${qty}${floor}${water}. ${it.noteOf ? "Paper. No use. No weight." : d.blurb}`;
 }
 
-function SoundControls() {
-  const [snd, setSnd] = useState(soundState);
-  useEffect(() => onSound(() => setSnd(soundState())), []);
+function SoundBar({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
   return (
-    <div className="sound-row" onPointerDown={(e) => e.stopPropagation()}>
-      <button
-        type="button"
-        className="slot"
-        style={{ width: "auto", height: 22, padding: "0 6px" }}
-        aria-pressed={snd.muted}
-        onClick={() => toggleMute()}
-      >
-        {snd.muted ? "Muted" : "Mute"}
-      </button>
+    <label className="sound-row">
+      <span>{label}</span>
       <input
         type="range"
         min={0}
         max={1}
         step={0.01}
-        value={snd.volume}
-        aria-label="Volume"
-        onChange={(e) => setVolume(Number(e.target.value))}
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(Number(e.target.value))}
       />
+    </label>
+  );
+}
+
+function SoundControls() {
+  const [snd, setSnd] = useState(soundState);
+  useEffect(() => onSound(() => setSnd(soundState())), []);
+  return (
+    <div className="sound-stack" onPointerDown={(e) => e.stopPropagation()}>
+      <SoundBar label="Weather" value={snd.weather} onChange={setWeatherVolume} />
+      <SoundBar label="Music" value={snd.music} onChange={setMusicVolume} />
+      <SoundBar label="Animals" value={snd.animals} onChange={setAnimalVolume} />
+      <div className="sound-row">
+        <span>Total</span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={snd.volume}
+          aria-label="Total volume"
+          onChange={(e) => setVolume(Number(e.target.value))}
+        />
+        <button
+          type="button"
+          className="slot"
+          style={{ width: "auto", height: 22, padding: "0 6px" }}
+          aria-pressed={snd.muted}
+          onClick={() => toggleMute()}
+        >
+          {snd.muted ? "Muted" : "Mute"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -417,6 +441,7 @@ export function AssayGame() {
       ensureSkills(stateRef.current);
       ensureHealth(stateRef.current);
       ensureReaper(stateRef.current);
+      ensureHand(stateRef.current);
       setReady(true);
     }, 7000);
     loadSheets()
@@ -431,6 +456,7 @@ export function AssayGame() {
             ensureSkills(stateRef.current);
             ensureHealth(stateRef.current);
             ensureReaper(stateRef.current);
+            ensureHand(stateRef.current);
           } catch {
             stateRef.current = createGame();
           }
@@ -1097,6 +1123,11 @@ export function AssayGame() {
         }}
         onPointerDown={(e) => {
           if (screenRef.current !== "play") return;
+          try {
+            armWind();
+          } catch {
+            /* sound can stay off */
+          }
           const w = worldOf(e.clientX, e.clientY);
           if (!w) return;
           const ed = editorRef.current;
@@ -1354,6 +1385,9 @@ export function AssayGame() {
                   onClick={() => {
                     runHold.current = !runHold.current;
                     setRunning(runHold.current);
+                    const cur = stateRef.current;
+                    if (cur) cur.message = runHold.current ? "Run is on. He moves faster." : "Run is off. He walks.";
+                    bump();
                   }}
                 >
                   Run
@@ -1603,6 +1637,9 @@ export function AssayGame() {
               onClick={() => {
                 runHold.current = !runHold.current;
                 setRunning(runHold.current);
+                const cur = stateRef.current;
+                if (cur) cur.message = runHold.current ? "Run is on. He moves faster." : "Run is off. He walks.";
+                bump();
               }}
             >
               Run

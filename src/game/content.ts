@@ -25,6 +25,8 @@ export const HERD_HOME = {
 export const CAT_HOME = { x: 232, y: 336 } as const;
 /** Masked wizard. Courtyard guest, not stacked on the herd. */
 export const REAPER_HOME = { x: 188, y: 412 } as const;
+/** Second farmer. Works the beds north of the fence. */
+export const HAND_HOME = { x: 56, y: 150 } as const;
 export const TILE = 8;
 /** Every player sheet is 80×112 cells, three rows, feet on y=95. */
 export const CHAR_W = 80;
@@ -714,6 +716,41 @@ export function ensureReaper(s: GameState): void {
   }
 }
 
+export function freshHand(): Reaper {
+  return {
+    x: HAND_HOME.x,
+    y: HAND_HOME.y,
+    dir: "s",
+    pause: 0.6,
+    route: [],
+    pose: "idle",
+    poseT: 0,
+    greet: 0,
+  };
+}
+
+export function ensureHand(s: GameState): void {
+  if (s.handPlace !== 3 || !s.hand || typeof s.hand.x !== "number") {
+    s.hand = freshHand();
+    s.handPlace = 3;
+    return;
+  }
+  const h = s.hand;
+  if (!REAPER_POSES.includes(h.pose)) h.pose = "idle";
+  if (!Array.isArray(h.route)) h.route = [];
+  if (typeof h.pause !== "number") h.pause = 0.4;
+  if (typeof h.poseT !== "number") h.poseT = 0;
+  if (typeof h.greet !== "number") h.greet = 0;
+  if (h.dir !== "n" && h.dir !== "e" && h.dir !== "s" && h.dir !== "w") h.dir = "s";
+  if (h.y > 175 || h.y < 80 || h.x < 28 || h.x > 310) {
+    h.x = HAND_HOME.x;
+    h.y = HAND_HOME.y;
+    h.route = [];
+    h.pose = "idle";
+    h.pause = 0.3;
+  }
+}
+
 export type Body = {
   head: Item | null;
   torso: Item | null;
@@ -907,10 +944,14 @@ export type GameState = {
     look?: "n" | "e" | "s" | "w";
     route?: number[];
     intent?: "court" | "drink" | "yard" | "follow";
+    /** Seconds until she speaks again. Not saved as part of the story. */
+    mew?: number;
   };
   birds: Bird[];
   /** Friendly masked wizard. Keeps to the courtyard and minds his own work. */
   reaper: Reaper;
+  /** Second farmer. Works the yard and leaves the seal alone. */
+  hand: Reaper;
   stats: {
     harvested: number;
     cooked: number;
@@ -959,8 +1000,10 @@ export type GameState = {
     moved: boolean;
   } | null;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
-  /** 3 = courtyard center, scythe in hand. Older saves move once, then stay put. */
-  courtSpawn?: boolean | 2 | 3;
+  /** 4 = courtyard center, scythe held. Older saves move once, then stay put. */
+  courtSpawn?: boolean | 2 | 3 | 4;
+  /** 3 = field hand works the farm beds. */
+  handPlace?: number;
 };
 
 export type PanelId = "pack" | "body" | "vault" | "craft" | "map" | "pause" | "summary" | "controls" | "backpack" | "skills";
@@ -1179,9 +1222,9 @@ export function placeHerd(s: GameState): void {
 /** Stand him on the courtyard seal. A save that left him in Svarga or Naraka comes back here. */
 export function placeCourtSpawn(s: GameState): void {
   const away = (s.wing ?? 0) !== 0 || !!s.cross;
-  if (s.courtSpawn === 3 && !away) return;
-  const first = s.courtSpawn !== 3;
-  s.courtSpawn = 3;
+  if (s.courtSpawn === 4 && !away) return;
+  const first = s.courtSpawn !== 4;
+  s.courtSpawn = 4;
   setRealm(0);
   s.wing = 0;
   s.cross = null;
@@ -1471,6 +1514,7 @@ export function createGame(): GameState {
     cat: { x: CAT_HOME.x, y: CAT_HOME.y, face: 1, petCd: 0, tx: CAT_HOME.x, ty: CAT_HOME.y, pause: 2.2, mode: "sit", look: "s" },
     birds: freshBirds(),
     reaper: freshReaper(),
+    hand: freshHand(),
     stats: { harvested: 0, cooked: 0, floorEarned: 0, gateRepaired: false, boughtTool: false, daysSlept: 0 },
     nextId: next.n,
     rng: 0xa55a1,
@@ -1494,6 +1538,7 @@ export function createGame(): GameState {
     cast: null,
     wing: 0,
     cross: null,
-    courtSpawn: 3,
+    courtSpawn: 4,
+    handPlace: 3,
   };
 }
