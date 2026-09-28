@@ -2352,53 +2352,162 @@ let hellPlate: HTMLCanvasElement | null = null;
 function ensureHeavenLand(): HTMLCanvasElement | null {
   if (heavenPlate) return heavenPlate;
   if (typeof document === "undefined") return null;
-  const h = 120;
+  const h = 168;
   const canvas = document.createElement("canvas");
   canvas.width = WORLD_W;
   canvas.height = h;
   const g = canvas.getContext("2d");
   if (!g) return null;
-  const top = 28;
-  for (let x = 40; x < 308; x++) {
-    const t = (x - 40) / 268;
-    const body = Math.round(Math.sin(t * Math.PI) ** 0.5 * 46);
-    for (let y = 0; y < body; y++) {
-      const row = Math.floor(y / 4);
-      const field = row % 2 === 0 ? "#6a9a3a" : "#8fbe52";
-      const path = Math.abs(x - 174) < 5;
-      const river = Math.abs(x - (118 + Math.sin(y * 0.35) * 8)) < 3 && y > 8;
-      g.fillStyle = path ? "#e6d090" : river ? (y % 2 === 0 ? "#7ec8e0" : "#3a88b0") : y < 3 ? "#d8eea0" : field;
-      g.fillRect(x, top + y, 1, 1);
+  const img = g.createImageData(WORLD_W, h);
+  const d = img.data;
+  const rock: ReadonlyArray<readonly [number, number, number]> = [
+    [168, 140, 96],
+    [112, 86, 56],
+    [72, 54, 36],
+    [40, 30, 20],
+  ];
+  for (let x = 28; x < 320; x++) {
+    const t = (x - 28) / 292;
+    const dome = Math.sin(t * Math.PI);
+    const top = 16 + ((noise(x, 3) % 3) - 1);
+    const thick = 36 + Math.round(dome ** 0.55 * 86);
+    for (let y = 0; y < thick; y++) {
+      const py = top + y;
+      if (py >= h) break;
+      const field = y < thick - 28;
+      let rgb: readonly [number, number, number];
+      if (!field) {
+        const u = (y - (thick - 28)) / 28;
+        rgb = rock[Math.min(3, Math.floor(u * 4))]!;
+        if (y % 7 === 0) rgb = [rgb[0] + 18, rgb[1] + 14, rgb[2] + 8];
+      } else if (Math.abs(x - 174) < 4) {
+        rgb = [214, 186, 112];
+      } else if (Math.abs(x - (96 + Math.round(Math.sin(y * 0.18) * 6))) < 3 && y > 10) {
+        rgb = y % 2 === 0 ? [120, 196, 214] : [42, 120, 168];
+      } else {
+        const furrow = y % 5 === 2;
+        const rgbRow = furrow ? [186, 214, 72] : y % 5 === 0 ? [42, 96, 34] : [78, 140, 48];
+        rgb = [rgbRow[0], rgbRow[1], rgbRow[2]];
+      }
+      const grit = (noise(x, py) & 3) - 1;
+      putPix(d, WORLD_W, x, py, [rgb[0] + grit, rgb[1] + grit, rgb[2] + grit]);
+      if (field && y === 0) putPix(d, WORLD_W, x, py, [232, 240, 150]);
+      if (y === thick - 1) putPix(d, WORLD_W, x, py, [22, 16, 10]);
     }
   }
-  const house = (x: number, y: number) => {
-    g.fillStyle = "#f4e2a8";
-    g.fillRect(x, y + 4, 12, 8);
-    g.fillStyle = "#a33b3b";
-    g.fillRect(x - 1, y + 3, 14, 2);
-    g.fillRect(x + 1, y + 1, 10, 2);
-    g.fillRect(x + 3, y, 6, 2);
+  g.putImageData(img, 0, 0);
+  const house = (x: number, y: number, w: number) => {
+    g.fillStyle = "#8a4030";
+    g.fillRect(x - 1, y + 3, w + 2, 2);
+    g.fillRect(x + 2, y + 1, w - 4, 2);
+    g.fillRect(x + 4, y, w - 8, 2);
     g.fillStyle = "#2a1c10";
-    g.fillRect(x + 5, y + 8, 3, 4);
+    g.fillRect(x, y + 5, w, 1);
+    g.fillRect(x, y + 12, w, 1);
+    g.fillStyle = "#f0d8a0";
+    g.fillRect(x + 1, y + 6, w - 2, 6);
+    g.fillStyle = "#c8a060";
+    g.fillRect(x + w - 2, y + 6, 1, 6);
+    g.fillStyle = "#fff6d0";
+    g.fillRect(x + 1, y + 6, w - 3, 1);
+    g.fillStyle = "#2a1c10";
+    g.fillRect(x + Math.floor(w / 2) - 1, y + 8, 3, 5);
+    g.fillStyle = "#7ec8e0";
+    g.fillRect(x + 2, y + 7, 3, 3);
+    g.fillStyle = "#8a4030";
+    g.fillRect(x + w - 5, y + 2, 2, 3);
   };
-  house(150, top + 10);
-  house(196, top + 16);
+  house(132, 28, 16);
+  house(188, 34, 18);
+  house(214, 26, 12);
   const tree = (x: number, y: number) => {
-    g.fillStyle = "#6b4428";
-    g.fillRect(x + 2, y + 4, 2, 5);
-    g.fillStyle = "#2f6a28";
-    g.fillRect(x, y, 6, 5);
-    g.fillStyle = "#8fbe52";
-    g.fillRect(x + 1, y + 1, 3, 2);
+    g.fillStyle = "#5a3820";
+    g.fillRect(x + 3, y + 6, 2, 6);
+    g.fillStyle = "#246028";
+    g.fillRect(x, y + 2, 8, 6);
+    g.fillStyle = "#62a84a";
+    g.fillRect(x + 1, y, 6, 4);
+    g.fillStyle = "#d8f090";
+    g.fillRect(x + 2, y + 1, 2, 1);
   };
-  tree(86, top + 8);
-  tree(108, top + 18);
-  tree(230, top + 12);
-  tree(258, top + 20);
-  g.fillStyle = "#3a88b0";
-  g.fillRect(104, top + 18, 16, 7);
-  g.fillStyle = "#7ec8e0";
-  g.fillRect(106, top + 19, 10, 2);
+  for (const [x, y] of [
+    [58, 30],
+    [78, 40],
+    [248, 32],
+    [270, 42],
+    [118, 46],
+    [236, 48],
+  ] as const) {
+    tree(x, y);
+  }
+  g.fillStyle = "#2a78a8";
+  g.fillRect(64, 48, 18, 8);
+  g.fillStyle = "#8ad4e8";
+  g.fillRect(66, 49, 10, 2);
+  g.fillStyle = "#e8f8ff";
+  g.fillRect(70, 50, 2, 1);
+  g.fillStyle = "#3a6a28";
+  g.fillRect(62, 50, 1, 3);
+  g.fillRect(82, 49, 1, 4);
+  g.fillStyle = "#6b4428";
+  for (let i = 0; i < 7; i++) {
+    g.fillRect(169, 40 + i * 6, 1, 4);
+    g.fillRect(178, 40 + i * 6, 1, 4);
+  }
+  g.fillStyle = "#e2b657";
+  g.fillRect(169, 42, 9, 1);
+  g.fillRect(169, 54, 9, 1);
+  g.fillRect(169, 66, 9, 1);
+  g.fillStyle = "#8a8078";
+  g.fillRect(152, 56, 8, 6);
+  g.fillStyle = "#2a78a8";
+  g.fillRect(154, 58, 4, 3);
+  g.fillStyle = "#5a3820";
+  g.fillRect(154, 52, 1, 6);
+  g.fillRect(159, 52, 1, 6);
+  g.fillStyle = "#c49458";
+  g.fillRect(153, 52, 7, 1);
+  g.fillStyle = "#6b4428";
+  g.fillRect(88, 42, 16, 3);
+  g.fillStyle = "#e2b657";
+  g.fillRect(88, 42, 16, 1);
+  g.fillStyle = "#e6c84a";
+  for (let x = 104; x < 126; x += 2) {
+    g.fillRect(x, 38, 1, 2);
+    g.fillRect(x, 42, 1, 2);
+  }
+  for (const [x, y] of [
+    [96, 34],
+    [148, 46],
+    [204, 52],
+    [242, 36],
+  ] as const) {
+    g.fillStyle = "#f07090";
+    g.fillRect(x, y, 2, 2);
+    g.fillStyle = "#fff0c0";
+    g.fillRect(x, y, 1, 1);
+  }
+  fillOval(g, 174, 132, 96, 7, "rgba(0,0,0,0.28)");
+  g.fillStyle = "#e8c878";
+  g.fillRect(196, 22, 14, 2);
+  g.fillRect(198, 20, 10, 2);
+  g.fillRect(200, 18, 6, 2);
+  g.fillStyle = "#fff6d0";
+  g.fillRect(196, 22, 14, 1);
+  g.fillStyle = "#f4e2a8";
+  g.fillRect(201, 24, 4, 6);
+  g.fillStyle = "#7ec8c8";
+  g.fillRect(202, 26, 2, 2);
+  g.fillStyle = "#f7fbff";
+  for (const [x, y] of [
+    [40, 18],
+    [300, 14],
+    [24, 40],
+  ] as const) {
+    g.fillRect(x, y, 10, 3);
+    g.fillRect(x + 3, y - 2, 8, 3);
+    g.fillRect(x + 6, y + 2, 6, 2);
+  }
   heavenPlate = canvas;
   return canvas;
 }
@@ -2406,29 +2515,95 @@ function ensureHeavenLand(): HTMLCanvasElement | null {
 function ensureHellLand(): HTMLCanvasElement | null {
   if (hellPlate) return hellPlate;
   if (typeof document === "undefined") return null;
-  const h = 120;
+  const h = 168;
   const canvas = document.createElement("canvas");
   canvas.width = WORLD_W;
   canvas.height = h;
   const g = canvas.getContext("2d");
   if (!g) return null;
-  const top = 30;
-  for (let x = 58; x < 290; x++) {
-    const t = (x - 58) / 232;
-    const body = 16 + Math.round(Math.sin(t * Math.PI) * 34) + ((noise(x, 2) % 3) - 1);
-    for (let y = 0; y < body; y++) {
-      const vein = 168 + Math.sin(y * 0.22) * 10;
-      const lava = Math.abs(x - vein) < 4 && y > 6 && y < body - 4;
-      const core = lava && Math.abs(x - vein) < 2;
-      const crack = !lava && noise(x, y) % 19 === 0;
-      g.fillStyle = core ? "#ffd060" : lava ? "#c03818" : crack ? "#080604" : y < 4 ? "#5a3828" : y > body * 0.7 ? "#120c0a" : "#3a2418";
-      g.fillRect(x, top + y, 1, 1);
+  const img = g.createImageData(WORLD_W, h);
+  const d = img.data;
+  for (let x = 36; x < 312; x++) {
+    const t = (x - 36) / 276;
+    const dome = Math.sin(t * Math.PI);
+    const top = 18 + (noise(x, 5) % 4);
+    const thick = 34 + Math.round(dome ** 0.6 * 80);
+    for (let y = 0; y < thick; y++) {
+      const py = top + y;
+      if (py >= h) break;
+      const vein = 174 + Math.round(Math.sin(y * 0.16) * 12);
+      const inLava = Math.abs(x - vein) < 5 && y > 8 && y < thick - 26;
+      const core = inLava && Math.abs(x - vein) < 2;
+      const crust = !inLava && y < thick - 26;
+      let rgb: readonly [number, number, number] = crust ? (y < 5 ? [90, 48, 36] : [42, 26, 20]) : [28, 16, 12];
+      if (inLava) {
+        const bank = Math.abs(x - vein) >= 4;
+        rgb = core ? [255, 236, 140] : bank ? [90, 24, 12] : [220, 72, 16];
+      }
+      if (!inLava && y >= thick - 26) {
+        const u = (y - (thick - 26)) / 26;
+        rgb = u < 0.35 ? [58, 32, 24] : u < 0.7 ? [28, 16, 12] : [12, 8, 6];
+        if (y % 6 === 0) rgb = [rgb[0] + 16, rgb[1] + 8, rgb[2] + 4];
+      }
+      if (crust && noise(x, py) % 17 === 0) rgb = [10, 6, 6];
+      putPix(d, WORLD_W, x, py, rgb);
+      if (y === thick - 1) putPix(d, WORLD_W, x, py, [6, 4, 4]);
     }
   }
+  g.putImageData(img, 0, 0);
   g.fillStyle = "#1a100c";
-  g.fillRect(96, top + 8, 10, 8);
-  g.fillStyle = "#ff7840";
-  g.fillRect(99, top + 11, 4, 2);
+  g.fillRect(120, 26, 4, 22);
+  g.fillRect(210, 26, 4, 22);
+  g.fillStyle = "#c8a050";
+  g.fillRect(118, 24, 98, 3);
+  g.fillStyle = "#f0d890";
+  g.fillRect(118, 24, 98, 1);
+  g.fillStyle = "#3a1810";
+  g.fillRect(156, 22, 8, 4);
+  g.fillStyle = "#e8d8c0";
+  g.fillRect(70, 40, 8, 6);
+  g.fillRect(72, 38, 4, 2);
+  g.fillStyle = "#2a1814";
+  g.fillRect(73, 41, 2, 2);
+  g.fillStyle = "#1a100c";
+  g.fillRect(92, 34, 3, 18);
+  g.fillRect(236, 38, 3, 16);
+  g.fillRect(94, 32, 12, 2);
+  g.fillStyle = "#4a2820";
+  for (let i = 0; i < 5; i++) g.fillRect(148, 46 + i * 3, 8 + i * 2, 2);
+  for (const x of [78, 104, 248, 270]) {
+    g.fillStyle = "#120c0a";
+    g.fillRect(x, 28, 2, 10);
+    g.fillRect(x - 1, 32, 4, 2);
+  }
+  g.fillStyle = "#e8d8c0";
+  g.fillRect(248, 48, 8, 3);
+  g.fillRect(249, 46, 2, 2);
+  g.fillRect(253, 46, 2, 2);
+  g.fillStyle = "#3a1810";
+  g.fillRect(158, 44, 4, 2);
+  g.fillRect(188, 54, 5, 2);
+  g.fillRect(170, 64, 4, 2);
+  g.fillStyle = "#ffd060";
+  g.fillRect(174, 40, 1, 1);
+  g.fillRect(176, 52, 1, 1);
+  g.fillRect(172, 62, 1, 1);
+  fillOval(g, 174, 136, 90, 7, "rgba(0,0,0,0.4)");
+  g.fillStyle = "#2a1814";
+  g.fillRect(140, 30, 6, 3);
+  g.fillRect(196, 30, 6, 3);
+  g.fillStyle = "#6a1008";
+  g.fillRect(146, 33, 1, 8);
+  g.fillRect(200, 33, 1, 8);
+  g.fillStyle = "#ff7820";
+  g.fillRect(146, 40, 1, 2);
+  g.fillRect(200, 40, 1, 2);
+  g.fillStyle = "#120c0a";
+  g.fillRect(108, 48, 18, 3);
+  g.fillRect(200, 52, 16, 3);
+  g.fillStyle = "#4a2820";
+  g.fillRect(108, 46, 18, 1);
+  g.fillRect(200, 50, 16, 1);
   hellPlate = canvas;
   return canvas;
 }
