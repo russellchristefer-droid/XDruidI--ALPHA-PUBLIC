@@ -977,36 +977,32 @@ function paintCircleRite(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
   }
 }
 
-function drawCastRite(ctx: CanvasRenderingContext2D, s: GameState): void {
+function drawCastRite(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
   const cast = s.cast;
   if (!cast) return;
-  const ink = spellInk(cast.spell);
-  paintCircleRite(ctx, Math.round(s.x), Math.round(s.y), ink.deep, ink.core, ink.pale, s.clock);
+  const img = sheets[cast.spell];
+  if (!img || img.width < 72) return;
+  const frames = Math.max(1, Math.floor(img.width / 72));
+  const frame = Math.floor(s.clock * 8) % frames;
+  blit(ctx, img, frame * 72, 0, 72, 72, s.x, s.y + 2, 0.5, false, 36, 40);
 }
 
-function drawSpell(ctx: CanvasRenderingContext2D, _sheets: Sheets, s: GameState): void {
+function drawSpell(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
   const cast = s.cast;
   if (!cast) return;
   const kind = SPELL_KIND[cast.spell];
-  const ink = spellInk(cast.spell);
+  if (kind !== "bolt" && kind !== "strike" && kind !== "drip") return;
+  const img = sheets[cast.spell];
+  if (!img || img.width < 72) return;
   const dx = s.dir === "e" ? 1 : s.dir === "w" ? -1 : 0;
   const dy = s.dir === "s" ? 1 : s.dir === "n" ? -1 : 0;
   const t = Math.max(0, Math.min(1, cast.t));
-  paintSigil(ctx, cast.spell, s.x, s.y + 12, s.clock);
-  let reach = 0;
+  let reach = 8;
   if (kind === "bolt") reach = t < 0.68 ? 8 + (t / 0.68) * 14 : 22;
-  else if (kind === "strike") reach = 8;
   else if (kind === "drip") reach = 5;
-  else return;
-  const ox = s.x + dx * 6;
-  const oy = s.y - 12;
-  const hx = ox + dx * reach;
-  const hy = oy + dy * reach;
-  for (let i = 1; i <= 3; i++) {
-    const u = i / 4;
-    paintPool(ctx, ox + (hx - ox) * u, oy + (hy - oy) * u, 2, 2, ink.core, 0.32 * u, ink.deep);
-  }
-  paintSigil(ctx, cast.spell, hx, hy, s.clock + 1);
+  const frames = Math.max(1, Math.floor(img.width / 72));
+  const frame = Math.floor(s.clock * 8) % frames;
+  blit(ctx, img, frame * 72, 0, 72, 72, s.x + dx * reach, s.y - 10 + dy * reach, 0.32, false, 36, 40);
 }
 
 function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
@@ -1620,10 +1616,9 @@ function seatArchInSidewalk(ctx: CanvasRenderingContext2D, x: number, dw: number
   }
 }
 
-function drawFarmFrame(ctx: CanvasRenderingContext2D, clock: number): void {
+function drawFarmFrame(ctx: CanvasRenderingContext2D, _clock: number): void {
   const bot = 191;
-  const pulse = Math.floor(clock * 2) % 2 === 0;
-  const gilt = pulse ? "#ffecaa" : "#e2b657";
+  const gilt = "#e2b657";
   const deep = "#785018";
   const ink = "#120e0c";
   const black = "#1c1814";
@@ -1647,33 +1642,131 @@ function drawFarmFrame(ctx: CanvasRenderingContext2D, clock: number): void {
       for (let x = reach; x < WORLD_W - reach; x++) pix(x, y, bands[yBand] ?? ink);
     }
   }
+  const jade = "#1f6a48";
   const chevron = (x: number, y: number, ix: number, iy: number) => {
     pix(x, y, ivory);
     pix(x - iy, y - ix, gilt);
     pix(x + iy, y + ix, gilt);
     pix(x + ix, y + iy, deep);
+    pix(x + ix * 2, y + iy * 2, jade);
   };
-  for (let x = 14; x < WORLD_W - 14; x += 8) {
+  for (let x = 18; x < WORLD_W - 18; x += 6) {
     chevron(x, 3, 0, 1);
     chevron(x, bot - 3, 0, -1);
+    if (x % 12 === 0) {
+      pix(x, 4, jade);
+      pix(x, bot - 4, jade);
+    }
   }
-  for (let y = 14; y <= bot - 14; y += 8) {
+  for (let y = 18; y <= bot - 18; y += 6) {
     chevron(3, y, 1, 0);
     chevron(WORLD_W - 4, y, -1, 0);
+    if (y % 12 === 0) {
+      pix(4, y, jade);
+      pix(WORLD_W - 5, y, jade);
+    }
+  }
+  const mid = Math.floor(WORLD_W / 2);
+  for (let i = -3; i <= 3; i++) {
+    pix(mid + i, 3, i === 0 ? ivory : gilt);
+    pix(mid + i, bot - 3, i === 0 ? ivory : gilt);
+    pix(3, Math.floor(bot / 2) + i, i === 0 ? ivory : gilt);
+    pix(WORLD_W - 4, Math.floor(bot / 2) + i, i === 0 ? ivory : gilt);
+  }
+  for (let x = 8; x < WORLD_W - 8; x++) {
+    if (x % 2 === 0) {
+      pix(x, 3, deep);
+      pix(x, 5, deep);
+      pix(x, bot - 3, deep);
+      pix(x, bot - 5, deep);
+    } else if (x % 4 === 1) {
+      pix(x, 5, ivory);
+      pix(x, bot - 5, ivory);
+    }
+  }
+  for (let y = 8; y <= bot - 8; y++) {
+    if (y % 2 === 0) {
+      pix(3, y, deep);
+      pix(5, y, deep);
+      pix(WORLD_W - 4, y, deep);
+      pix(WORLD_W - 6, y, deep);
+    } else if (y % 4 === 1) {
+      pix(5, y, ivory);
+      pix(WORLD_W - 6, y, ivory);
+    }
+  }
+  const curl = (x: number, y: number, ix: number, iy: number) => {
+    pix(x, y, gilt);
+    pix(x + ix, y + iy, gilt);
+    pix(x + ix * 2, y + iy, ivory);
+    pix(x + ix * 2, y + iy * 2, gilt);
+    pix(x + ix, y + iy * 2, deep);
+    pix(x, y + iy * 2, gilt);
+    pix(x - ix, y + iy, deep);
+    pix(x + ix * 3, y + iy, gilt);
+  };
+  for (let x = 22; x < WORLD_W - 22; x += 12) {
+    curl(x, 7, 1, 1);
+    curl(x, bot - 7, 1, -1);
+  }
+  for (let y = 22; y <= bot - 22; y += 12) {
+    curl(7, y, 1, 1);
+    curl(WORLD_W - 8, y, -1, 1);
+  }
+  const bead = (x: number, y: number) => {
+    pix(x, y, ivory);
+    pix(x - 1, y, deep);
+    pix(x + 1, y, deep);
+    pix(x, y - 1, gilt);
+    pix(x, y + 1, gilt);
+  };
+  for (let x = 28; x < WORLD_W - 28; x += 12) {
+    bead(x, 6);
+    bead(x, bot - 6);
+    pix(x, 9, gilt);
+    pix(x - 1, 10, deep);
+    pix(x + 1, 10, deep);
+    pix(x, bot - 9, gilt);
+    pix(x - 1, bot - 10, deep);
+    pix(x + 1, bot - 10, deep);
+  }
+  for (let y = 28; y <= bot - 28; y += 12) {
+    bead(6, y);
+    bead(WORLD_W - 7, y);
+    pix(9, y, gilt);
+    pix(10, y - 1, deep);
+    pix(10, y + 1, deep);
+    pix(WORLD_W - 10, y, gilt);
+    pix(WORLD_W - 11, y - 1, deep);
+    pix(WORLD_W - 11, y + 1, deep);
+  }
+  for (let x = 12; x < WORLD_W - 12; x += 3) {
+    pix(x, 8, x % 6 === 0 ? ivory : gilt);
+    pix(x, bot - 8, x % 6 === 0 ? ivory : gilt);
+  }
+  for (let y = 12; y <= bot - 12; y += 3) {
+    pix(8, y, y % 6 === 0 ? ivory : gilt);
+    pix(WORLD_W - 9, y, y % 6 === 0 ? ivory : gilt);
   }
   const fan = (cx: number, cy: number, sx: number, sy: number) => {
-    for (let s = 3; s >= 0; s--) {
-      for (let i = 0; i <= s; i++) {
-        pix(cx - sx * (3 - i), cy - sy * (3 - s), gilt);
-        pix(cx - sx * (3 - s), cy - sy * (3 - i), gilt);
-      }
+    for (let s = 4; s >= 0; s--) {
+      pix(cx - sx * s, cy, s === 0 ? ivory : gilt);
+      pix(cx, cy - sy * s, s === 0 ? ivory : gilt);
+      pix(cx - sx * s, cy - sy * s, deep);
     }
-    for (let i = 1; i <= 5; i++) {
-      pix(cx + sx * i, cy, gilt);
-      pix(cx, cy + sy * i, gilt);
-      pix(cx + sx * i, cy + sy * i, ivory);
+    for (let i = 1; i <= 7; i++) {
+      pix(cx + sx * i, cy, i % 2 === 0 ? ivory : gilt);
+      pix(cx, cy + sy * i, i % 2 === 0 ? ivory : gilt);
+      pix(cx + sx * i, cy + sy * i, i % 2 === 0 ? ivory : gilt);
+      pix(cx + sx * i, cy + sy * Math.max(1, i - 2), jade);
+      pix(cx + sx * Math.max(1, i - 2), cy + sy * i, jade);
     }
     pix(cx, cy, ivory);
+    pix(cx + sx, cy + sy, gilt);
+    pix(cx + sx * 2, cy + sy, ivory);
+    pix(cx + sx, cy + sy * 2, ivory);
+    pix(cx + sx * 3, cy + sy * 2, jade);
+    pix(cx + sx * 2, cy + sy * 3, jade);
   };
   fan(6, 6, 1, 1);
   fan(WORLD_W - 7, 6, -1, 1);
@@ -1757,43 +1850,22 @@ function ensureVoid(): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
-  const sky: ReadonlyArray<readonly [number, number, number]> = [
-    [5, 6, 16],
-    [10, 14, 36],
-    [18, 24, 58],
-    [28, 32, 72],
-    [16, 18, 42],
-  ];
-  const gold: ReadonlyArray<readonly [number, number, number]> = [
-    [42, 32, 18],
-    [92, 64, 28],
-    [168, 120, 48],
-    [232, 196, 110],
-  ];
-  const rust: ReadonlyArray<readonly [number, number, number]> = [
-    [28, 12, 16],
-    [72, 24, 22],
-    [120, 42, 32],
-    [168, 72, 48],
-  ];
-  const blob = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => {
-    const dx = (x - cx) / rx;
-    const dy = (y - cy) / ry;
-    return Math.max(0, 1 - (dx * dx + dy * dy));
-  };
   for (let y = 0; y < h; y++) {
     const u = y / h;
     for (let x = 0; x < WORLD_W; x++) {
-      const gld = blob(x, y, 262, 86, 110, 48) * 0.85 + blob(x, y, 300, 200, 80, 36) * 0.55;
-      const ash = blob(x, y, 70, 100, 96, 52) * 0.8 + blob(x, y, 48, 240, 70, 40) * 0.5;
-      const wisp = 0.5 + 0.5 * Math.sin(x * 0.045 + y * 0.02);
-      let rgb = ditherRgb(sky, Math.min(0.95, u * 0.7 + wisp * 0.12), x, y);
-      if (gld > 0.35) rgb = ditherRgb(gold, Math.min(0.95, (gld - 0.35) * 1.6 + wisp * 0.15), x, y);
-      else if (ash > 0.32) rgb = ditherRgb(rust, Math.min(0.95, (ash - 0.32) * 1.5 + wisp * 0.12), x, y);
-      rgb = shade(rgb, x, y, 1);
-      const clump = noise(x >> 3, y >> 3);
-      if (clump % 8 === 0 && (gld > 0.25 || ash > 0.25)) rgb = [rgb[0] + 18, rgb[1] + 12, rgb[2] + 6];
-      if (noise(x, y) % 211 === 0) rgb = x > 174 ? [255, 244, 210] : [198, 206, 224];
+      const grit = (noise(x, y) & 3) - 1;
+      let rgb: readonly [number, number, number] = [
+        6 + u * 10 + grit,
+        8 + u * 12 + grit,
+        22 + u * 18 + grit,
+      ];
+      const arm = Math.abs(x * 0.22 + y - h * 0.42);
+      if (arm < 22 && noise(x, y) % 4 === 0) rgb = [28 + grit, 36 + grit, 78];
+      const veil = (x - 80) * (x - 80) / 9000 + (y - 70) * (y - 70) / 2800;
+      if (veil < 1 && noise(x, y) % 3 === 0) rgb = [88, 48, 110];
+      const coal = (x - 250) * (x - 250) / 7000 + (y - 180) * (y - 180) / 2400;
+      if (coal < 1 && noise(x, y) % 3 === 0) rgb = [120, 64, 36];
+      if (noise(x, y) % 220 === 0) rgb = noise(x, y + 1) % 4 === 0 ? [255, 244, 210] : [214, 222, 240];
       putPix(d, WORLD_W, x, y, rgb);
     }
   }
@@ -1813,40 +1885,39 @@ function ensureRock(): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
-  const grass: ReadonlyArray<readonly [number, number, number]> = [
-    [214, 196, 120],
-    [122, 154, 64],
-    [74, 108, 42],
-  ];
-  const crust: ReadonlyArray<readonly [number, number, number]> = [
-    [168, 132, 72],
-    [120, 88, 48],
-    [74, 54, 32],
-    [42, 30, 20],
-    [22, 16, 12],
+  const strata: ReadonlyArray<readonly [number, number, number]> = [
+    [196, 168, 112],
+    [154, 118, 72],
+    [118, 84, 52],
+    [86, 62, 40],
+    [58, 42, 30],
+    [34, 24, 18],
   ];
   for (let x = 0; x < WORLD_W; x++) {
     const t = x / (WORLD_W - 1);
     const dome = Math.sin(t * Math.PI);
-    const belly = 20 + Math.round(dome ** 0.55 * 46);
-    const jag = (noise(x, 3) % 5) - 2;
-    const stone = Math.min(h - 2, belly + jag);
-    const east = x > 200;
-    for (let y = 0; y < h; y++) {
-      if (y > stone) continue;
-      const u = y / Math.max(1, stone);
+    const lip = 5 + (noise(x, 1) % 3);
+    const stone = Math.min(h - 1, 14 + Math.round(dome ** 0.6 * 56) + ((noise(x, 4) % 3) - 1));
+    for (let y = 0; y < stone; y++) {
+      const grit = (noise(x, y) & 3) - 1;
       let rgb: readonly [number, number, number];
-      if (y < 3) rgb = ditherRgb(grass, y / 3, x, y);
-      else rgb = ditherRgb(crust, Math.min(0.98, (y - 3) / Math.max(4, stone - 3)), x, y);
-      rgb = shade(rgb, x, y, y < 6 ? 4 : 3);
-      if (u > 0.8) rgb = [rgb[0] - 20, rgb[1] - 16, rgb[2] - 10];
-      if (y < 6 && noise(x, 2) % 4 === 0) rgb = noise(x, 5) % 2 === 0 ? [186, 214, 96] : [58, 92, 36];
-      if (y > 8 && (x % 11 === 0 || (y + (x >> 3)) % 8 === 0)) rgb = [rgb[0] - 18, rgb[1] - 14, rgb[2] - 8];
-      if (y % 13 === 10 && y > 12) rgb = [rgb[0] - 10, rgb[1] - 8, rgb[2] - 4];
-      if (noise(x >> 3, y >> 3) % 11 === 0 && y > 14 && y < stone - 8) {
-        rgb = east ? [196, 154, 78] : [92, 48, 36];
+      if (y < lip) {
+        rgb = noise(x, y) % 4 === 0 ? [214, 228, 112] : [78, 118, 46];
+      } else {
+        const depth = (y - lip) / Math.max(1, stone - lip);
+        const band = Math.min(strata.length - 1, Math.floor(depth * strata.length));
+        const base = strata[band]!;
+        rgb = [base[0] + grit, base[1] + grit, base[2] + grit];
+        if ((y - lip) % 8 === 0) rgb = [rgb[0] + 18, rgb[1] + 14, rgb[2] + 8];
+        if (noise(x, y) % 31 === 0) rgb = [rgb[0] - 18, rgb[1] - 14, rgb[2] - 8];
       }
+      if (y === 0) rgb = [232, 214, 120];
+      if (y === stone - 1) rgb = [16, 12, 8];
       putPix(d, WORLD_W, x, y, rgb);
+    }
+    if (noise(x, 12) % 41 === 0 && stone > 24) {
+      const hang = 3 + (noise(x, 13) % 5);
+      for (let y = stone; y < Math.min(h, stone + hang); y++) putPix(d, WORLD_W, x, y, [48, 34, 22]);
     }
   }
   g.putImageData(img, 0, 0);
@@ -1875,37 +1946,6 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
   }
   ctx.fillStyle = "#fff4d2";
   ctx.fillRect(174, ringY, 1, 1);
-  const figures: Array<Array<[number, number]>> = [
-    [
-      [36, 48],
-      [52, 40],
-      [44, 62],
-      [28, 70],
-    ],
-    [
-      [250, 54],
-      [268, 46],
-      [284, 60],
-      [270, 74],
-      [252, 68],
-    ],
-    [
-      [120, 200],
-      [140, 188],
-      [156, 206],
-      [134, 214],
-    ],
-  ];
-  for (const fig of figures) {
-    ctx.fillStyle = fig[0]![0] > 174 ? "#e2b657" : "#8a6848";
-    for (let i = 0; i < fig.length; i++) {
-      const a = fig[i]!;
-      const b = fig[(i + 1) % fig.length]!;
-      ctx.fillRect(a[0], FARM_H + a[1], 2, 1);
-      ctx.fillRect(b[0], FARM_H + b[1], 1, 2);
-      ctx.fillRect(Math.round((a[0] + b[0]) / 2), FARM_H + Math.round((a[1] + b[1]) / 2), 1, 1);
-    }
-  }
   const bob = Math.sin(clock * 0.35);
   paintOrb(ctx, 56, FARM_H + 46 + bob, 11, "#f4f7ff", "#9aabbe", "#3a4a5e");
   paintOrb(ctx, 300, FARM_H + 78 - bob, 15, "#d7e8f4", "#6a98b8", "#1c3044");
@@ -2234,8 +2274,9 @@ function ensureRealmSky(east: boolean): HTMLCanvasElement | null {
   for (let y = 0; y < h; y++) {
     const u = y / h;
     for (let x = 0; x < WORLD_W; x++) {
-      let rgb = shade(ditherRgb(colors, Math.min(0.98, u * 0.85 + (0.5 + 0.5 * Math.sin(x * 0.04)) * 0.1), x, y), x, y, 1);
-      if (noise(x >> 3, y >> 3) % 9 === 0) rgb = [rgb[0] + (east ? 14 : 10), rgb[1] + 6, rgb[2] + 2];
+      let rgb = ditherRgb(colors, Math.min(0.98, u * 0.85 + (0.5 + 0.5 * Math.sin(x * 0.04)) * 0.1), x, y);
+      const grit = (noise(x, y) & 3) - 1;
+      rgb = [rgb[0] + grit, rgb[1] + grit, rgb[2] + grit];
       if (noise(x, y) % 240 === 0) rgb = east ? [255, 246, 220] : [196, 120, 88];
       putPix(d, WORLD_W, x, y, rgb);
     }
@@ -2280,8 +2321,11 @@ function ensureCliff(east: boolean): HTMLCanvasElement | null {
     const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
     const depth = 12 + Math.round(dome ** 0.6 * 24);
     for (let y = 0; y < depth; y++) {
-      let rgb = shade(ditherRgb(stone, y / depth, x, y), x, y, 3);
-      if (y > 3 && (x % 11 === 0 || (y + (x >> 3)) % 7 === 0)) rgb = [rgb[0] - 16, rgb[1] - 12, rgb[2] - 8];
+      let rgb = ditherRgb(stone, y / depth, x, y);
+      const grit = (noise(x, y) & 3) - 1;
+      rgb = [rgb[0] + grit, rgb[1] + grit, rgb[2] + grit];
+      if (y % 6 === 0) rgb = [rgb[0] + 14, rgb[1] + 10, rgb[2] + 6];
+      if (noise(x, y) % 23 === 0) rgb = [rgb[0] - 16, rgb[1] - 12, rgb[2] - 8];
       putPix(d, WORLD_W, x, y, rgb);
     }
     if (noise(x, 8) % 28 === 0) {
@@ -2314,53 +2358,47 @@ function ensureHeavenLand(): HTMLCanvasElement | null {
   canvas.height = h;
   const g = canvas.getContext("2d");
   if (!g) return null;
-  fillOval(g, 174, 86, 128, 26, "#d5e6e2");
-  fillOval(g, 150, 80, 78, 18, "#f7fffd");
-  fillOval(g, 214, 90, 64, 14, "#e7f3ef");
-  const turf = ["#f3e6b8", "#c6a45a", "#7a9848", "#567438", "#3a5228"];
-  const top = 24;
-  for (let x = 46; x < 302; x++) {
-    const t = (x - 46) / 256;
-    const body = Math.round(Math.sin(t * Math.PI) ** 0.55 * 40);
+  const top = 28;
+  for (let x = 40; x < 308; x++) {
+    const t = (x - 40) / 268;
+    const body = Math.round(Math.sin(t * Math.PI) ** 0.5 * 46);
     for (let y = 0; y < body; y++) {
-      const onPath = Math.abs(x - 174) < 7 && y > 8 && y < body - 6;
-      const tuft = !onPath && y < 6 && noise(x, y) % 3 === 0;
-      g.fillStyle = onPath
-        ? noise(x, y) % 5 === 0
-          ? "#e6d090"
-          : "#f7e7b0"
-        : tuft
-          ? noise(x, 4) % 2 === 0
-            ? "#d8eea0"
-            : "#3e6a28"
-          : dither(turf, y / body, x, y);
+      const row = Math.floor(y / 4);
+      const field = row % 2 === 0 ? "#6a9a3a" : "#8fbe52";
+      const path = Math.abs(x - 174) < 5;
+      const river = Math.abs(x - (118 + Math.sin(y * 0.35) * 8)) < 3 && y > 8;
+      g.fillStyle = path ? "#e6d090" : river ? (y % 2 === 0 ? "#7ec8e0" : "#3a88b0") : y < 3 ? "#d8eea0" : field;
       g.fillRect(x, top + y, 1, 1);
-      if (!onPath && noise(x >> 2, y >> 2) % 14 === 0 && y > 8) {
-        g.fillStyle = "#c6a45a";
-        g.fillRect(x, top + y, 1, 1);
-      }
     }
   }
-  const sx = 168;
-  const sy = top + 6;
-  g.fillStyle = "#a88848";
-  g.fillRect(sx - 8, sy, 22, 3);
-  g.fillStyle = "#fff6d4";
-  g.fillRect(sx - 6, sy + 1, 18, 1);
-  for (const col of [sx - 4, sx + 2, sx + 8]) {
+  const house = (x: number, y: number) => {
     g.fillStyle = "#f4e2a8";
-    g.fillRect(col, sy + 3, 3, 16);
-    g.fillStyle = "#fffaf0";
-    g.fillRect(col, sy + 3, 1, 16);
-  }
-  g.fillStyle = "#7ec8c8";
-  g.fillRect(sx + 1, sy + 10, 3, 3);
-  g.fillStyle = "#fffaf0";
-  g.fillRect(sx + 2, sy + 11, 1, 1);
-  for (let i = 0; i < 28; i++) {
-    g.fillStyle = i % 2 === 0 ? "#ffffff" : "#b7d0cb";
-    g.fillRect(110 + ((i * 19) % 150), 76 + (i % 6), 2, 1);
-  }
+    g.fillRect(x, y + 4, 12, 8);
+    g.fillStyle = "#a33b3b";
+    g.fillRect(x - 1, y + 3, 14, 2);
+    g.fillRect(x + 1, y + 1, 10, 2);
+    g.fillRect(x + 3, y, 6, 2);
+    g.fillStyle = "#2a1c10";
+    g.fillRect(x + 5, y + 8, 3, 4);
+  };
+  house(150, top + 10);
+  house(196, top + 16);
+  const tree = (x: number, y: number) => {
+    g.fillStyle = "#6b4428";
+    g.fillRect(x + 2, y + 4, 2, 5);
+    g.fillStyle = "#2f6a28";
+    g.fillRect(x, y, 6, 5);
+    g.fillStyle = "#8fbe52";
+    g.fillRect(x + 1, y + 1, 3, 2);
+  };
+  tree(86, top + 8);
+  tree(108, top + 18);
+  tree(230, top + 12);
+  tree(258, top + 20);
+  g.fillStyle = "#3a88b0";
+  g.fillRect(104, top + 18, 16, 7);
+  g.fillStyle = "#7ec8e0";
+  g.fillRect(106, top + 19, 10, 2);
   heavenPlate = canvas;
   return canvas;
 }
@@ -2374,37 +2412,23 @@ function ensureHellLand(): HTMLCanvasElement | null {
   canvas.height = h;
   const g = canvas.getContext("2d");
   if (!g) return null;
-  const rock = ["#5a3828", "#3a2418", "#241610", "#120c0a", "#080604"];
-  const top = 28;
-  for (let x = 64; x < 284; x++) {
-    const t = (x - 64) / 220;
-    const peak = Math.abs(x - 174) < 18 ? 10 : 0;
-    const body = 18 + Math.round(Math.sin(t * Math.PI) * 30) + peak + ((noise(x, 2) % 5) - 2);
+  const top = 30;
+  for (let x = 58; x < 290; x++) {
+    const t = (x - 58) / 232;
+    const body = 16 + Math.round(Math.sin(t * Math.PI) * 34) + ((noise(x, 2) % 3) - 1);
     for (let y = 0; y < body; y++) {
-      const coal = Math.abs(x - 174) < 16 && y > 10 && y < 22;
-      const crack = !coal && (noise(x, y) % 17 === 0 || (y % 7 === 4 && noise(x, 1) % 4 === 0));
-      g.fillStyle = coal
-        ? y < 14
-          ? noise(x, y) % 3 === 0
-            ? "#fff0c8"
-            : "#ffb060"
-          : "#c03818"
-        : crack
-          ? "#080604"
-          : dither(rock, y / body, x, y);
+      const vein = 168 + Math.sin(y * 0.22) * 10;
+      const lava = Math.abs(x - vein) < 4 && y > 6 && y < body - 4;
+      const core = lava && Math.abs(x - vein) < 2;
+      const crack = !lava && noise(x, y) % 19 === 0;
+      g.fillStyle = core ? "#ffd060" : lava ? "#c03818" : crack ? "#080604" : y < 4 ? "#5a3828" : y > body * 0.7 ? "#120c0a" : "#3a2418";
       g.fillRect(x, top + y, 1, 1);
-      if (!coal && noise(x >> 2, y >> 2) % 12 === 0 && y > 6) {
-        g.fillStyle = "#4a3024";
-        g.fillRect(x, top + y, 1, 1);
-      }
     }
   }
-  g.fillStyle = "#2a1c14";
-  g.fillRect(108, top + 2, 3, 22);
-  g.fillRect(236, top + 4, 3, 26);
-  g.fillStyle = "#6a4030";
-  g.fillRect(108, top + 2, 1, 22);
-  g.fillRect(236, top + 4, 1, 26);
+  g.fillStyle = "#1a100c";
+  g.fillRect(96, top + 8, 10, 8);
+  g.fillStyle = "#ff7840";
+  g.fillRect(99, top + 11, 4, 2);
   hellPlate = canvas;
   return canvas;
 }
@@ -2422,13 +2446,10 @@ function drawEvilBelow(ctx: CanvasRenderingContext2D, clock: number, _sheet?: HT
   const plate = ensureHellLand();
   const bob = Math.sin(clock * 0.55) > 0 ? 0 : 1;
   if (plate) ctx.drawImage(plate, 0, ABYSS + 56 + bob);
-  const coal = Math.floor(clock * 3) % 2 === 0;
-  ctx.fillStyle = coal ? "#fff0c8" : "#ff7840";
-  ctx.fillRect(170, ABYSS + 56 + bob + 42, 8, 2);
   for (const x of [158, 174, 188]) {
-    const drip = Math.floor(clock * 4 + x) % 6;
-    ctx.fillStyle = "#6a1820";
-    ctx.fillRect(x, ABYSS + 56 + bob + 70 + drip, 1, 2);
+    const drip = Math.floor(clock * 2 + x) % 6;
+    ctx.fillStyle = "#ffd060";
+    ctx.fillRect(x, ABYSS + 56 + bob + 48 + drip, 1, 1);
   }
 }
 
@@ -2793,7 +2814,7 @@ export function drawWorld(
       drawSvarga(ctx, s.clock, sheets.svarga);
       const angels = svargaAngels(s.clock).sort((a, b) => a.y - b.y);
       for (const a of angels) if (a.y <= s.y) paintAngel(ctx, sheets, a);
-      if (sheets.idle) drawCastRite(ctx, s);
+      if (sheets.idle) drawCastRite(ctx, sheets, s);
       if (sheets.idle) paintPlayer(ctx, sheets, s);
       for (const a of angels) if (a.y > s.y) paintAngel(ctx, sheets, a);
       drawRealmBelow(ctx, 1, s.clock, sheets);
@@ -2801,7 +2822,7 @@ export function drawWorld(
       drawNaraka(ctx, s.clock, sheets.naraka);
       const demon = sheets.demonMage ? narakaDemon(s.clock) : null;
       if (demon && demon.y <= s.y && sheets.demonMage) paintDemon(ctx, sheets.demonMage, demon);
-      if (sheets.idle) drawCastRite(ctx, s);
+      if (sheets.idle) drawCastRite(ctx, sheets, s);
       if (sheets.idle) paintPlayer(ctx, sheets, s);
       if (demon && demon.y > s.y && sheets.demonMage) paintDemon(ctx, sheets.demonMage, demon);
       drawRealmBelow(ctx, -1, s.clock, sheets);
@@ -2954,7 +2975,7 @@ export function drawWorld(
     for (const b of s.birds) stage(b.y, () => paintBird(ctx, sheets, b));
   }
   if (sheets.idle) {
-    stage(s.y - 1, () => drawCastRite(ctx, s));
+    stage(s.y - 1, () => drawCastRite(ctx, sheets, s));
     stage(s.y, () => paintPlayer(ctx, sheets, s));
   }
   for (const layer of devSpriteLayers()) {

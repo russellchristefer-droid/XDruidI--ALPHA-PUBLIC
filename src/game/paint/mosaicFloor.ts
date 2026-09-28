@@ -612,6 +612,31 @@ const PUDDLES: Array<[number, number, number, number]> = [
   [70, 300, 14, 4],
 ];
 
+function paintTileSparkle(ctx: CanvasRenderingContext2D, clock: number): void {
+  for (let i = 0; i < 22; i++) {
+    const n = Math.imul(i + 17, 1103515245) >>> 0;
+    const period = 3.2 + (i % 6) * 0.4;
+    const phase = (clock / period + (n % 97) / 97) % 1;
+    if (phase > 0.16) continue;
+    const fade = 1 - phase / 0.16;
+    const onSide = i % 3 === 0;
+    const span = onSide ? SIDE_H - 6 : FLOOR_END - COURT_Y - 10;
+    const x = 6 + (n % (W - 14));
+    const y = (onSide ? SIDE_Y + 2 : COURT_Y + 4) + ((n >>> 10) % span);
+    const tx = Math.floor(x / 8) * 8 + 3;
+    const ty = Math.floor(y / 8) * 8 + 3;
+    ctx.globalAlpha = 0.25 + fade * 0.7;
+    ctx.fillStyle = i % 2 === 0 ? "#fff8e8" : "#e2b657";
+    ctx.fillRect(tx, ty, 1, 1);
+    ctx.globalAlpha = fade * 0.4;
+    ctx.fillRect(tx - 1, ty, 1, 1);
+    ctx.fillRect(tx + 1, ty, 1, 1);
+    ctx.fillRect(tx, ty - 1, 1, 1);
+    ctx.fillRect(tx, ty + 1, 1, 1);
+  }
+  ctx.globalAlpha = 1;
+}
+
 /** Draw the sidewalk and courtyard as one solid floor. Grass cannot show through. */
 export function drawMosaicFloors(
   ctx: CanvasRenderingContext2D,
@@ -628,6 +653,7 @@ export function drawMosaicFloors(
     ctx.fillRect(0, SIDE_Y, W, FLOOR_H);
   }
   if (yard) ctx.drawImage(yard, 0, 148, W, 44, 0, 148, W, 44);
+  paintTileSparkle(ctx, clock);
 
   const glint = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(clock * 2.2));
   ctx.fillStyle = `rgba(255, 244, 214, ${0.2 + glint * 0.45})`;
