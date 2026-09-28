@@ -751,6 +751,39 @@ export function ensureHand(s: GameState): void {
   }
 }
 
+export type XiangSu = {
+  x: number;
+  y: number;
+  dir: Dir;
+  pause: number;
+  route: number[];
+  poseT: number;
+};
+
+export function freshXiang64(): XiangSu {
+  return { x: 220, y: 212, dir: "s", pause: 0.5, route: [], poseT: 0 };
+}
+
+export function ensureXiang64(s: GameState): void {
+  const n = s.xiang64;
+  if (!n || typeof n.x !== "number" || typeof n.y !== "number") {
+    s.xiang64 = freshXiang64();
+    return;
+  }
+  if (!Array.isArray(n.route)) n.route = [];
+  if (typeof n.pause !== "number") n.pause = 0.4;
+  if (typeof n.poseT !== "number") n.poseT = 0;
+  if (n.dir !== "n" && n.dir !== "e" && n.dir !== "s" && n.dir !== "w") n.dir = "s";
+  if (n.y < 200 || n.y > 500 || n.x < 80 || n.x > 270) {
+    const home = freshXiang64();
+    n.x = home.x;
+    n.y = home.y;
+    n.route = [];
+    n.pause = 0.3;
+    n.dir = "s";
+  }
+}
+
 export type Body = {
   head: Item | null;
   torso: Item | null;
@@ -1004,6 +1037,8 @@ export type GameState = {
   courtSpawn?: boolean | 2 | 3 | 4;
   /** 3 = field hand works the farm beds. */
   handPlace?: number;
+  /** Xiang Su at 64, walking the courtyard and the sidewalk. */
+  xiang64?: XiangSu;
 };
 
 export type PanelId = "pack" | "body" | "vault" | "craft" | "map" | "pause" | "summary" | "controls" | "backpack" | "skills";
@@ -1540,5 +1575,6 @@ export function createGame(): GameState {
     cross: null,
     courtSpawn: 4,
     handPlace: 3,
+    xiang64: freshXiang64(),
   };
 }

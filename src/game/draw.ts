@@ -1429,6 +1429,19 @@ function paintHand(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState):
   blit(ctx, img, col * CHAR_W, row * CHAR_H, CHAR_W, CHAR_H, h.x, h.y, CHAR, flip, footX, CHAR_FOOT_Y);
 }
 
+const XIANG64_SCALE = 0.67;
+
+function paintXiang64(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
+  if ((s.wing ?? 0) !== 0) return;
+  const n = s.xiang64;
+  if (!n) return;
+  const img = sheets.xiang64Idle;
+  if (!img || img.width < 64) return;
+  const frames = Math.max(1, Math.floor(img.width / 64));
+  const col = Math.floor(n.poseT * 8) % frames;
+  blit(ctx, img, col * 64, 0, 64, 64, n.x, n.y, XIANG64_SCALE, false, 32, 63);
+}
+
 const PLATE = 192;
 const FARM_H = MEADOW.y;
 
@@ -3504,6 +3517,7 @@ export function drawWorld(
     for (const b of s.birds) stage(b.y, () => paintBird(ctx, sheets, b));
   }
   if (s.hand) queue.push({ y: s.hand.y, paint: () => paintHand(ctx, sheets, s) });
+  if (s.xiang64) stage(s.xiang64.y, () => paintXiang64(ctx, sheets, s));
   if (sheets.idle) {
     stage(s.y - 1, () => drawCastRite(ctx, sheets, s));
     stage(s.y, () => paintPlayer(ctx, sheets, s));

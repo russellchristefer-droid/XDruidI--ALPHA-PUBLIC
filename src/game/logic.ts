@@ -19,6 +19,7 @@ import {
   ensureBirds,
   ensureReaper,
   ensureHand,
+  ensureXiang64,
   HAND_HOME,
   ensureSkills,
   ensureHealth,
@@ -450,6 +451,9 @@ export function targets(s: GameState): Target[] {
   if (s.hand && (s.wing ?? 0) === 0) {
     list.push({ id: "hand", name: "Field hand", kind: "hand", x: s.hand.x - 8, y: s.hand.y - 6, w: 16, h: 10 });
   }
+  if ((s.wing ?? 0) === 0 && s.xiang64) {
+    list.push({ id: "xiang64", name: "Xiang Su", kind: "xiang64", x: s.xiang64.x - 8, y: s.xiang64.y - 22, w: 16, h: 26 });
+  }
   for (const g of s.ground) {
     list.push({
       id: g.id,
@@ -569,6 +573,7 @@ function verb(s: GameState, t: Target): string {
   if (t.kind === "cat") return "Pet the cat";
   if (t.kind === "reaper") return "Greet the wizard";
   if (t.kind === "hand") return "Greet the field hand";
+  if (t.kind === "xiang64") return "Greet Xiang Su";
   if (t.kind === "flower") {
     const f = s.flowers?.find((fl) => fl.id === t.id);
     return f && f.bloom >= 2 ? `Pick ${f.name.toLowerCase()}` : t.name;
@@ -703,6 +708,7 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (t.kind === "cat") return petCat(s);
   if (t.kind === "reaper") return greetReaper(s);
   if (t.kind === "hand") return greetHand(s);
+  if (t.kind === "xiang64") return greetXiang(s);
   if (t.kind === "flower") return pickFlower(s, t.id);
   return { msg: "Nothing to use here." };
 }
@@ -872,6 +878,10 @@ function greetHand(s: GameState): InteractResult {
   h.greet = 1.6;
   h.route = [];
   return { msg: `The field hand nods. He works the beds and leaves the seal to you.${grant(s, "farming", 4)}` };
+}
+
+function greetXiang(s: GameState): InteractResult {
+  return { msg: `Xiang Su keeps the sidewalk. She lets him pass.${grant(s, "ritual", 2)}` };
 }
 
 function pickFlower(s: GameState, id: string): InteractResult {
@@ -2797,6 +2807,18 @@ const FARM_SPOTS: { x: number; y: number }[] = [
   { x: 200, y: 140 },
 ];
 
+function stepXiang64(s: GameState, dt: number) {
+  ensureXiang64(s);
+  const n = s.xiang64;
+  if (!n) return;
+  n.x = 210;
+  n.y = 212;
+  n.dir = "s";
+  n.route = [];
+  n.pause = 0;
+  n.poseT += dt;
+}
+
 function stepHand(s: GameState, dt: number) {
   ensureHand(s);
   const h = s.hand;
@@ -2849,6 +2871,7 @@ function stepCritters(s: GameState, dt: number) {
   stepBirds(s, dt);
   stepReaper(s, dt);
   stepHand(s, dt);
+  stepXiang64(s, dt);
   for (const a of s.animals) {
     if (!a.route) a.route = [];
     if (a.pause > 0) {

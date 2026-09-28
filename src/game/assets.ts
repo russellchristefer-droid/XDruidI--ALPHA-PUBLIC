@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260927snes";
+export const ART = "20260928lane";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -145,6 +145,7 @@ const URLS: Record<string, string> = {
   handAxe: art("/game/char/hand/axe.png"),
   handHammer: art("/game/char/hand/hammer.png"),
   handPickaxe: art("/game/char/hand/pickaxe.png"),
+  xiang64Idle: art("/game/char/xiangsu/idle64.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
@@ -169,6 +170,7 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
     ],
   },
   { id: "hand", label: "Field hand", keys: ["handIdle", "handWalk", "handHandsIdle", "handHandsWalk", "handWater", "handShovel", "handScythe", "handAxe", "handHammer", "handPickaxe"] },
+  { id: "xiang", label: "Xiang Su", keys: ["xiang64Idle"] },
   { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "handsUpIdle", "handsUpWalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
@@ -213,6 +215,7 @@ const SOON = [
   "handWater",
   "handScythe",
   "handShovel",
+  "xiang64Idle",
   "fireball",
   "nova",
   "holy",
