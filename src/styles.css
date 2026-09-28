@@ -582,35 +582,74 @@
 
 .sound-stack {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px 10px;
   width: 100%;
   min-width: 0;
+  align-items: end;
   pointer-events: auto;
 }
 
-.sound-row {
+.sound-row,
+.sound-mute {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
   pointer-events: auto;
 }
 
-.sound-row span {
-  width: 58px;
-  flex: 0 0 58px;
-  font-size: 11px;
-  color: #f3e6c8;
+.sound-mute {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.sound-row span,
+.sound-mute span {
+  width: auto;
+  flex: none;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #e6c86a;
 }
 
 .sound-row input[type="range"] {
-  flex: 1;
-  width: auto;
+  width: 100%;
   min-width: 0;
-  height: 18px;
-  accent-color: #c4a574;
+  height: 16px;
+  margin: 0;
+  accent-color: #e2b657;
   pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.sound-mute i {
+  display: block;
+  height: 16px;
+  box-sizing: border-box;
+  border: 2px solid #c4a574;
+  background: #1c1612;
+  box-shadow: inset 0 0 0 1px #3d2e1c;
+}
+
+.sound-mute.on span {
+  color: #e07a5f;
+}
+
+.sound-mute.on i {
+  border-color: #e07a5f;
+  background: #3a2218;
 }
 
 .touch-actions {
@@ -686,6 +725,8 @@
 .assay.touch .need-row,
 .assay.touch .fn-grid,
 .assay.touch .sound-row,
+.assay.touch .sound-stack,
+.assay.touch .sound-mute,
 .assay.touch .hud-head {
   white-space: normal;
   overflow: visible;
@@ -709,26 +750,30 @@
   font-size: 9px;
 }
 
-.assay.touch .sound-row {
-  gap: 4px;
+.assay.touch .sound-row,
+.assay.touch .sound-mute {
+  gap: 2px;
 }
 
 .assay.touch .sound-stack {
   min-width: 0;
   width: 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 8px;
 }
 
-.assay.touch .sound-row span {
-  width: 52px;
-  flex-basis: 52px;
-  font-size: 9px;
-}
-
-.assay.touch .sound-row input[type="range"] {
+.assay.touch .sound-row span,
+.assay.touch .sound-mute span {
   width: auto;
-  flex: 1;
+  flex-basis: auto;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.assay.touch .sound-row input[type="range"],
+.assay.touch .sound-mute i {
+  width: 100%;
+  height: 16px;
 }
 
 .assay.touch .touch-actions {

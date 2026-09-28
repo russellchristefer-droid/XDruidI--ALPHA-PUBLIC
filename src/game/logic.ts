@@ -1,6 +1,9 @@
 import { soundState } from "./audio.ts";
 import { tickBirdsong } from "./birdsong.ts";
 import { mewNow, tickCatVoice } from "./catsound.ts";
+import { tickRooster } from "./roostersound.ts";
+import { tickCow } from "./cowsound.ts";
+import { tickGoat } from "./goatsound.ts";
 import { catClip, catIdleIds, catMoveId, type CatLook } from "./paint/blackCat.ts";
 import {
   DEFS,
@@ -21,8 +24,16 @@ import {
   ensureReaper,
   ensureHand,
   ensureXiang64,
+  ensureMaid,
   ensureGoatPen,
   ensureCourtHerd,
+  HEAVEN_GATE,
+  GROVE_DOOR,
+  GROVE_ARRIVE,
+  GROVE_RETURN,
+  GROVE_PLOTS,
+  grovePlotAt,
+  DAY_LEN,
   HAND_HOME,
   ensureSkills,
   ensureHealth,
@@ -96,21 +107,37 @@ export const TOOL_ANIM: Record<string, { sheet: string; frames: number; hit: num
   sharpen: { sheet: "hammer", frames: 6, hit: 4 },
 };
 
-type SideGate = { x: number; y: number; wing: -1 | 0 | 1; landX: number; dir: "e" | "w"; name: string };
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
 
 const GATE_REACH = 46;
 
 /** A click-step at a sidewalk end. The land beyond is the same courtyard. */
 export function sideGate(s: GameState): SideGate | null {
   const wing = s.wing ?? 0;
-  const by = (cx: number) => s.y > 170 && s.y < 260 && Math.hypot(s.x - cx, s.y - 202) <= GATE_REACH;
-  if (s.x < 130 && by(40) && wing !== -1) {
-    const dest: -1 | 0 = wing === 1 ? 0 : -1;
-    return { x: 40, y: 202, wing: dest, landX: 266, dir: "w", name: dest === 0 ? "the home land" : "Naraka" };
+  if (wing === 1) {
+    const near =
+      Math.hypot(s.x - HEAVEN_GATE.x, s.y - HEAVEN_GATE.y) <= GATE_REACH &&
+      s.y > HEAVEN_GATE.y - 50 &&
+      s.y < HEAVEN_GATE.y + 20;
+    if (!near) return null;
+    return { x: HEAVEN_GATE.x, y: HEAVEN_GATE.y, wing: 0, landX: 266, landY: 212, dir: "w", name: "the home land" };
   }
-  if (s.x > 220 && by(308) && wing !== 1) {
-    const dest: 0 | 1 = wing === -1 ? 0 : 1;
-    return { x: 308, y: 202, wing: dest, landX: 86, dir: "e", name: dest === 0 ? "the home land" : "Svarga" };
+  if (wing === 2) {
+    if (Math.hypot(s.x - GROVE_RETURN.x, s.y - GROVE_RETURN.y) > 36) return null;
+    return { x: GROVE_RETURN.x, y: GROVE_RETURN.y, wing: 0, landX: GROVE_DOOR.x, landY: GROVE_DOOR.y - 16, dir: "n", name: "the courtyard" };
+  }
+  if (wing === 0 && Math.hypot(s.x - GROVE_DOOR.x, s.y - GROVE_DOOR.y) <= 36) {
+    return { x: GROVE_DOOR.x, y: GROVE_DOOR.y, wing: 2, landX: GROVE_ARRIVE.x, landY: GROVE_ARRIVE.y, dir: "n", name: "the skill grove" };
+  }
+  const by = (cx: number) => s.y > 170 && s.y < 260 && Math.hypot(s.x - cx, s.y - 202) <= GATE_REACH;
+  if (wing === 0 && s.x < 130 && by(40)) {
+    return { x: 40, y: 202, wing: -1, landX: 266, landY: 212, dir: "w", name: "Naraka" };
+  }
+  if (wing === 0 && s.x > 220 && by(308)) {
+    return { x: 308, y: 202, wing: 1, landX: 236, landY: 320, dir: "w", name: "Svarga" };
+  }
+  if (wing === -1 && s.x > 220 && by(308)) {
+    return { x: 308, y: 202, wing: 0, landX: 86, landY: 212, dir: "e", name: "the home land" };
   }
   return null;
 }
@@ -122,7 +149,7 @@ function crossSide(s: GameState, px: number, py: number): InteractResult | null 
   if (Math.hypot(px - gate.x, py - gate.y) > 40) return null;
   if (Math.hypot(s.x - gate.x, s.y - gate.y) > GATE_REACH) return null;
   s.speed = 0;
-  s.cross = { t: 0, wing: gate.wing, x: gate.landX, y: 212, dir: gate.dir, name: gate.name, moved: false };
+  s.cross = { t: 0, wing: gate.wing, x: gate.landX, y: gate.landY, dir: gate.dir, name: gate.name, moved: false };
   return { msg: `The gate opens toward ${gate.name}.` };
 }
 
@@ -135,6 +162,14 @@ function unitRand(s: GameState): number {
 }
 
 function aimPoint(s: GameState, kind: string, target: string): { x: number; y: number } | null {
+  if (kind === "drill") {
+    const plot = GROVE_PLOTS.find((p) => p.id === target);
+    if (!plot) return null;
+    return {
+      x: Math.max(plot.x, Math.min(plot.x + plot.w, s.x)),
+      y: Math.max(plot.y, Math.min(plot.y + plot.h, s.y)),
+    };
+  }
   if (kind === "sharpen") return { x: s.x, y: s.y };
   const plot = s.plots.find((p) => p.id === target);
   if (plot) return { x: plot.x, y: plot.y };
@@ -461,6 +496,9 @@ export function targets(s: GameState): Target[] {
   if ((s.wing ?? 0) === 0 && s.xiang64) {
     list.push({ id: "xiang64", name: "Xiang Su", kind: "xiang64", x: s.xiang64.x - 8, y: s.xiang64.y - 22, w: 16, h: 26 });
   }
+  if ((s.wing ?? 0) === 0 && s.maid) {
+    list.push({ id: "maid", name: "Milkmaid", kind: "maid", x: s.maid.x - 8, y: s.maid.y - 22, w: 16, h: 26 });
+  }
   for (const g of s.ground) {
     list.push({
       id: g.id,
@@ -581,6 +619,7 @@ function verb(s: GameState, t: Target): string {
   if (t.kind === "reaper") return "Greet the wizard";
   if (t.kind === "hand") return "Greet the field hand";
   if (t.kind === "xiang64") return "Greet Xiang Su";
+  if (t.kind === "maid") return "Greet the milkmaid";
   if (t.kind === "flower") {
     const f = s.flowers?.find((fl) => fl.id === t.id);
     return f && f.bloom >= 2 ? `Pick ${f.name.toLowerCase()}` : t.name;
@@ -593,6 +632,13 @@ export function promptAt(s: GameState, px: number, py: number): string {
   if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= GATE_REACH && Math.hypot(px - gate.x, py - gate.y) <= 40) {
     return `Cross to ${gate.name}  [E]`;
   }
+  if ((s.wing ?? 0) === 2) {
+    if (!inReach(s, px, py)) return "";
+    const plot = grovePlotAt(px, py);
+    if (!plot) return "";
+    if (plot.skill === "magic") return "Magic stays on the courtyard seal.  [E]";
+    return `Train ${SKILL_NAME[plot.skill]}  [E]`;
+  }
   if ((s.wing ?? 0) !== 0) return "";
   if (!inReach(s, px, py)) return "";
   const t = pickTarget(s, px, py);
@@ -603,6 +649,12 @@ export function promptAt(s: GameState, px: number, py: number): string {
 export function examineAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
   if (gate && Math.hypot(px - gate.x, py - gate.y) <= 40) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
+  if ((s.wing ?? 0) === 2) {
+    const plot = grovePlotAt(px, py);
+    if (plot?.skill === "magic") return "A marker only. Elemental magic is trained on the courtyard seal.";
+    if (plot) return `${plot.name}. A place to train ${SKILL_NAME[plot.skill]}.`;
+    return "The skill grove. Every trade has a plot. Magic does not. That stays on the seal.";
+  }
   if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
   if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
   const used = assetUseAt(px, py);
@@ -679,6 +731,13 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   }
   const crossed = crossSide(s, px, py);
   if (crossed) return crossed;
+  if ((s.wing ?? 0) === 2) {
+    if (!inReach(s, px, py)) return { msg: "Too far." };
+    const plot = grovePlotAt(px, py);
+    if (!plot) return { msg: "Open grass. The plots are the work." };
+    if (plot.skill === "magic") return { msg: "Magic is trained on the courtyard seal, not here." };
+    return startAct(s, "drill", plot.id, 0.8);
+  }
   if ((s.wing ?? 0) !== 0) {
     return { msg: s.wing === 1 ? "Nothing here is a chore. The grove keeps itself." : "Nothing here is yours to use. It is evidence." };
   }
@@ -716,6 +775,7 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (t.kind === "reaper") return greetReaper(s);
   if (t.kind === "hand") return greetHand(s);
   if (t.kind === "xiang64") return greetXiang(s);
+  if (t.kind === "maid") return greetMaid(s);
   if (t.kind === "flower") return pickFlower(s, t.id);
   return { msg: "Nothing to use here." };
 }
@@ -891,6 +951,19 @@ function greetXiang(s: GameState): InteractResult {
   return { msg: `Xiang Su keeps the sidewalk. She lets him pass.${grant(s, "ritual", 2)}` };
 }
 
+function greetMaid(s: GameState): InteractResult {
+  ensureMaid(s);
+  const m = s.maid;
+  if (!m) return { msg: "She is with the herd." };
+  const dx = s.x - m.x;
+  const dy = s.y - m.y;
+  if (Math.abs(dx) >= Math.abs(dy)) m.dir = dx >= 0 ? "e" : "w";
+  else m.dir = dy >= 0 ? "s" : "n";
+  m.route = [];
+  m.pause = 1.8;
+  return { msg: `The milkmaid keeps the cow. The pail can wait.${grant(s, "farming", 3)}` };
+}
+
 function pickFlower(s: GameState, id: string): InteractResult {
   const f = s.flowers?.find((fl) => fl.id === id);
   if (!f) return { msg: "The bed is empty." };
@@ -942,6 +1015,12 @@ function grant(s: GameState, id: SkillId, amount: number): string {
 export function resolveAction(s: GameState): string {
   const act = s.action;
   if (!act) return s.message;
+  if (act.kind === "drill") {
+    const plot = GROVE_PLOTS.find((p) => p.id === act.target);
+    if (!plot || plot.skill === "magic") return "Magic is trained on the courtyard seal.";
+    s.stamina = Math.max(0, s.stamina - 2);
+    return `He works the ${plot.name.toLowerCase()}.${grant(s, plot.skill, 8)}`;
+  }
   const tool = active(s);
   const cost = (stam: number, floorLoss: number) => {
     s.stamina = Math.max(0, s.stamina - stam);
@@ -1447,7 +1526,7 @@ export function step(s: GameState, dt: number, input: Input) {
     }
     if (s.stamina <= 0) down(s);
   }
-  s.time = Math.min(0.999, s.time + stepDt / 720);
+  s.time = Math.min(0.999, s.time + stepDt / DAY_LEN);
   stepWeather(s, stepDt);
   if (!swinging) tendSelf(s, stepDt, input);
   const wing = s.wing ?? 0;
@@ -1462,6 +1541,9 @@ export function step(s: GameState, dt: number, input: Input) {
       s.message = "A bird sang the old tone. The hurt loosens.";
     }
     tickCatVoice(s, stepDt);
+    tickRooster(s);
+    tickCow(s);
+    tickGoat(s);
   }
 }
 
@@ -1523,7 +1605,11 @@ function tendSelf(s: GameState, dt: number, input: Input) {
     returnFromSvarga(s, dt);
     return;
   }
-  if ((s.wing ?? 0) !== 0) {
+  if ((s.wing ?? 0) === 2) {
+    trainGrove(s, dt);
+    return;
+  }
+  if ((s.wing ?? 0) === -1) {
     life.errand = null;
     life.route = [];
     s.speed = 0;
@@ -1634,7 +1720,7 @@ function walkToSvarga(s: GameState, dt: number): boolean {
     life.chore = "";
     life.skip = "svarga";
     life.skipUntil = s.clock + 18;
-    s.cross = { t: 0, wing: 1, x: 86, y: 212, dir: "e", name: "Svarga", moved: false };
+    s.cross = { t: 0, wing: 1, x: 236, y: 320, dir: "w", name: "Svarga", moved: false };
     s.message = "He walks through the east gate into Svarga.";
     return true;
   }
@@ -1643,7 +1729,29 @@ function walkToSvarga(s: GameState, dt: number): boolean {
   return true;
 }
 
-const HOME_GATE = { x: 40, y: 202 };
+const HOME_GATE = { x: HEAVEN_GATE.x, y: HEAVEN_GATE.y };
+
+let groveTurn = 0;
+
+function trainGrove(s: GameState, dt: number) {
+  const life = s.life;
+  const plots = GROVE_PLOTS.filter((p) => p.skill !== "magic");
+  const plot = plots[groveTurn % plots.length]!;
+  const cx = plot.x + plot.w / 2;
+  const cy = Math.min(plot.y + plot.h + 10, 490);
+  if (Math.hypot(s.x - cx, s.y - cy) > 22) {
+    const step = followGoal(s, dt, cx, cy, 36);
+    if (step === "stuck") life.route = [];
+    return;
+  }
+  life.route = [];
+  s.speed = 0;
+  if (life.skipUntil > s.clock) return;
+  const note = grant(s, plot.skill, 6);
+  s.message = `He practices at the ${plot.name.toLowerCase()}.${note}`;
+  life.skipUntil = s.clock + 2.6;
+  groveTurn = (groveTurn + 1) % plots.length;
+}
 
 function returnFromSvarga(s: GameState, dt: number): void {
   const life = s.life;
@@ -1656,7 +1764,7 @@ function returnFromSvarga(s: GameState, dt: number): void {
     life.route = [];
     s.message = "He turns back toward the home land.";
   }
-  const atGate = s.x < 110 && s.y > 170 && s.y < 260 && Math.hypot(s.x - HOME_GATE.x, s.y - HOME_GATE.y) <= 52;
+  const atGate = Math.hypot(s.x - HOME_GATE.x, s.y - HOME_GATE.y) <= 48;
   if (atGate) {
     s.speed = 0;
     life.route = [];
@@ -1668,7 +1776,7 @@ function returnFromSvarga(s: GameState, dt: number): void {
     s.message = "He walks back through the gate to the home land.";
     return;
   }
-  const step = followGoal(s, dt, 78, 208, 36);
+  const step = followGoal(s, dt, 236, 320, 36);
   if (step === "stuck") life.route = [];
 }
 
@@ -2042,6 +2150,13 @@ function autoBlocked(x: number, y: number): boolean {
 
 const PATH_G = 8;
 
+function axisElbow(x0: number, y0: number, x1: number, y1: number): number[] | null {
+  if (Math.abs(x1 - x0) < 1 || Math.abs(y1 - y0) < 1) return null;
+  if (segmentOpen(x0, y0, x1, y0) && segmentOpen(x1, y0, x1, y1)) return [x1, y0, x1, y1];
+  if (segmentOpen(x0, y0, x0, y1) && segmentOpen(x0, y1, x1, y1)) return [x0, y1, x1, y1];
+  return null;
+}
+
 export function autoRoute(x0: number, y0: number, x1: number, y1: number, axis = false): number[] {
   const cols = Math.ceil(347 / PATH_G);
   const rows = Math.ceil(960 / PATH_G);
@@ -2073,8 +2188,13 @@ export function autoRoute(x0: number, y0: number, x1: number, y1: number, axis =
   const start = key(sx, sy);
   const goal = key(gx, gy);
   if (start === goal) return [x1, y1];
+  if (axis) {
+    const elbow = axisElbow(x0, y0, x1, y1);
+    if (elbow) return elbow;
+  }
   const gscore = new Map<number, number>([[start, 0]]);
   const prev = new Map<number, number>();
+  const came = new Map<number, number>();
   const openSet = new Set<number>([start]);
   const dirs = axis
     ? [
@@ -2112,16 +2232,21 @@ export function autoRoute(x0: number, y0: number, x1: number, y1: number, axis =
     const cx = cur % cols;
     const cy = (cur / cols) | 0;
     const base = gscore.get(cur) ?? 1e9;
-    for (const [dx, dy] of dirs) {
+    const arrived = came.get(cur);
+    for (let di = 0; di < dirs.length; di++) {
+      const dx = dirs[di]![0]!;
+      const dy = dirs[di]![1]!;
       const nx = cx + dx;
       const ny = cy + dy;
       if (!open(nx, ny)) continue;
       if (dx !== 0 && dy !== 0 && (!open(cx + dx, cy) || !open(cx, cy + dy))) continue;
       const nk = key(nx, ny);
-      const cost = base + (dx !== 0 && dy !== 0 ? 1.4 : 1);
+      const turn = axis && arrived !== undefined && arrived !== di ? 0.65 : 0;
+      const cost = base + (dx !== 0 && dy !== 0 ? 1.4 : 1) + turn;
       if (cost < (gscore.get(nk) ?? 1e9)) {
         gscore.set(nk, cost);
         prev.set(nk, cur);
+        came.set(nk, di);
         openSet.add(nk);
       }
     }
@@ -2292,8 +2417,9 @@ function stepWeather(s: GameState, dt: number) {
             ? "Rain. The soil, the plants, and the trees take the water."
             : "The rain passes. The sun is back.";
     }
+    const pace = DAY_LEN / 720;
     s.weather = next;
-    s.weatherLeft = next === "clear" ? 32 + unitRand(s) * 22 : next === "storm" ? 14 + unitRand(s) * 10 : 20 + unitRand(s) * 16;
+    s.weatherLeft = (next === "clear" ? 32 + unitRand(s) * 22 : next === "storm" ? 14 + unitRand(s) * 10 : 20 + unitRand(s) * 16) * pace;
   }
   if (s.weather === "clear") {
     s.wet = Math.max(0, s.wet - dt * 0.012);
@@ -2522,7 +2648,7 @@ function followRoute(body: { x: number; y: number; route?: number[]; dir?: "n" |
     }
     if (footBlocked(tx, ty)) return "stuck";
     const moved = slideTo(body, tx, ty, speed, dt, axis);
-    faceDelta(body, body.x - x0, body.y - y0);
+    faceDelta(body, tx - x0, ty - y0);
     if (moved === "stuck") return "stuck";
     if (moved === "arrive") body.route = body.route.slice(2);
     return body.route && body.route.length >= 2 ? "walk" : "arrive";
@@ -2539,8 +2665,8 @@ function herdGoal(s: GameState, a: Animal): { x: number; y: number; intent: Anim
     }
     return {
       intent: "graze",
-      x: GOAT_PEN.x + 8 + unitRand(s) * (GOAT_PEN.w - 16),
-      y: GOAT_PEN.y + 8 + unitRand(s) * (GOAT_PEN.h - 12),
+      x: GOAT_PEN.x + 10 + unitRand(s) * (GOAT_PEN.w - 20),
+      y: GOAT_PEN.y + 6 + unitRand(s) * Math.max(4, GOAT_PEN.h - 12),
     };
   }
   const pd = Math.hypot(a.x - s.x, a.y - s.y);
@@ -2875,6 +3001,35 @@ const FARM_SPOTS: { x: number; y: number }[] = [
 ];
 const HAND_JOBS: Array<"water" | "shovel" | "scythe" | "axe" | "hammer"> = ["water", "shovel", "scythe", "axe", "hammer"];
 
+const MAID_SPOTS: { x: number; y: number }[] = [
+  { x: 96, y: 276 },
+  { x: 128, y: 304 },
+  { x: 72, y: 320 },
+  { x: 148, y: 268 },
+  { x: 110, y: 344 },
+  { x: 84, y: 252 },
+];
+
+function stepMaid(s: GameState, dt: number) {
+  ensureMaid(s);
+  const m = s.maid;
+  if (!m || (s.wing ?? 0) !== 0) return;
+  m.poseT += dt;
+  if (m.pause > 0) {
+    m.pause -= dt;
+    return;
+  }
+  if (m.route.length >= 2) {
+    const moved = followRoute(m, 16, dt, true);
+    if (moved !== "walk") {
+      m.route = [];
+      m.pause = 1.2 + unitRand(s) * 1.6;
+    }
+    return;
+  }
+  m.route = gateRoute(m, pickSpot(s, MAID_SPOTS), true);
+}
+
 function stepXiang64(s: GameState, dt: number) {
   ensureXiang64(s);
   const n = s.xiang64;
@@ -2942,6 +3097,7 @@ function stepCritters(s: GameState, dt: number) {
   stepBirds(s, dt);
   stepReaper(s, dt);
   stepHand(s, dt);
+  stepMaid(s, dt);
   stepXiang64(s, dt);
   for (const a of s.animals) {
     if (!a.route) a.route = [];
@@ -2960,6 +3116,16 @@ function stepCritters(s: GameState, dt: number) {
       const goal = herdGoal(s, a);
       a.intent = goal.intent;
       a.route = gateRoute(a, goal, true);
+      if (a.kind === "goat" && s.goatPen !== 2) {
+        const leaves = (px: number, py: number) =>
+          px < GOAT_PEN.x + 4 || px > GOAT_PEN.x + GOAT_PEN.w - 4 || py < GOAT_PEN.y + 2 || py > GOAT_PEN.y + GOAT_PEN.h - 2;
+        for (let i = 0; i + 1 < a.route.length; i += 2) {
+          if (leaves(a.route[i]!, a.route[i + 1]!)) {
+            a.route = [goal.x, goal.y];
+            break;
+          }
+        }
+      }
       if (a.route.length < 2) {
         a.pause = 0.8;
         continue;
@@ -2985,7 +3151,7 @@ function stepCritters(s: GameState, dt: number) {
 
 function cutGoat(s: GameState, x: number, y: number) {
   if (!s.goatSlash) s.goatSlash = [];
-  s.goatSlash.push({ x, y, t: 0.36 });
+  s.goatSlash.push({ x, y, t: 0.52 });
 }
 
 function parkGoat(s: GameState, g: Animal) {

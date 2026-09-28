@@ -166,11 +166,8 @@ export function renderWebManifest(hostHeader) {
       id: "/",
       start_url: "/",
       scope: "/",
-      // A phone must open this in the browser. "standalone" makes some
-      // handsets look for an installed application and fail the link.
-      display: "browser",
-      prefer_related_applications: false,
-      background_color: "#172014",
+      display: "standalone",
+      background_color: "#000000",
       theme_color: "#000000",
       icons: [
         {
@@ -187,8 +184,8 @@ export function renderWebManifest(hostHeader) {
 
 export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
   return [
-    // Display stays "browser" in the manifest so a phone opens the page in
-    // Chrome or Safari instead of hunting for a native application.
+    // Standalone display comes from the manifest ("display": "standalone");
+    // the legacy *-web-app-capable metas it replaces are deliberately absent.
     ["manifest", '<link rel="manifest" href="/__grok/manifest.webmanifest">'],
     ["apple-touch-icon", '<link rel="apple-touch-icon" href="/__grok/icon-180.png">'],
     [
@@ -353,14 +350,10 @@ export function grokOgHeadTags({
   if (description) {
     tags.push(`<meta property="og:description" content="${escapeHtml(description)}">`);
   }
-  const kind = String(site.type ?? "").toLowerCase();
-  if (kind === "x:game") {
+  if (String(site.type ?? "").toLowerCase() === "x:game") {
     tags.push(`<meta property="og:type" content="x:game">`);
-  } else if (kind === "website") {
-    tags.push(`<meta property="og:type" content="website">`);
   }
   if (publicHost) {
-    tags.push(`<meta property="og:url" content="https://${escapeHtml(publicHost)}/">`);
     const asset = resolveOgCardAsset(site, cwd);
     const custom = Boolean(asset);
     let image = custom
@@ -371,7 +364,7 @@ export function grokOgHeadTags({
     tags.push(`<meta property="og:image" content="${escapeHtml(image)}">`);
     tags.push(`<meta property="og:image:width" content="1200">`);
     tags.push(`<meta property="og:image:height" content="630">`);
-    const banner = kind === "x:game" ? String(site.banner ?? "").trim() : "";
+    const banner = String(site.banner ?? "").trim();
     if (banner) {
       const bannerUrl = `https://${publicHost}${banner.startsWith("/") ? banner : `/${banner}`}`;
       tags.push(`<meta property="x:game:image" content="${escapeHtml(bannerUrl)}">`);

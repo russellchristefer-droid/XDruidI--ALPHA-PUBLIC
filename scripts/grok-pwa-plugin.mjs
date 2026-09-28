@@ -99,10 +99,6 @@ function wrapHtmlResponses(middlewares, cwd) {
       return;
     }
 
-    res.setHeader("cache-control", "no-store, max-age=0");
-    res.setHeader("pragma", "no-cache");
-    res.setHeader("expires", "0");
-
     const originalWrite = res.write.bind(res);
     const originalEnd = res.end.bind(res);
     const host = requestHost(req);
@@ -119,12 +115,7 @@ function wrapHtmlResponses(middlewares, cwd) {
       mode = isHtml && !encoded ? "inject" : "passthrough";
       // Streaming SSR flushes headers before the first body chunk, so the
       // header may no longer be removable — chunked responses don't carry one.
-      if (mode === "inject" && !res.headersSent) {
-        res.setHeader("cache-control", "no-store, max-age=0");
-        res.setHeader("pragma", "no-cache");
-        res.setHeader("expires", "0");
-        res.removeHeader("content-length");
-      }
+      if (mode === "inject" && !res.headersSent) res.removeHeader("content-length");
       return mode;
     };
 

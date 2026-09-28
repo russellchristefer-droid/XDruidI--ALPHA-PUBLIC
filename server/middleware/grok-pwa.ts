@@ -53,9 +53,6 @@ function injectHeadStreaming(response: Response, host: string): Response {
   );
   const headers = new Headers(response.headers);
   headers.delete("content-length");
-  headers.set("cache-control", "no-store, max-age=0");
-  headers.set("pragma", "no-cache");
-  headers.set("expires", "0");
   return new Response(transformed, {
     status: response.status,
     statusText: response.statusText,

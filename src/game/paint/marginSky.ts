@@ -1,6 +1,6 @@
 /** Space behind every map. The world is drawn on top, so this fills the whole screen. */
 
-const FAR = ["#2a3c68", "#6a4030", "#403060", "#1e4a48", "#584020"] as const;
+const FAR = ["#1a2438", "#241820", "#1c1830", "#102028", "#201810"] as const;
 const NEAR = ["#ffffff", "#7ec8ff", "#ffe14a", "#ff5a4a", "#ff4ad8", "#5aff9a", "#c080ff"] as const;
 
 function hash(n: number): number {
@@ -28,91 +28,80 @@ function disk(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, 
 
 function renderMargin(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = "#02030a";
+  ctx.fillStyle = "#010106";
   ctx.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y += 2) {
-    ctx.fillStyle = (y & 2) === 0 ? "#050712" : "#080c18";
-    ctx.fillRect(0, y, w, 1);
-  }
-
-  nebula(ctx, w * 0.22, h * 0.28, Math.max(28, w * 0.16), Math.max(16, h * 0.1), "#ff7ae0", "#c02098", "#401050", 11);
-  nebula(ctx, w * 0.72, h * 0.22, Math.max(24, w * 0.14), Math.max(14, h * 0.08), "#9af6ff", "#1a90c8", "#062838", 29);
-  nebula(ctx, w * 0.48, h * 0.62, Math.max(30, w * 0.18), Math.max(12, h * 0.07), "#ffe070", "#e06018", "#381008", 47);
-  nebula(ctx, w * 0.82, h * 0.55, Math.max(18, w * 0.1), Math.max(14, h * 0.09), "#c8a0ff", "#5830b0", "#180830", 71);
-
-  const farCount = Math.min(900, Math.max(140, (w * h) / 280 | 0));
-  for (let i = 0; i < farCount; i++) {
+  const dust = Math.min(900, Math.max(80, (w * h) / 700 | 0));
+  for (let i = 0; i < dust; i++) {
     const x = hash(i * 3 + 1) * w | 0;
     const y = hash(i * 3 + 2) * h | 0;
-    pix(ctx, x, y, FAR[i % FAR.length]!);
+    pix(ctx, x, y, i % 5 === 0 ? "#14101c" : "#0a0c14");
   }
 
-  const nearCount = Math.min(220, Math.max(40, (w * h) / 1400 | 0));
+  const veils: Array<[number, number, number, string, string, number]> = [
+    [0.2, 0.32, 520, "#2a1038", "#8a3878", 11],
+    [0.68, 0.26, 480, "#062028", "#1a6870", 29],
+    [0.46, 0.7, 560, "#241408", "#6a4018", 47],
+    [0.84, 0.55, 360, "#140828", "#4a2878", 71],
+    [0.1, 0.74, 280, "#1c0c10", "#5a2018", 91],
+  ];
+  for (const [ux, uy, len, dustC, glow, seed] of veils) {
+    wisp(ctx, ux * w, uy * h, len, dustC, glow, seed);
+  }
+
+  const farCount = Math.min(700, Math.max(100, (w * h) / 420 | 0));
+  for (let i = 0; i < farCount; i++) {
+    pix(ctx, hash(i * 3 + 9) * w, hash(i * 3 + 4) * h, FAR[i % FAR.length]!);
+  }
+  const nearCount = Math.min(90, Math.max(24, (w * h) / 4000 | 0));
   for (let i = 0; i < nearCount; i++) {
     const x = hash(i * 7 + 4) * w | 0;
     const y = hash(i * 7 + 8) * h | 0;
-    const color = NEAR[i % NEAR.length]!;
+    const color = i % 6 === 0 ? NEAR[i % NEAR.length]! : "#c8d0dc";
     pix(ctx, x, y, color);
-    if (i % 5 === 0) {
-      pix(ctx, x - 1, y, color);
-      pix(ctx, x + 1, y, color);
-      pix(ctx, x, y - 1, color);
-      pix(ctx, x, y + 1, color);
-    } else if (i % 3 === 0) {
-      pix(ctx, x + 1, y, "#8b95b0");
+    if (i % 11 === 0) {
+      pix(ctx, x - 1, y, "#6a7488");
+      pix(ctx, x + 1, y, "#6a7488");
     }
   }
 
-  const clusters: Array<[number, number, number, number]> = [
-    [0.18, 0.2, 17, 28],
-    [0.72, 0.12, 41, 22],
-    [0.3, 0.7, 63, 34],
-    [0.86, 0.62, 89, 18],
-    [0.5, 0.46, 13, 16],
-  ];
-  for (const [ux, uy, seed, count] of clusters) {
-    const cx = ux * w | 0;
-    const cy = uy * h | 0;
-    for (let i = 0; i < count; i++) {
-      const a = hash(seed + i) * Math.PI * 2;
-      const rad = 1 + hash(seed + i + 3) * (8 + (i % 5) * 3);
-      pix(ctx, cx + Math.cos(a) * rad, cy + Math.sin(a) * rad * 0.62, NEAR[i % NEAR.length]!);
-    }
-  }
-
-  paintMoon(ctx, w * 0.88 | 0, h * 0.12 | 0, Math.max(6, Math.min(w, h) / 48 | 0));
-  paintPlanet(ctx, w * 0.14 | 0, h * 0.8 | 0, Math.max(7, Math.min(w, h) / 32 | 0), "#f0d7a6", "#c49858", "#6e4c2c", true);
-  paintPlanet(ctx, w * 0.78 | 0, h * 0.74 | 0, Math.max(4, Math.min(w, h) / 70 | 0), "#d7e8f4", "#6a98b8", "#1c3044", false);
-  paintGalaxy(ctx, w * 0.42 | 0, h * 0.22 | 0);
-  paintComet(ctx, w * 0.62 | 0, h * 0.3 | 0);
-  for (let i = 0; i < 14; i++) {
-    const x = hash(200 + i) * w | 0;
-    const y = (h * 0.9 + hash(300 + i) * h * 0.08) | 0;
-    pix(ctx, x, y, "#6a5844");
-    pix(ctx, x + 1, y, "#3a3028");
+  paintMoon(ctx, w * 0.88 | 0, h * 0.18 | 0, Math.max(5, Math.min(w, h) / 64 | 0));
+  paintPlanet(ctx, w * 0.18 | 0, h * 0.78 | 0, Math.max(6, Math.min(w, h) / 40 | 0), "#c8b090", "#7a6244", "#2c2014", true);
+  paintPlanet(ctx, w * 0.74 | 0, h * 0.22 | 0, Math.max(3, Math.min(w, h) / 90 | 0), "#b8c8d4", "#4a6878", "#141c24", false);
+  paintGalaxy(ctx, w * 0.42 | 0, h * 0.48 | 0);
+  for (let i = 0; i < 9; i++) {
+    const x = hash(400 + i) * w | 0;
+    const y = hash(500 + i) * h | 0;
+    pix(ctx, x, y, "#5a5048");
+    if (i % 2 === 0) pix(ctx, x + 1, y + (i % 3) - 1, "#2a241c");
   }
 }
 
-function nebula(
+function wisp(
   ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  core: string,
-  mid: string,
-  edge: string,
+  x0: number,
+  y0: number,
+  len: number,
+  dust: string,
+  glow: string,
   seed: number,
 ): void {
-  const steps = Math.min(420, Math.max(80, (rx * ry * 0.22) | 0));
-  for (let i = 0; i < steps; i++) {
-    const a = hash(seed + i * 1.7) * Math.PI * 2;
-    const u = Math.pow(hash(seed + i * 2.3 + 4), 0.55);
-    const x = cx + Math.cos(a) * rx * u;
-    const y = cy + Math.sin(a) * ry * u;
-    const color = u < 0.22 ? core : u < 0.55 ? mid : edge;
-    pix(ctx, x, y, color);
-    if (u < 0.18 && (i & 3) === 0) pix(ctx, x + 1, y, "#ffffff");
+  let x = x0;
+  let y = y0;
+  let vx = hash(seed) * 2 - 1;
+  let vy = hash(seed + 1) * 1.2 - 0.6;
+  for (let i = 0; i < len; i++) {
+    const roll = hash(seed + i * 1.7);
+    if (roll > 0.22) pix(ctx, x, y, dust);
+    if (roll > 0.93) pix(ctx, x + 1, y, glow);
+    if (i % 17 === 0) pix(ctx, x, y + 1, dust);
+    vx += (hash(seed + i * 3.1) - 0.5) * 0.45;
+    vy += (hash(seed + i * 2.3) - 0.5) * 0.28;
+    const sp = Math.hypot(vx, vy) || 1;
+    vx = (vx / sp) * (0.8 + hash(seed + i) * 1.6);
+    vy = (vy / sp) * (0.5 + hash(seed + i + 2) * 1.1);
+    x += vx;
+    y += vy;
+    if (x < 4 || y < 4 || x > 8000 || y > 8000) break;
   }
 }
 
@@ -170,14 +159,20 @@ function paintPlanet(
 }
 
 function paintGalaxy(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
-  for (let x = -16; x <= 16; x++) {
-    const bulge = 3 - (Math.abs(x) / 6 | 0);
-    for (let y = -bulge; y <= bulge; y++) {
-      if (hash(x * 9 + y * 4 + 80) > 0.45) continue;
-      const color = Math.abs(x) < 3 ? "#fff6d0" : Math.abs(y) === bulge ? "#3a2068" : "#9eb6ff";
+  for (let arm = 0; arm < 2; arm++) {
+    const turn = arm * Math.PI;
+    for (let i = 0; i < 90; i++) {
+      const t = i / 90;
+      const a = turn + t * 3.4;
+      const rad = 2 + t * 16;
+      const x = Math.cos(a) * rad;
+      const y = Math.sin(a) * rad * 0.42;
+      const color = t < 0.2 ? "#fff6d0" : t < 0.55 ? "#9eb6ff" : "#5a3888";
       pix(ctx, cx + x, cy + y, color);
+      if (i % 4 === 0) pix(ctx, cx + x, cy + y + 1, "#3a2068");
     }
   }
+  disk(ctx, cx, cy, 3, "#fffaf0", "#ffe9a0", "#c08040");
 }
 
 function paintComet(ctx: CanvasRenderingContext2D, x: number, y: number): void {
@@ -217,42 +212,42 @@ export function drawMarginSky(
     skyPlate = { w, h, canvas };
   }
   ctx.drawImage(skyPlate.canvas, 0, 0);
-  for (let i = 0; i < 42; i++) {
+  for (let i = 0; i < 64; i++) {
     const x = (hash(i * 5 + 2) * w) | 0;
     const y = (hash(i * 5 + 6) * h) | 0;
-    const color = NEAR[i % NEAR.length]!;
-    const pulse = Math.sin(time * (1.2 + (i % 6) * 0.45) + i * 0.8);
-    if (pulse < -0.15) continue;
-    pix(ctx, x, y, pulse > 0.65 ? "#ffffff" : color);
-    if (pulse > 0.45) {
-      pix(ctx, x - 1, y, color);
-      pix(ctx, x + 1, y, color);
-      pix(ctx, x, y - 1, color);
-      pix(ctx, x, y + 1, color);
+    const pulse = Math.sin(time * (2.1 + (i % 5) * 0.3) + i * 0.6);
+    const dim = i % 5 === 0 ? NEAR[i % NEAR.length]! : "#8a96a8";
+    pix(ctx, x, y, pulse > 0.82 ? "#fffaf0" : pulse > 0.1 ? dim : "#2a3140");
+    if (pulse > 0.5) {
+      const arm = i % 3 === 0 ? "#d8c8a0" : "#9ec4e8";
+      pix(ctx, x - 1, y, arm);
+      pix(ctx, x + 1, y, arm);
+      pix(ctx, x, y - 1, arm);
+      pix(ctx, x, y + 1, arm);
     }
-    if (pulse > 0.82) {
-      pix(ctx, x - 2, y, color);
-      pix(ctx, x + 2, y, color);
-    }
-  }
-  const blink = Math.sin(time * 3.2);
-  if (blink > 0.2) {
-    const px = (w * 0.58) | 0;
-    const py = (h * 0.16) | 0;
-    pix(ctx, px, py, "#ffffff");
-    if (blink > 0.75) {
-      for (let k = 1; k <= 5; k++) {
-        pix(ctx, px + k, py, "#7ec8ff");
-        pix(ctx, px - k, py, "#7ec8ff");
-      }
+    if (pulse > 0.88) {
+      pix(ctx, x - 2, y, "#fffaf0");
+      pix(ctx, x + 2, y, "#fffaf0");
     }
   }
-  const comet = ((time * 22) | 0) % (w + 48);
-  const cy = (h * 0.4) | 0;
-  ctx.fillStyle = "#ff4ad8";
-  ctx.fillRect(comet - 12, cy, 4, 1);
-  ctx.fillStyle = "#7ec8ff";
-  ctx.fillRect(comet - 8, cy, 6, 1);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(comet, cy - 1, 2, 2);
+  const blink = Math.sin(time * 2.2);
+  if (blink > 0.35) {
+    const px0 = (w * 0.63) | 0;
+    const py0 = (h * 0.22) | 0;
+    pix(ctx, px0, py0, "#d0d8e8");
+    if (blink > 0.8) {
+      pix(ctx, px0 - 1, py0, "#3a5878");
+      pix(ctx, px0 + 1, py0, "#3a5878");
+    }
+  }
+  const comet = ((time * 18) | 0) % (w + 40);
+  const cy = (h * 0.36 + Math.sin(time * 0.4) * h * 0.04) | 0;
+  ctx.fillStyle = "#3a2848";
+  ctx.fillRect(comet - 10, cy, 6, 1);
+  ctx.fillStyle = "#c8b8d8";
+  ctx.fillRect(comet - 3, cy, 2, 1);
+  ctx.fillStyle = "#f4f0e8";
+  ctx.fillRect(comet, cy, 1, 1);
+  const drift = ((time * 6) | 0) % (w + 16);
+  pix(ctx, drift, (h * 0.58 + Math.sin(time * 0.3) * 6) | 0, "#4a443c");
 }

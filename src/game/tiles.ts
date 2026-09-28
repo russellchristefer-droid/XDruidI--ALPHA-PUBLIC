@@ -99,13 +99,14 @@ export function pickRect(kind: "tile" | "cell" | "row" | "column", w: { x: numbe
 export type DevRead = {
   x?: number;
   y?: number;
-  wing?: -1 | 0 | 1;
+  wing?: -1 | 0 | 1 | 2;
   weather?: string;
 };
 
 function landName(wing: number | undefined): string {
   if (wing === -1) return "Naraka";
-  if (wing === 1) return "Svarga";
+  if (wing === 1) return "Heaven";
+  if (wing === 2) return "Skill grove";
   return "homestead";
 }
 

@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260928lane";
+export const ART = "20260928spell1";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -9,6 +9,8 @@ const URLS: Record<string, string> = {
   yard: art("/game/yard.png"),
   heavenIsle: art("/game/land/heaven-isle.png"),
   hellIsle: art("/game/land/hell-isle.png"),
+  vimana: art("/game/land/vimana.png"),
+  space: art("/game/land/space.png"),
   meadow: art("/game/the-meadow.png"),
   idle: art("/game/char/idle.png"),
   rod: "/game/char/rod.png?v=20260927rod7",
@@ -114,6 +116,7 @@ const URLS: Record<string, string> = {
   landWater: art("/game/land/water.png"),
   svarga: art("/game/land/svarga.png"),
   naraka: art("/game/land/naraka.png"),
+  grove: art("/game/land/grove.png"),
   portalSvarga: art("/game/portal/svarga.png"),
   portalNaraka: art("/game/portal/naraka.png"),
   seraphimIdle: art("/game/angels/Seraphim_Idle.png"),
@@ -147,11 +150,14 @@ const URLS: Record<string, string> = {
   handHammer: art("/game/char/hand/hammer.png"),
   handPickaxe: art("/game/char/hand/pickaxe.png"),
   xiang64Idle: art("/game/char/xiangsu/idle64.png"),
+  maidS: art("/game/char/maid/south.png"),
+  maidN: art("/game/char/maid/north.png"),
+  maidW: art("/game/char/maid/west.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "world", label: "World", keys: ["yard", "meadow", "path", "occlude", "house", "rocks", "meadowDress"] },
-  { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater", "farmExtend", "svarga", "naraka", "portalSvarga", "portalNaraka"] },
+  { id: "land", label: "Land", keys: ["landGrass", "landSoil", "landTilled", "landWater", "farmExtend", "svarga", "naraka", "grove", "portalSvarga", "portalNaraka", "heavenIsle", "hellIsle", "vimana", "space"] },
   { id: "angels", label: "Angels", keys: ["seraphimIdle", "seraphimWalk", "seraphimFly", "seraphimAttack", "archangelFly", "archangelAttack", "cherubFly", "cherubShoot", "cherubArrow"] },
   { id: "demons", label: "Demons", keys: ["demonMage"] },
   {
@@ -172,6 +178,7 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   },
   { id: "hand", label: "Field hand", keys: ["handIdle", "handWalk", "handHandsIdle", "handHandsWalk", "handWater", "handShovel", "handScythe", "handAxe", "handHammer", "handPickaxe"] },
   { id: "xiang", label: "Xiang Su", keys: ["xiang64Idle"] },
+  { id: "maid", label: "Milkmaid", keys: ["maidS", "maidN", "maidW"] },
   { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "handsUpIdle", "handsUpWalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "blackCat", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
@@ -205,6 +212,11 @@ const FIRST = [
   "plainWalk",
   "portalSvarga",
   "portalNaraka",
+  "vimana",
+  "space",
+  "heavenIsle",
+  "hellIsle",
+  "grove",
 ];
 
 /** The other farmer. Loaded with the yard, not after every other picture. */
@@ -217,6 +229,9 @@ const SOON = [
   "handScythe",
   "handShovel",
   "xiang64Idle",
+  "maidS",
+  "maidN",
+  "maidW",
   "fireball",
   "nova",
   "holy",

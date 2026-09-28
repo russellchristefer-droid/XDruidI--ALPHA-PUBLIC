@@ -24,10 +24,9 @@ import {
   skillLevel,
   skillFill,
 } from "@/game/content";
-import { farmRackAt, pressFarmRack } from "@/game/paint/farmPortals";
-import { drawMarginSky } from "@/game/paint/marginSky";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
-import { armWind, heavyWind, onSound, playBirdsongs, setAnimalVolume, setMusicVolume, setVolume, setWeatherVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
+import { drawMarginSky } from "@/game/paint/marginSky";
+import { armWind, heavyWind, onSound, playBirdsongs, setAnimalVolume, setBellVolume, setMusicVolume, setVolume, setWeatherVolume, setWind, soundState, syncSky, tollHour, toggleMute } from "@/game/audio";
 import { drawWorld } from "@/game/draw";
 import {
   assignHotbar,
@@ -127,6 +126,7 @@ function placeName(s: GameState): string {
   const wing = s.wing ?? 0;
   if (wing === 1) return "Svarga";
   if (wing === -1) return "Naraka";
+  if (wing === 2) return "Skill grove";
   if (Math.abs(s.x - 40) < 36 && s.y > 150 && s.y < 236) return "Naraka gate";
   if (Math.abs(s.x - 308) < 36 && s.y > 150 && s.y < 236) return "Svarga gate";
   if (s.x >= 240 && s.x <= 296 && s.y >= 76 && s.y <= 108) return "Goat pen";
@@ -268,34 +268,24 @@ function SoundBar({ label, value, onChange }: { label: string; value: number; on
 }
 
 function SoundControls() {
-  const [snd, setSnd] = useState(soundState);
+  const [snd, setSnd] = useState(() => soundState());
   useEffect(() => onSound(() => setSnd(soundState())), []);
   return (
     <div className="sound-stack" onPointerDown={(e) => e.stopPropagation()}>
       <SoundBar label="Weather" value={snd.weather} onChange={setWeatherVolume} />
       <SoundBar label="Music" value={snd.music} onChange={setMusicVolume} />
       <SoundBar label="Animals" value={snd.animals} onChange={setAnimalVolume} />
-      <div className="sound-row">
-        <span>Total</span>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={snd.volume}
-          aria-label="Total volume"
-          onChange={(e) => setVolume(Number(e.target.value))}
-        />
-        <button
-          type="button"
-          className="slot"
-          style={{ width: "auto", height: 22, padding: "0 6px" }}
-          aria-pressed={snd.muted}
-          onClick={() => toggleMute()}
-        >
-          {snd.muted ? "Muted" : "Mute"}
-        </button>
-      </div>
+      <SoundBar label="Bell" value={snd.bell ?? 0.35} onChange={setBellVolume} />
+      <SoundBar label="Total" value={snd.volume} onChange={setVolume} />
+      <button
+        type="button"
+        className={`sound-mute${snd.muted ? " on" : ""}`}
+        aria-pressed={snd.muted}
+        onClick={() => toggleMute()}
+      >
+        <span>{snd.muted ? "Muted" : "Mute"}</span>
+        <i />
+      </button>
     </div>
   );
 }
@@ -690,6 +680,7 @@ export function AssayGame() {
               });
               setWind(heavyWind(s.time, s.day));
               syncSky(s.weather, s.bolts);
+              tollHour(s.time);
               playBirdsongs();
               if (s.uiEvent) {
                 const ev = s.uiEvent;
@@ -756,15 +747,6 @@ export function AssayGame() {
     const cur = stateRef.current;
     if (!cur || screenRef.current !== "play") return;
     if (panelRef.current) return;
-    if ((cur.wing ?? 0) === 0) {
-      const rack = farmRackAt(x, y);
-      if (rack >= 0) {
-        cur.message = pressFarmRack(cur, rack);
-        persist(cur);
-        bump();
-        return;
-      }
-    }
     apply(interact(cur, x, y));
   };
   api.current.useAt = useAt;
@@ -1369,7 +1351,7 @@ export function AssayGame() {
                 />
               </div>
               <div className="panel hud-crest">
-                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : "Homestead"}</b>
+                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : "Homestead"}</b>
                 <span>{placeName(s)}</span>
                 <span>
                   {clockLabel(s.time)} · {skyLabel(s)}
@@ -1552,85 +1534,19 @@ export function AssayGame() {
               setEditSel({ x, y, w: 32, h: 32 });
             }
           }}
-          preview={canvasRef}
-          cameraRef={camRef}
-          sprites={sprites.library}
-          rev={sprites.rev}
-          armed={armed}
-          onArm={(id) => {
-            armedRef.current = id;
-            setArmed(id);
-            editorRef.current.mode = "sprite";
-            setEditMode("sprite");
-            setEditStatus("Click the yard. The sprite snaps to the 8px grid.");
-          }}
-          onUpload={(file) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const img = new Image();
-              img.onload = () => {
-                const data = String(reader.result || "");
-                const b64 = data.slice(data.indexOf(",") + 1);
-                saveDevSprite({ data: { name: file.name, mime: file.type, b64, w: img.width, h: img.height } })
-                  .then((def) => {
-                    armedRef.current = def.id;
-                    setArmed(def.id);
-                    editorRef.current.mode = "sprite";
-                    setEditMode("sprite");
-                    return loadDevSprites();
-                  })
-                  .then((book) => {
-                    setSprites(book);
-                    setEditStatus("Attached. Click the yard to stamp it on the grid.");
-                  })
-                  .catch(() => setEditStatus("That sprite did not attach."));
-              };
-              img.src = String(reader.result || "");
-            };
-            reader.readAsDataURL(file);
-          }}
-          onLift={() => {
-            const box = editSel ?? { x: 0, y: 0, w: 32, h: 32 };
-            if (!editSel) {
-              setEditStatus("Select the sprite, then Lift.");
-              return;
-            }
-            const before = devSpriteBook().placed.map((p) => ({ ...p }));
-            liftDevSprite({ data: { x: box.x, y: box.y, w: box.w, h: box.h } })
-              .then((res) => {
-                if (!res.lifted) {
-                  setEditStatus("No sprite in that selection.");
-                  return;
-                }
-                histRef.current.push(before);
-                redoRef.current = [];
-                stampRef.current = -1;
-                setStampIx(-1);
-                setSpritePick(-1);
-                return refreshSprites("Lifted sprites inside the selection.");
-              })
-              .catch(() => setEditStatus("Nothing lifted."));
-          }}
-          onTool={onTool}
-          placed={sprites.placed}
-          picked={stampIx}
-          onArmAsset={onArmAsset}
-          onPickPlaced={onPickPlaced}
-          onScale={onScale}
-          onRole={onRole}
-          onReplace={onReplace}
-          onNote={onAssetNote}
-          onBlock={(blocked) => {
-            if (!editSel) {
-              setEditStatus("Select a place on the yard first.");
-              return;
-            }
-            blockRect(editSel, blocked);
-            setEditStatus(blocked ? "That square blocks walking." : "That square is open to walk.");
-          }}
-          onSend={() => {
+          order={
+            editSel && editNote.trim()
+              ? editorOrder(editSel, editNote.trim(), {
+                  x: stateRef.current?.x,
+                  y: stateRef.current?.y,
+                  wing: stateRef.current?.wing,
+                  weather: stateRef.current?.weather,
+                })
+              : ""
+          }
+          onCopy={() => {
             if (!editSel || !editNote.trim()) {
-              setEditStatus(editSel ? "Write what you want, then press Write prompt." : "Drag a rectangle, then write what you want.");
+              setEditStatus(editSel ? "Write what should change, then copy." : "Select tiles, then write what should change.");
               return;
             }
             const cur = stateRef.current;
@@ -1641,18 +1557,9 @@ export function AssayGame() {
               weather: cur?.weather,
             });
             setDraft(order);
-            setEditStatus(copyText(order) ? "Work order copied. Paste it into the chat." : "Work order is ready. Press Copy.");
-          }}
-          onCopy={() => {
-            if (!draft) {
-              setEditStatus("Write the prompt first.");
-              return;
-            }
-            setEditStatus(copyText(draft) ? "Copied. Paste it into the chat." : "Select the prompt and copy it by hand.");
+            setEditStatus(copyText(order) ? "Copied. Paste it into the chat." : "Select the work order and copy it by hand.");
           }}
           status={editStatus}
-          draft={draft}
-          busy={false}
         />
       )}
 
@@ -2070,16 +1977,16 @@ export function AssayGame() {
       {screen === "play" && s && panel === "map" && (
         <div className="overlay" onClick={() => { panelRef.current = null; setPanel(null); }}>
           <div className="panel sheet map-sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : "Homestead"}</h2>
+            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : "Homestead"}</h2>
             <p className="map-now">You are at {placeName(s)}.</p>
             <div
               className="live-map"
-              style={{ aspectRatio: s.wing ? "347 / 960" : "347 / 528" }}
+              style={{ aspectRatio: s.wing === 1 || s.wing === -1 ? "347 / 960" : "347 / 528" }}
             >
               {s.wing ? (
                 <img
-                  src={s.wing === 1 ? `/game/land/svarga.png?v=${ART}` : `/game/land/naraka.png?v=${ART}`}
-                  alt={s.wing === 1 ? "Svarga" : "Naraka"}
+                  src={s.wing === 1 ? `/game/land/svarga.png?v=${ART}` : s.wing === 2 ? `/game/land/grove.png?v=${ART}` : `/game/land/naraka.png?v=${ART}`}
+                  alt={s.wing === 1 ? "Svarga" : s.wing === 2 ? "Skill grove" : "Naraka"}
                 />
               ) : (
                 <>

@@ -278,6 +278,8 @@ function bake(ctx: CanvasRenderingContext2D): void {
       px(ctx, x0 + 7, y0 + 7, SHADE);
       px(ctx, x0 + 6, y0 + 7, SHADE);
       px(ctx, x0 + 7, y0 + 6, SHADE);
+      px(ctx, x0 + 2, y0 + 2, (tx + ty) % 2 === 0 ? WHITE : IVORY);
+      px(ctx, x0 + 5, y0 + 5, SHADE);
       const mx = x0 + 3;
       const my = y0 + 4;
       const motif = courtMotif(tx, ty);

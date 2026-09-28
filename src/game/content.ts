@@ -1,4 +1,5 @@
 import { tileBlocks } from "./tiles.ts";
+import { realmPlateSolid } from "./realmFeet.ts";
 export const WORLD_W = 347;
 export const WORLD_H = 960;
 /** The frame that fits on screen. The yard stays this size; the meadow is below it. */
@@ -786,6 +787,32 @@ export function freshXiang64(): XiangSu {
   return { x: 220, y: 212, dir: "s", pause: 0.5, route: [], poseT: 0 };
 }
 
+export const MAID_HOME = { x: 104, y: 292 } as const;
+
+export function freshMaid(): XiangSu {
+  return { x: MAID_HOME.x, y: MAID_HOME.y, dir: "s", pause: 0.8, route: [], poseT: 0 };
+}
+
+export function ensureMaid(s: GameState): void {
+  const m = s.maid;
+  if (!m || typeof m.x !== "number" || typeof m.y !== "number") {
+    s.maid = freshMaid();
+    return;
+  }
+  if (!Array.isArray(m.route)) m.route = [];
+  if (typeof m.pause !== "number") m.pause = 0.6;
+  if (typeof m.poseT !== "number") m.poseT = 0;
+  if (m.dir !== "n" && m.dir !== "e" && m.dir !== "s" && m.dir !== "w") m.dir = "s";
+  if (m.y < 220 || m.y > 420 || m.x < 28 || m.x > 220) {
+    const home = freshMaid();
+    m.x = home.x;
+    m.y = home.y;
+    m.route = [];
+    m.pause = 0.4;
+    m.dir = "s";
+  }
+}
+
 export function ensureXiang64(s: GameState): void {
   const n = s.xiang64;
   if (!n || typeof n.x !== "number" || typeof n.y !== "number") {
@@ -878,8 +905,8 @@ export function liturgyOf(spell: SpellId): Liturgy {
 }
 
 /** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
-export function liturgyName(spell: SpellId, wing: -1 | 0 | 1): string {
-  if (wing === 0) return SPELL_NAME[spell];
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2): string {
+  if (wing === 0 || wing === 2) return SPELL_NAME[spell];
   const east = wing === 1;
   switch (spell) {
     case "fireball":
@@ -1045,12 +1072,12 @@ export type GameState = {
   /** Next spell in the practice rotation. */
   rune: number;
   cast: Cast | null;
-  /** -1 west copy, 0 home, 1 east copy. */
-  wing: -1 | 0 | 1;
+  /** -1 west copy, 0 home, 1 east copy, 2 the skill grove. */
+  wing: -1 | 0 | 1 | 2;
   /** A portal crossing. The land changes halfway through the fade. */
   cross: {
     t: number;
-    wing: -1 | 0 | 1;
+    wing: -1 | 0 | 1 | 2;
     x: number;
     y: number;
     dir: Dir;
@@ -1070,6 +1097,8 @@ export type GameState = {
   goatSlash?: { x: number; y: number; t: number }[];
   /** Xiang Su at 64, walking the courtyard and the sidewalk. */
   xiang64?: XiangSu;
+  /** Milkmaid. She keeps to the courtyard near the cow. */
+  maid?: XiangSu;
   /** Farm portal rack. Seeds are generated farms. 0 is the original yard. */
   farmRack?: FarmRack;
 };
@@ -1286,22 +1315,17 @@ export function itemMass(it: Item): number {
   return m;
 }
 
+/** The south edge is the last walkable stone. He stops there. He is not sent home. */
 export function placeFarmer(s: GameState): void {
-  if (s.y >= MEADOW.y - 16) {
-    s.x = FARM_START.x;
-    s.y = FARM_START.y;
-    if (s.life) {
-      s.life.tx = FARM_START.x;
-      s.life.ty = FARM_START.y;
-      s.life.route = [];
-      s.life.pause = 0.4;
-    }
-    return;
+  const south = MEADOW.y - 1;
+  if (s.y > south) {
+    s.y = south;
+    while (s.y > 48 && footBlocked(s.x, s.y)) s.y -= 2;
   }
-  if (s.life && s.life.ty >= MEADOW.y - 16) {
-    s.life.tx = s.x;
+  if (s.life && s.life.ty > south) {
     s.life.ty = s.y;
     s.life.route = [];
+    s.life.pause = 0.4;
   }
 }
 
@@ -1320,8 +1344,24 @@ export function ensureGoatPen(s: GameState): void {
     }
     return;
   }
-  const inside = g.x >= GOAT_PEN.x && g.x < GOAT_PEN.x + GOAT_PEN.w && g.y >= GOAT_PEN.y && g.y < GOAT_PEN.y + GOAT_PEN.h;
-  if (s.goatPen === 1 && inside) return;
+  const minX = GOAT_PEN.x + 6;
+  const maxX = GOAT_PEN.x + GOAT_PEN.w - 6;
+  const minY = GOAT_PEN.y + 4;
+  const maxY = GOAT_PEN.y + GOAT_PEN.h - 4;
+  const x = Math.max(minX, Math.min(maxX, g.x));
+  const y = Math.max(minY, Math.min(maxY, g.y));
+  const near = Math.abs(g.x - x) < 28 && Math.abs(g.y - y) < 28;
+  if (near) {
+    if (g.x !== x || g.y !== y) {
+      g.x = x;
+      g.y = y;
+      g.tx = x;
+      g.ty = y;
+      g.route = [];
+    }
+    s.goatPen = 1;
+    return;
+  }
   g.x = HERD_HOME.goat.x;
   g.y = HERD_HOME.goat.y;
   g.tx = HERD_HOME.goat.x;
@@ -1433,30 +1473,25 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
-let realmWing: -1 | 0 | 1 = 0;
+let realmWing: -1 | 0 | 1 | 2 = 0;
 
-/** Farm collision stays on the homestead. Svarga and Naraka have their own ground. */
-export function setRealm(wing: -1 | 0 | 1): void {
-  realmWing = wing === -1 || wing === 1 ? wing : 0;
+/** Farm collision stays on the homestead. Each other land has its own ground. */
+export function setRealm(wing: -1 | 0 | 1 | 2): void {
+  realmWing = wing;
 }
 
 function realmFeet(x: number, y: number): boolean {
+  if (realmWing === 2) return groveFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
   if (box.y < 48) return true;
   if (onPortal(x, y)) return true;
-  if (realmWing === 1) {
-    // Amarāvatī on the plate: the palace sits right of the pearl path. The landing at x≈64 stays open.
-    if (overlap(box, { x: 188, y: 48, w: 128, h: 88 })) return true;
-    if (overlap(box, { x: 104, y: 68, w: 48, h: 36 })) return true;
-  } else {
-    // North blood pool, then Vaitaraṇī. The plank bridge on the plate is the only crossing.
-    if (overlap(box, { x: 96, y: 52, w: 64, h: 56 })) return true;
-    const onBridge = y > 388 && y < 428 && x > 104 && x < 212;
-    if (!onBridge && overlap(box, { x: 116, y: 216, w: 92, h: 400 })) return true;
-    // Yama's hall. The landing at x≈284, y≈212 stays open.
-    if (overlap(box, { x: 200, y: 44, w: 118, h: 92 })) return true;
+  const wing: -1 | 1 = realmWing === 1 ? 1 : -1;
+  for (let yy = box.y; yy < box.y + box.h; yy++) {
+    for (let xx = box.x; xx < box.x + box.w; xx++) {
+      if (realmPlateSolid(wing, xx, yy)) return true;
+    }
   }
   return false;
 }
@@ -1515,11 +1550,84 @@ export function ensureMagic(s: GameState): void {
   if (!s.cast || !SPELLS.includes(spell as SpellId) || typeof s.cast.t !== "number") s.cast = null;
 }
 
+/** The way home from heaven. On the court tiles, to the right of the pond. */
+export const HEAVEN_GATE = { x: 268, y: 320 } as const;
+
+/** Flat circle set into the bottom-right courtyard tiles. */
+export const GROVE_DOOR = { x: 308, y: 500 } as const;
+/** Where that circle lets him out, and the circle that brings him back. */
+export const GROVE_ARRIVE = { x: 174, y: 400 } as const;
+export const GROVE_RETURN = { x: 174, y: 476 } as const;
+
+export type GrovePlot = {
+  id: string;
+  name: string;
+  skill: SkillId | "magic";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+/** Training stations painted on the grove plate. Magic is marked, not trained here. */
+export const GROVE_PLOTS: GrovePlot[] = [
+  { id: "g-farm", name: "Tilled bed", skill: "farming", x: 40, y: 64, w: 88, h: 36 },
+  { id: "g-herb", name: "Flower bed", skill: "herbalism", x: 40, y: 128, w: 84, h: 32 },
+  { id: "g-herd", name: "Trough", skill: "husbandry", x: 44, y: 188, w: 70, h: 28 },
+  { id: "g-build", name: "Stone pile", skill: "construction", x: 44, y: 268, w: 52, h: 28 },
+  { id: "g-track", name: "Cairn", skill: "tracking", x: 46, y: 328, w: 28, h: 28 },
+  { id: "g-explore", name: "Waystone", skill: "exploration", x: 48, y: 420, w: 16, h: 28 },
+  { id: "g-forage", name: "Berry bush", skill: "foraging", x: 228, y: 72, w: 44, h: 34 },
+  { id: "g-wood", name: "Stump", skill: "woodcraft", x: 248, y: 152, w: 40, h: 28 },
+  { id: "g-cook", name: "Cook fire", skill: "cooking", x: 246, y: 214, w: 32, h: 24 },
+  { id: "g-fish", name: "Practice pond", skill: "fishing", x: 230, y: 306, w: 56, h: 14 },
+  { id: "g-heal", name: "Spring", skill: "healing", x: 244, y: 376, w: 36, h: 24 },
+  { id: "g-live", name: "Lean-to", skill: "survival", x: 220, y: 424, w: 48, h: 22 },
+  { id: "g-rite", name: "Ritual ring", skill: "ritual", x: 156, y: 286, w: 36, h: 28 },
+  { id: "g-magic", name: "Seal stone", skill: "magic", x: 286, y: 430, w: 14, h: 22 },
+];
+
+export const GROVE_SOLIDS: Rect[] = [
+  { x: 244, y: 94, w: 12, h: 12 },
+  { x: 58, y: 196, w: 28, h: 10 },
+  { x: 44, y: 268, w: 52, h: 28 },
+  { x: 46, y: 328, w: 26, h: 26 },
+  { x: 48, y: 420, w: 16, h: 28 },
+  { x: 258, y: 156, w: 20, h: 16 },
+  { x: 250, y: 216, w: 24, h: 16 },
+  { x: 218, y: 276, w: 80, h: 30 },
+  { x: 246, y: 378, w: 32, h: 18 },
+  { x: 286, y: 430, w: 14, h: 22 },
+];
+
+export function grovePlotAt(px: number, py: number): GrovePlot | null {
+  for (let i = GROVE_PLOTS.length - 1; i >= 0; i--) {
+    const p = GROVE_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+function groveFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y + box.h > 512 || box.y < 40) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of GROVE_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
+export function onGroveDoor(x: number, y: number, cx = GROVE_DOOR.x, cy = GROVE_DOOR.y): boolean {
+  const dx = (x - cx) / 16;
+  const dy = (y - cy) / 10;
+  return dx * dx + dy * dy <= 1;
+}
+
 export function ensureAuto(s: GameState): void {
   if (typeof s.auto !== "boolean") s.auto = true;
 }
 
 export function onPortal(x: number, y: number): boolean {
+  if (realmWing === 2) return false;
   // The picture is wider than this. The body stops on the stone. The step in front, on the sidewalk and in the courtyard, stays open.
   const gates: Array<{ x: number; half: number; top: number }> = [];
   if (realmWing !== -1) gates.push({ x: 40, half: 30, top: 124 });
@@ -1531,7 +1639,7 @@ export function onPortal(x: number, y: number): boolean {
 }
 
 export function ensureWing(s: GameState): void {
-  if (s.wing !== -1 && s.wing !== 0 && s.wing !== 1) s.wing = 0;
+  if (s.wing !== -1 && s.wing !== 0 && s.wing !== 1 && s.wing !== 2) s.wing = 0;
   if (!s.cross || typeof s.cross.t !== "number") s.cross = null;
 }
 
@@ -1553,11 +1661,14 @@ export function skyLabel(s: { weather?: Sky; wet?: number }): string {
 
 export function ensureWeather(s: GameState): void {
   if (s.weather !== "clear" && s.weather !== "rain" && s.weather !== "storm") s.weather = "clear";
-  if (typeof s.weatherLeft !== "number") s.weatherLeft = 24;
+  if (typeof s.weatherLeft !== "number") s.weatherLeft = 24 * (DAY_LEN / 720);
   if (typeof s.wet !== "number") s.wet = 0;
   if (typeof s.flash !== "number") s.flash = 0;
   if (typeof s.bolts !== "number") s.bolts = 0;
 }
+
+/** Real seconds from 6am to 10pm. Weather spells use the same pace. */
+export const DAY_LEN = 960;
 
 export function hourOf(time: number): number {
   return 6 + time * 16;
@@ -1673,7 +1784,7 @@ export function createGame(): GameState {
     message: "Tomato, cauliflower, and peas are growing on the three beds.",
     summary: false,
     weather: "clear",
-    weatherLeft: 28,
+    weatherLeft: 28 * (DAY_LEN / 720),
     wet: 0.15,
     flash: 0,
     bolts: 0,
@@ -1692,6 +1803,7 @@ export function createGame(): GameState {
     handPlace: 3,
     goatPen: 1,
     xiang64: freshXiang64(),
+    maid: freshMaid(),
     farmRack: freshFarmRack(),
   };
 }

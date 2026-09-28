@@ -1,9 +1,9 @@
 import { BEDS, ensureFarmRack, type FarmRack, type GameState } from "../content.ts";
 
-/** Buttons sit on the floating rock under the courtyard. The row bows with the rock, mirrored. */
+/** Runestones set into the floating rock. The row bows with the belly of the stone. */
 const RACK_LIP = 528;
-const RACK_SIZE = 16;
-const RACK_GAP = 5;
+const RACK_SIZE = 18;
+const RACK_GAP = 6;
 
 function rackSpan(): number {
   return 6 * RACK_SIZE + 5 * RACK_GAP;
@@ -13,15 +13,24 @@ function rackLeft(): number {
   return Math.round((347 - rackSpan()) / 2);
 }
 
-/** Center of the row hangs lower, where the rock is thickest. The ends match. */
-function rackButton(i: number): { x: number; y: number; w: number; h: number } {
-  const mid = 2.5;
-  const along = 1 - Math.abs(i - mid) / mid;
+function rackDrop(i: number): number {
+  const along = 1 - Math.abs(i - 2.5) / 2.5;
+  return Math.round(along * along * 20);
+}
+
+function rackLean(i: number): number {
+  const side = i < 3 ? -1 : 1;
+  const step = i < 3 ? i : 5 - i;
+  return side * (3 - step);
+}
+
+function rackButton(i: number): { x: number; y: number; w: number; h: number; lean: number } {
   return {
     x: rackLeft() + i * (RACK_SIZE + RACK_GAP),
-    y: RACK_LIP + 14 + Math.round(along * 8),
+    y: RACK_LIP + 18 + rackDrop(i),
     w: RACK_SIZE,
-    h: RACK_SIZE,
+    h: 22,
+    lean: rackLean(i),
   };
 }
 
@@ -190,16 +199,8 @@ export function farmSeed(s: GameState): number {
   return rack.seeds[rack.at] ?? 0;
 }
 
-function buttonBox(i: number): { x: number; y: number; w: number; h: number } {
-  return rackButton(i);
-}
-
-/** 0 green, 1 blue, 2 yellow, 3-5 purple. -1 if the point misses the rack. */
-export function farmRackAt(x: number, y: number): number {
-  for (let i = 0; i < 6; i++) {
-    const b = buttonBox(i);
-    if (x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h) return i;
-  }
+/** The runestones are carved in place. They do not take a click yet. */
+export function farmRackAt(_x: number, _y: number): number {
   return -1;
 }
 
@@ -248,116 +249,52 @@ function pix(ctx: CanvasRenderingContext2D, x: number, y: number, color: string)
   ctx.fillRect(x, y, 1, 1);
 }
 
-function stoneButton(
+function paintRunestone(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  fill: string,
-  lite: string,
-  shade: string,
-  live: boolean,
+  w: number,
+  h: number,
+  lean: number,
 ): void {
-  const ink = "#100c08";
-  ctx.fillStyle = "#060403";
-  ctx.fillRect(x + 1, y + 15, 14, 3);
-  ctx.fillStyle = ink;
-  ctx.fillRect(x, y, 16, 15);
-  ctx.fillStyle = "#2a2016";
-  ctx.fillRect(x + 1, y + 1, 14, 13);
-  ctx.fillStyle = live ? fill : shade;
-  ctx.fillRect(x + 2, y + 2, 12, 10);
-  ctx.fillStyle = live ? lite : fill;
-  ctx.fillRect(x + 2, y + 2, 12, 2);
-  ctx.fillRect(x + 2, y + 2, 2, 8);
-  ctx.fillStyle = shade;
-  ctx.fillRect(x + 3, y + 10, 11, 2);
-  ctx.fillRect(x + 12, y + 3, 2, 8);
-  ctx.fillStyle = "#1a140e";
-  ctx.fillRect(x + 4, y + 13, 8, 1);
-}
-
-function shelfY(x: number): number {
-  const left = rackButton(0);
-  const right = rackButton(5);
-  const span = right.x + right.w - left.x;
-  const u = span <= 0 ? 0.5 : (x - left.x) / span;
-  const mid = Math.abs(u - 0.5) * 2;
-  return RACK_LIP + 22 - Math.round((1 - mid) * 8);
-}
-
-export function drawFarmRack(ctx: CanvasRenderingContext2D, s: GameState): void {
-  if ((s.wing ?? 0) !== 0) return;
-  const rack = ensureFarmRack(s);
-  const left = rackButton(0);
-  const right = rackButton(5);
-  for (let x = left.x - 4; x < right.x + right.w + 4; x++) {
-    const y = shelfY(x);
-    ctx.fillStyle = "#1a120c";
-    ctx.fillRect(x, y + 2, 1, 3);
-    ctx.fillStyle = x % 4 === 0 ? "#6a5034" : "#4a3824";
-    ctx.fillRect(x, y, 1, 2);
-    ctx.fillStyle = "#c8b48a";
-    ctx.fillRect(x, y, 1, 1);
-  }
-  const faces: Array<[string, string, string, boolean]> = [
-    ["#3c6e28", "#d4ee78", "#1c3810", true],
-    ["#24508c", "#b8dcff", "#122848", rack.at > 0],
-    ["#e6c25a", "#fff6c8", "#6a4810", rack.at < rack.seeds.length - 1],
-    ["#6e3c92", "#f0d4ff", "#341848", rack.pins[0] != null],
-    ["#6e3c92", "#f0d4ff", "#341848", rack.pins[1] != null],
-    ["#6e3c92", "#f0d4ff", "#341848", rack.pins[2] != null],
-  ];
-  for (let i = 0; i < 6; i++) {
-    const b = rackButton(i);
-    const face = faces[i]!;
-    const live = i < 3 ? face[3] : true;
-    stoneButton(ctx, b.x, b.y, face[0], face[1], face[2], live);
-    const cx = b.x + 8;
-    const cy = b.y + 7;
-    if (i === 0) {
-      pix(ctx, cx, cy + 3, "#102008");
-      pix(ctx, cx, cy + 2, "#102008");
-      pix(ctx, cx, cy + 1, "#214018");
-      pix(ctx, cx, cy, "#214018");
-      pix(ctx, cx - 2, cy - 1, "#d4ee78");
-      pix(ctx, cx - 1, cy - 1, "#d4ee78");
-      pix(ctx, cx + 1, cy - 1, "#d4ee78");
-      pix(ctx, cx + 2, cy - 1, "#d4ee78");
-      pix(ctx, cx, cy - 2, "#fff6c8");
-      pix(ctx, cx - 1, cy + 3, "#6a5030");
-      pix(ctx, cx + 1, cy + 3, "#6a5030");
-    } else if (i === 1) {
-      const ink = live ? "#f4fbff" : "#8aa4c4";
-      pix(ctx, cx - 3, cy, ink);
-      pix(ctx, cx - 2, cy - 1, ink);
-      pix(ctx, cx - 2, cy + 1, ink);
-      pix(ctx, cx - 1, cy - 2, ink);
-      pix(ctx, cx - 1, cy + 2, ink);
-      pix(ctx, cx, cy - 3, ink);
-      pix(ctx, cx, cy + 3, ink);
-      pix(ctx, cx + 1, cy - 1, ink);
-      pix(ctx, cx + 1, cy + 1, ink);
-    } else if (i === 2) {
-      const ink = live ? "#3a2408" : "#8a7040";
-      pix(ctx, cx + 3, cy, ink);
-      pix(ctx, cx + 2, cy - 1, ink);
-      pix(ctx, cx + 2, cy + 1, ink);
-      pix(ctx, cx + 1, cy - 2, ink);
-      pix(ctx, cx + 1, cy + 2, ink);
-      pix(ctx, cx, cy - 3, ink);
-      pix(ctx, cx, cy + 3, ink);
-      pix(ctx, cx - 1, cy - 1, ink);
-      pix(ctx, cx - 1, cy + 1, ink);
-    } else {
-      const n = i - 2;
-      const ink = face[3] ? "#fff6ff" : "#c8a4dc";
-      const origin = cx - (n - 1);
-      for (let k = 0; k < n; k++) {
-        pix(ctx, origin + k * 2, cy, ink);
-        pix(ctx, origin + k * 2, cy - 1, ink);
-        pix(ctx, origin + k * 2, cy + 1, face[3] ? "#e2b657" : "#6e3c92");
+  const shift = (row: number) => Math.round((lean * (h + 2 - row)) / (h + 2));
+  const mid = Math.floor(w / 2);
+  for (let row = -3; row < h + 3; row++) {
+    const sy = y + row;
+    const sx = x + shift(Math.max(0, Math.min(h + 2, row)));
+    for (let col = -2; col < w + 2; col++) {
+      if (row < 0 || row >= h || col < 0 || col >= w) {
+        const lip = row === -1 || col === -1;
+        pix(ctx, sx + col, sy, lip ? "#e6c060" : "#06060e");
+        continue;
       }
-      if (face[3]) pix(ctx, cx, cy - 4, "#e2b657");
+      if (row > h - 5) {
+        pix(ctx, sx + col, sy, row === h - 4 ? "#5a4014" : "#06060e");
+        continue;
+      }
+      if (row < 2 || col < 2 || col > w - 3) {
+        const litEdge = row === 0 || col === 1;
+        pix(ctx, sx + col, sy, litEdge ? "#fff0b0" : col > w - 4 || row > 2 ? "#8a5c20" : "#e6c060");
+        continue;
+      }
+      const gx = (col - 2) % 3;
+      const gy = (row - 2) % 3;
+      let color = "#1a2748";
+      if (gy === 0 || gx === 0) color = "#2c406e";
+      else if (gy === 2 || gx === 2) color = "#0c1224";
+      else color = ((col + row) & 1) === 0 ? "#1e2e56" : "#162240";
+      const dx = col - mid;
+      const dy = row - 8;
+      const step = Math.abs(dx) + (dy > 0 ? dy : Math.abs(dy) * 2);
+      if (dy >= -4 && dy <= 2 && step <= 4) {
+        color = dy < -1 ? "#fff0b0" : dy === 2 ? "#8a5c20" : "#e6c060";
+      }
+      if (dx === 0 && dy >= -3 && dy <= 0) color = "#fff0b0";
+      if (Math.abs(dx) === 3 && dy === 1) color = dy === 1 ? "#9ec4f4" : color;
+      pix(ctx, sx + col, sy, color);
     }
   }
 }
+
+/** The six runes are inlaid in the vimana plate. They do not take a click yet. */
+export function drawFarmRack(_ctx: CanvasRenderingContext2D, _s: GameState): void {}

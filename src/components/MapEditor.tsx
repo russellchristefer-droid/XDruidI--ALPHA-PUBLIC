@@ -1,8 +1,6 @@
-import { useEffect, useState, useRef, type MouseEvent, type PointerEvent, type RefObject } from "react";
+import { useEffect, useRef, type MouseEvent, type PointerEvent } from "react";
 import type { Rect } from "@/game/content";
-import type { SpriteDef } from "@/game/dev-sprites";
-import { ASSET_GROUPS, ART, assetFile } from "@/game/assets";
-import { editorOrder, GRID, type SelMode } from "@/game/tiles";
+import { GRID, type SelMode } from "@/game/tiles";
 
 const MODES: { id: SelMode; label: string }[] = [
   { id: "rect", label: "Rect" },
@@ -14,27 +12,8 @@ const MODES: { id: SelMode; label: string }[] = [
   { id: "meadow", label: "Meadow" },
   { id: "world", label: "World" },
   { id: "here", label: "Druid" },
-  { id: "sprite", label: "Stamp" },
-  { id: "select", label: "Select" },
-  { id: "erase", label: "Erase" },
-  { id: "move", label: "Move" },
 ];
 
-const TOOLS: { id: string; label: string }[] = [
-  { id: "undo", label: "Undo" },
-  { id: "redo", label: "Redo" },
-  { id: "save", label: "Save" },
-  { id: "copy", label: "Copy" },
-  { id: "flipx", label: "Flip H" },
-  { id: "flipy", label: "Flip V" },
-  { id: "turn", label: "Turn" },
-  { id: "front", label: "Front" },
-  { id: "back", label: "Back" },
-];
-
-function assetLabel(id: string): string {
-  return id.replace(/[-_]/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
 export function builderDevAllowed(): boolean {
   if (typeof window === "undefined") return false;
   if (!import.meta.env.DEV) return false;
@@ -47,113 +26,27 @@ export function MapEditor({
   sel,
   note,
   setNote,
-  onBlock,
-  onSend,
   onCopy,
   status,
-  draft,
-  busy,
+  order,
   mode,
   setMode,
-  preview,
-  cameraRef,
-  sprites,
-  rev,
-  armed,
-  onArm,
-  onUpload,
-  onLift,
-  onTool,
-  placed,
-  picked,
-  onArmAsset,
-  onPickPlaced,
-  onScale,
-  onRole,
-  onReplace,
-  onNote,
 }: {
   open: boolean;
   onToggle: () => void;
   sel: Rect | null;
   note: string;
   setNote: (v: string) => void;
-  onBlock: (blocked: boolean) => void;
-  onSend: () => void;
   onCopy: () => void;
   status: string;
-  draft: string;
-  busy: boolean;
+  order: string;
   mode: SelMode;
   setMode: (mode: SelMode) => void;
-  preview: RefObject<HTMLCanvasElement | null>;
-  cameraRef: RefObject<{ scale: number; ox: number; oy: number }>;
-  sprites: SpriteDef[];
-  rev: number;
-  armed: string | null;
-  onArm: (id: string) => void;
-  onUpload: (file: File) => void;
-  onLift: () => void;
-  onTool: (id: string) => void;
-  placed: { id: string; x: number; y: number; role?: string; note?: string }[];
-  picked: number;
-  onArmAsset: (id: string, w: number, h: number) => void;
-  onPickPlaced: (index: number) => void;
-  onScale: (dir: 1 | -1) => void;
-  onRole: () => void;
-  onReplace: () => void;
-  onNote: (text: string) => void;
 }) {
-  const order = sel && note.trim() ? editorOrder(sel, note) : "";
   const promptRef = useRef<HTMLTextAreaElement>(null);
-  const liveRef = useRef<HTMLCanvasElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const sizes = useRef<Record<string, { w: number; h: number }>>({});
-  const [group, setGroup] = useState("animals");
-  const [query, setQuery] = useState("");
-  const [assetNote, setAssetNote] = useState("");
-  useEffect(() => {
-    setAssetNote(placed[picked]?.note ?? "");
-  }, [picked, placed]);
   useEffect(() => {
     if (open && sel) promptRef.current?.focus();
   }, [open, sel]);
-  useEffect(() => {
-    if (!open) return;
-    let raf = 0;
-    const tick = () => {
-      const src = preview.current;
-      const dst = liveRef.current;
-      const cam = cameraRef.current;
-      if (src && dst && cam) {
-        const ctx = dst.getContext("2d");
-        if (ctx) {
-          ctx.imageSmoothingEnabled = false;
-          ctx.fillStyle = "#120e0a";
-          ctx.fillRect(0, 0, dst.width, dst.height);
-          const top = 96;
-          const fit = Math.min(dst.width / src.width, top / src.height);
-          const dw = src.width * fit;
-          const dh = src.height * fit;
-          ctx.drawImage(src, (dst.width - dw) / 2, (top - dh) / 2, dw, dh);
-          if (sel && cam.scale > 0) {
-            const sx = cam.ox + sel.x * cam.scale;
-            const sy = cam.oy + sel.y * cam.scale;
-            const sw = Math.max(1, sel.w * cam.scale);
-            const sh = Math.max(1, sel.h * cam.scale);
-            const band = dst.height - top - 8;
-            const zoom = Math.min((dst.width - 8) / sw, band / sh);
-            const zw = sw * zoom;
-            const zh = sh * zoom;
-            ctx.drawImage(src, sx, sy, sw, sh, (dst.width - zw) / 2, top + 4 + (band - zh) / 2, zw, zh);
-          }
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [open, sel, preview, cameraRef]);
   const lastPress = useRef(0);
   const press = (e: { stopPropagation: () => void }, fn: () => void) => {
     e.stopPropagation();
@@ -177,15 +70,7 @@ export function MapEditor({
       </button>
       {open && (
         <div className="panel map-edit-panel" role="dialog" aria-label="Developer mode">
-          <canvas ref={liveRef} className="map-live" width={520} height={280} aria-label="Live game" />
-          <p className="map-edit-hint">Selection, then a note. Write prompt copies a work order. Ctrl+Enter does the same.</p>
-          <div className="map-edit-modes">
-            {TOOLS.map((t) => (
-              <button key={t.id} type="button" {...fire(() => onTool(t.id))}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <p className="map-edit-hint">Select tiles, write the change, then copy the work order.</p>
           <div className="map-edit-modes">
             {MODES.map((m) => (
               <button key={m.id} type="button" className={mode === m.id ? "on" : ""} {...fire(() => setMode(m.id))}>
@@ -205,141 +90,13 @@ export function MapEditor({
             aria-label="What you want done"
             onPointerDown={(e) => e.stopPropagation()}
             onChange={(e) => setNote(e.target.value)}
-            onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && order) {
-                e.preventDefault();
-                onSend();
-              }
-            }}
+            onKeyDown={(e) => e.stopPropagation()}
           />
-          <button type="button" className="send" disabled={busy} {...fire(onSend)}>
-            {busy ? "Writing…" : draft ? "Rewrite" : "Write prompt"}
+          {order && <pre className="map-edit-order">{order}</pre>}
+          <button type="button" className="send" disabled={!order} {...fire(onCopy)}>
+            Copy
           </button>
-          <button type="button" className="send" disabled={!draft} {...fire(onCopy)}>
-            Copy prompt
-          </button>
-          {draft && <pre className="map-edit-order">{draft}</pre>}
           {status && <p className="map-edit-hint">{status}</p>}
-          <div className="map-edit-row">
-            <button type="button" {...fire(() => fileRef.current?.click())}>
-              Attach sprite
-            </button>
-            <button type="button" {...fire(onLift)}>
-              Lift
-            </button>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/png,image/gif,image/webp,image/jpeg"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) onUpload(file);
-            }}
-          />
-          {sprites.length > 0 && (
-            <div className="sprite-tray">
-              {sprites.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={armed === s.id ? "on" : ""}
-                  title={`${s.id} ${s.w}×${s.h}`}
-                  {...fire(() => onArm(s.id))}
-                >
-                  <img src={`${s.file}?v=${rev}`} alt={s.id} />
-                </button>
-              ))}
-            </div>
-          )}
-          <p className="map-edit-hint">Assets. Pick one, then Stamp it on the grid.</p>
-          <select className="asset-find" value={group} aria-label="Asset group" onChange={(e) => setGroup(e.target.value)}>
-            <option value="all">All</option>
-            {ASSET_GROUPS.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.label}
-              </option>
-            ))}
-          </select>
-          <input
-            className="asset-find"
-            value={query}
-            placeholder="Find an asset"
-            aria-label="Find an asset"
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.stopPropagation()}
-          />
-          <div className="sprite-tray asset-tray">
-            {(group === "all" ? ASSET_GROUPS.flatMap((g) => g.keys) : (ASSET_GROUPS.find((g) => g.id === group)?.keys ?? []))
-              .filter((id) => assetLabel(id).toLowerCase().includes(query.trim().toLowerCase()))
-              .map((id) => {
-                const file = assetFile(id);
-                if (!file) return null;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    className={armed === id ? "on" : ""}
-                    title={assetLabel(id)}
-                    {...fire(() => {
-                      const size = sizes.current[id] ?? { w: 32, h: 32 };
-                      onArmAsset(id, size.w, size.h);
-                    })}
-                  >
-                    <img
-                      src={`${file}?v=${ART}`}
-                      alt={assetLabel(id)}
-                      onLoad={(e) => {
-                        sizes.current[id] = { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight };
-                      }}
-                    />
-                  </button>
-                );
-              })}
-          </div>
-          <div className="map-edit-row">
-            <button type="button" {...fire(() => onScale(1))}>
-              Bigger
-            </button>
-            <button type="button" {...fire(() => onScale(-1))}>
-              Smaller
-            </button>
-            <button type="button" {...fire(onReplace)}>
-              Replace
-            </button>
-            <button type="button" {...fire(onRole)}>
-              {placed[picked]?.role === "solid" ? "Solid" : placed[picked]?.role === "use" ? "Use" : "Decor"}
-            </button>
-          </div>
-          <input
-            className="asset-find"
-            value={assetNote}
-            placeholder="What this placed asset does"
-            aria-label="Asset note"
-            onChange={(e) => setAssetNote(e.target.value)}
-            onBlur={() => onNote(assetNote)}
-            onKeyDown={(e) => e.stopPropagation()}
-          />
-          {placed.length > 0 && (
-            <div className="asset-list">
-              {placed.map((p, i) => (
-                <button key={`${p.id}-${i}`} type="button" className={picked === i ? "on" : ""} {...fire(() => onPickPlaced(i))}>
-                  {assetLabel(p.id)} · {p.x},{p.y} · {p.role || "decor"}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="map-edit-row">
-            <button type="button" {...fire(() => onBlock(true))}>
-              Block
-            </button>
-            <button type="button" {...fire(() => onBlock(false))}>
-              Open
-            </button>
-          </div>
         </div>
       )}
     </div>

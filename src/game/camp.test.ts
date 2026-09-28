@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { FARMER_HOME, MEADOW, SPOTS, createGame, footBlocked, placeFarmer, setRealm } from "./content.ts";
+import { FARM_START, MEADOW, SPOTS, createGame, footBlocked, placeFarmer, setRealm } from "./content.ts";
 import { interact, step } from "./logic.ts";
 
 function canWalk(from: { x: number; y: number }, to: { x: number; y: number }): boolean {
@@ -36,18 +36,20 @@ test("the original painting is back on the house square", () => {
   assert.equal(footBlocked(260, 110), true);
 });
 
-test("a farmer in the void is put back on the farm", () => {
+test("the south edge stops the farmer where he is", () => {
   const s = createGame();
-  assert.equal(s.x, FARMER_HOME.x);
-  assert.equal(s.y, FARMER_HOME.y);
+  assert.equal(s.x, FARM_START.x);
+  assert.equal(s.y, FARM_START.y);
   assert.equal(footBlocked(s.x, s.y), false);
-  s.x = 180;
+  s.x = 200;
   s.y = 640;
   s.life.ty = 640;
   placeFarmer(s);
-  assert.equal(s.x, FARMER_HOME.x);
-  assert.equal(s.y, FARMER_HOME.y);
-  assert.ok(s.y < MEADOW.y);
+  assert.equal(s.x, 200);
+  assert.equal(s.y, MEADOW.y - 1);
+  assert.equal(s.life.ty, s.y);
+  assert.equal(footBlocked(s.x, s.y), false);
+  assert.equal(footBlocked(s.x, s.y + 2), true);
 });
 
 test("the meadow is void and the farm is the rock", () => {
