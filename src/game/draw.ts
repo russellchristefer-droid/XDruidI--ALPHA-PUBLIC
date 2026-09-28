@@ -90,21 +90,17 @@ function charPose(s: GameState): { sheet: string; frames: number; col: number } 
   };
 }
 
-function drawFlowers(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
-  const img = sheets.flowers;
-  if (!img || !s.flowers) return;
-  for (const f of s.flowers) {
-    const x0 = f.x - f.w / 2;
-    const y0 = f.y - f.h / 2;
-    const across = f.w > f.h;
-    const n = Math.max(3, Math.floor((across ? f.w : f.h) / 8));
-    for (let i = 0; i < n; i++) {
-      const t = (i + 0.5) / n;
-      const sway = Math.sin(s.clock * 1.6 + i + f.row) * 0.45;
-      const cx = across ? x0 + t * f.w : f.x + sway;
-      const cy = across ? f.y + sway : y0 + t * f.h;
-      blit(ctx, img, Math.min(2, f.bloom) * 16, f.row * 16, 16, 16, cx, cy, 0.9, false, 8, 15);
-    }
+function drawFlower(ctx: CanvasRenderingContext2D, img: HTMLImageElement, f: GameState["flowers"][number], clock: number): void {
+  const x0 = f.x - f.w / 2;
+  const y0 = f.y - f.h / 2;
+  const across = f.w > f.h;
+  const n = Math.max(3, Math.floor((across ? f.w : f.h) / 8));
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const sway = Math.sin(clock * 1.6 + i + f.row) * 0.45;
+    const cx = across ? x0 + t * f.w : f.x + sway;
+    const cy = across ? f.y + sway : y0 + t * f.h;
+    blit(ctx, img, Math.min(2, f.bloom) * 16, f.row * 16, 16, 16, cx, cy, 0.9, false, 8, 15);
   }
 }
 
@@ -1252,26 +1248,32 @@ function drawFace(
   blit(ctx, face ?? img, face ? 0 : cell[1] * 16, face ? 0 : cell[0] * 16 + 6, face ? 18 : 16, face ? 12 : 10, hx, hy, 1.6, false, face ? 9 : 8, face ? 11 : 10);
 }
 
-function drawPlot(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
+function drawPlotSoil(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
   const w = p.w || 20;
   const h = p.h || 16;
   const x = Math.round(p.x - w / 2);
   const y = Math.round(p.y - h / 2);
   const tilled = p.tilled || (!!p.crop && p.stage !== 0);
-  if (tilled && sheets.landTilled) {
-    const img = sheets.landTilled;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.clip();
-    for (let ty = y; ty < y + h; ty += img.height) {
-      for (let tx = x; tx < x + w; tx += img.width) {
-        ctx.drawImage(img, tx, ty);
-      }
+  if (!tilled || !sheets.landTilled) return;
+  const img = sheets.landTilled;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  for (let ty = y; ty < y + h; ty += img.height) {
+    for (let tx = x; tx < x + w; tx += img.width) {
+      ctx.drawImage(img, tx, ty);
     }
-    ctx.restore();
   }
+  ctx.restore();
+}
+
+function drawPlotCrop(ctx: CanvasRenderingContext2D, sheets: Sheets, p: Plot) {
   if (!p.crop || p.stage === 0 || !sheets[p.crop]) return;
+  const w = p.w || 20;
+  const h = p.h || 16;
+  const x = Math.round(p.x - w / 2);
+  const y = Math.round(p.y - h / 2);
   const img = sheets[p.crop]!;
   const fw = 32;
   const fh = img.height;
@@ -3410,15 +3412,7 @@ export function drawWorld(
   }
   ctx.restore();
 
-  for (const p of s.plots) {
-    drawPlot(ctx, sheets, p);
-    if (p.watered && p.stage > 0) {
-      const bob = Math.sin(s.clock * 6 + p.x) > 0 ? 0 : 1;
-      ctx.fillStyle = "#b7e6f5";
-      ctx.fillRect(p.x + 5, p.y - 7 + bob, 2, 2);
-    }
-  }
-  drawFlowers(ctx, sheets, s);
+  for (const p of s.plots) drawPlotSoil(ctx, sheets, p);
   if (showTill) {
     ctx.save();
     ctx.strokeStyle = "rgba(226, 182, 87, 0.9)";
@@ -3522,6 +3516,27 @@ export function drawWorld(
     stage(s.y - 1, () => drawCastRite(ctx, sheets, s));
     stage(s.y, () => paintPlayer(ctx, sheets, s));
   }
+  const cover: Array<() => void> = [];
+  for (const p of s.plots) {
+    if (!p.crop || p.stage === 0) continue;
+    const foot = Math.round(p.y + (p.h || 16) / 2 + 12);
+    const paint = () => {
+      drawPlotCrop(ctx, sheets, p);
+      if (p.watered && p.stage > 0) {
+        const bob = Math.sin(s.clock * 6 + p.x) > 0 ? 0 : 1;
+        ctx.fillStyle = "#b7e6f5";
+        ctx.fillRect(p.x + 5, p.y - 7 + bob, 2, 2);
+      }
+    };
+    stage(foot, paint);
+    if (p.stage >= 2) cover.push(paint);
+  }
+  const flowerSheet = sheets.flowers;
+  if (flowerSheet && s.flowers) {
+    for (const f of s.flowers) {
+      stage(Math.round(f.y + f.h / 2 + 8), () => drawFlower(ctx, flowerSheet, f, s.clock));
+    }
+  }
   for (const layer of devSpriteLayers()) {
     queue.push({ y: layer.y, paint: () => layer.paint(ctx) });
   }
@@ -3543,6 +3558,7 @@ export function drawWorld(
   drawSideGates(ctx, s, sheets);
   over.sort((a, b) => a.y - b.y);
   for (const d of over) d.paint();
+  for (const paint of cover) paint();
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y)) && !onFarmFrame(s.y)) paintPlayer(ctx, sheets, s);
   drawSpell(ctx, sheets, s);
 

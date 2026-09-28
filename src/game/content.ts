@@ -20,13 +20,15 @@ export function onMagicPlot(x: number, y: number, wing: number): boolean {
 export const HERD_HOME = {
   cow: { x: 56, y: 288 },
   rooster: { x: 112, y: 344 },
-  goat: { x: 288, y: 280 },
+  goat: { x: 268, y: 92 },
 } as const;
 export const CAT_HOME = { x: 232, y: 336 } as const;
 /** Masked wizard. Courtyard guest, not stacked on the herd. */
 export const REAPER_HOME = { x: 188, y: 412 } as const;
 /** Second farmer. Works the beds north of the fence. */
 export const HAND_HOME = { x: 56, y: 150 } as const;
+/** 7×3 tiles on the upper farm. The goat stays inside this patch. */
+export const GOAT_PEN = { x: 240, y: 80, w: 56, h: 24 } as const;
 export const TILE = 8;
 /** Every player sheet is 80×112 cells, three rows, feet on y=95. */
 export const CHAR_W = 80;
@@ -1037,6 +1039,8 @@ export type GameState = {
   courtSpawn?: boolean | 2 | 3 | 4;
   /** 3 = field hand works the farm beds. */
   handPlace?: number;
+  /** 1 = goat lives in the 7×3 pen on the upper farm. */
+  goatPen?: number;
   /** Xiang Su at 64, walking the courtyard and the sidewalk. */
   xiang64?: XiangSu;
 };
@@ -1141,7 +1145,8 @@ export const SOLIDS: Rect[] = [
   { x: 196, y: 98, w: 26, h: 18 },
   { x: 98, y: 36, w: 42, h: 16 },
   { x: 44, y: 70, w: 20, h: 16 },
-  { x: 228, y: 78, w: 66, h: 64 },
+  { x: 228, y: 78, w: 12, h: 64 },
+  { x: 240, y: 104, w: 54, h: 38 },
   { x: 52, y: 90, w: 16, h: 16 },
   { x: 232, y: 180, w: 52, h: 12 },
   { x: 292, y: 146, w: 28, h: 24 },
@@ -1231,6 +1236,21 @@ export function placeFarmer(s: GameState): void {
     s.life.ty = s.y;
     s.life.route = [];
   }
+}
+
+export function ensureGoatPen(s: GameState): void {
+  const g = s.animals.find((a) => a.kind === "goat");
+  if (!g) return;
+  const inside = g.x >= GOAT_PEN.x && g.x < GOAT_PEN.x + GOAT_PEN.w && g.y >= GOAT_PEN.y && g.y < GOAT_PEN.y + GOAT_PEN.h;
+  if (s.goatPen === 1 && inside) return;
+  g.x = HERD_HOME.goat.x;
+  g.y = HERD_HOME.goat.y;
+  g.tx = HERD_HOME.goat.x;
+  g.ty = HERD_HOME.goat.y;
+  g.route = [];
+  g.pause = 0.6;
+  g.intent = "graze";
+  s.goatPen = 1;
 }
 
 export function placeHerd(s: GameState): void {
@@ -1575,6 +1595,7 @@ export function createGame(): GameState {
     cross: null,
     courtSpawn: 4,
     handPlace: 3,
+    goatPen: 1,
     xiang64: freshXiang64(),
   };
 }

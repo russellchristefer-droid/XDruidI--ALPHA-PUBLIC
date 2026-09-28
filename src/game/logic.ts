@@ -20,6 +20,7 @@ import {
   ensureReaper,
   ensureHand,
   ensureXiang64,
+  ensureGoatPen,
   HAND_HOME,
   ensureSkills,
   ensureHealth,
@@ -27,6 +28,7 @@ import {
   SKILL_NAME,
   footBlocked,
   FENCE,
+  GOAT_PEN,
   onFenceRail,
   isNight,
   itemMass,
@@ -2518,14 +2520,18 @@ function followRoute(body: { x: number; y: number; route?: number[]; dir?: "n" |
 }
 
 function herdGoal(s: GameState, a: Animal): { x: number; y: number; intent: Animal["intent"] } {
+  if (a.kind === "goat") {
+    return {
+      intent: "graze",
+      x: GOAT_PEN.x + 8 + unitRand(s) * (GOAT_PEN.w - 16),
+      y: GOAT_PEN.y + 8 + unitRand(s) * (GOAT_PEN.h - 12),
+    };
+  }
   const pd = Math.hypot(a.x - s.x, a.y - s.y);
   if (a.kind === "rooster" && pd < 24) {
     const awayX = clamp(a.x + Math.sign(a.x - s.x || 1) * 36, 48, 300);
     const awayY = a.y > 190 ? clamp(a.y + 28, 220, 420) : clamp(a.y - 10, 108, 150);
     return { intent: "flee", x: awayX, y: awayY };
-  }
-  if (a.kind === "goat" && pd < 70 && pd > 18 && s.y > 190 && unitRand(s) < 0.45) {
-    return { intent: "court", x: clamp(s.x + (a.x > s.x ? 16 : -16), 48, 300), y: clamp(s.y, 214, 460) };
   }
   const roll = unitRand(s);
   if (roll < 0.22) return { intent: "drink", x: POND_BANK.x, y: POND_BANK.y };
@@ -2867,6 +2873,7 @@ function stepHand(s: GameState, dt: number) {
 }
 
 function stepCritters(s: GameState, dt: number) {
+  ensureGoatPen(s);
   stepCat(s, dt);
   stepBirds(s, dt);
   stepReaper(s, dt);
