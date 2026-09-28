@@ -1498,15 +1498,6 @@ function paintMouthSunAndLand(
   }
   if (plate) {
     ctx.drawImage(plate, x, y);
-    const glow = Math.floor(clock * 2) % 2 === 0;
-    const cx = Math.round(x + dw * 0.5);
-    const top = Math.round(y + dh * 0.3);
-    const bot = Math.round(y + dh * 0.8);
-    const horizon = top + Math.round(Math.max(1, bot - top) * 0.58);
-    const gemY = horizon + 5;
-    ctx.fillStyle = glow ? (east ? "#fff6d4" : "#fff0c8") : east ? "#7ec8c8" : "#ff5018";
-    ctx.fillRect(cx - 1, gemY, 3, 1);
-    ctx.fillRect(cx, gemY - 1, 1, 3);
     return;
   }
   paintMouthScene(ctx, x, y, dw, dh, east, clock);
@@ -1535,65 +1526,115 @@ function paintMouthScene(
   ctx.closePath();
   ctx.clip();
 
-  const sky = east
-    ? ["#1c2448", "#24386e", "#3a5898", "#c08898", "#e8b878", "#f8e6b8"]
-    : ["#100818", "#281028", "#501820", "#882028", "#c04028", "#e06838"];
+  const sky: ReadonlyArray<readonly [number, number, string]> = east
+    ? [
+        [0, 0.16, "#141c48"],
+        [0.16, 0.3, "#243878"],
+        [0.3, 0.42, "#6888c8"],
+        [0.42, 0.52, "#f0b0a0"],
+        [0.52, 0.58, "#f8d8a0"],
+      ]
+    : [
+        [0, 0.18, "#140810"],
+        [0.18, 0.34, "#4a1018"],
+        [0.34, 0.48, "#a02818"],
+        [0.48, 0.58, "#e06028"],
+      ];
   const height = Math.max(1, bot - top);
-  for (let row = 0; row < height; row++) {
-    const py = top + row;
-    const u = row / height;
-    for (let col = -rx - 2; col <= rx + 2; col++) {
-      ctx.fillStyle = dither(sky, u, cx + col, py);
-      ctx.fillRect(cx + col, py, 1, 1);
-    }
+  for (const [a, b, color] of sky) {
+    const y0 = top + Math.floor(height * a);
+    const y1 = top + Math.floor(height * b);
+    ctx.fillStyle = color;
+    for (let py = y0; py < y1; py++) ctx.fillRect(cx - rx - 2, py, rx * 2 + 5, 1);
   }
+  ctx.fillStyle = east ? "#f4f7ff" : "#2a1418";
+  ctx.fillRect(cx - rx + 2, top + 4, 5, 2);
+  ctx.fillRect(cx - rx + 3, top + 3, 3, 1);
+  ctx.fillRect(cx + 2, top + 8, 4, 2);
 
-  const sy = top + Math.round(height * 0.3);
-  const sunR = east ? 6 : 5;
-  const halo = east ? "#f8e6b8" : "#e06838";
-  ctx.fillStyle = halo;
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * Math.PI * 2;
+  const sy = top + Math.round(height * 0.28);
+  const sunR = east ? 5 : 4;
+  diskRamp(
+    ctx,
+    cx,
+    sy,
+    sunR,
+    east ? ["#fffaf0", "#fff0c0", "#f0c078", "#c07838"] : ["#fff0c0", "#ff9840", "#d03818", "#681410"],
+  );
+  ctx.fillStyle = east ? "#fffaf0" : "#ffd060";
+  ctx.fillRect(cx - 2, sy - 2, 2, 1);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.fillStyle = east ? "#fff6d4" : "#ff7840";
     ctx.fillRect(Math.round(cx + Math.cos(a) * (sunR + 2)), Math.round(sy + Math.sin(a) * (sunR + 2)), 1, 1);
   }
-  const sun = east
-    ? ["#fffaf0", "#fff0c8", "#f0c080", "#d08848"]
-    : ["#fff4d8", "#ffb060", "#e04820", "#801818"];
-  diskRamp(ctx, cx, sy, sunR, sun);
-  ctx.fillStyle = "#fffaf0";
-  ctx.fillRect(cx - 2, sy - 2, 2, 1);
-  ctx.fillRect(cx - 2, sy - 1, 1, 1);
 
   const horizon = top + Math.round(height * 0.58);
-  const far = east ? ["#d8b888", "#b09068"] : ["#682020", "#401010"];
-  const near = east ? ["#6a7848", "#3e4c28"] : ["#30100c", "#180808"];
+  const landH = Math.max(1, bot - horizon);
   for (let py = horizon; py < bot; py++) {
-    const u = (py - horizon) / Math.max(1, bot - horizon);
-    if (u < 0.42) {
-      const half = Math.round(rx * (0.45 + u * 0.8) + Math.sin(py * 0.8) * 1.5);
-      ctx.fillStyle = (py & 1) === 0 ? far[0]! : far[1]!;
-      ctx.fillRect(cx - half, py, half * 2 + 1, 1);
+    const u = (py - horizon) / landH;
+    ctx.fillStyle = east ? (u < 0.35 ? "#c8a060" : u < 0.7 ? "#5a8840" : "#2e5828") : u < 0.35 ? "#5a2018" : u < 0.7 ? "#2a100c" : "#140806";
+    ctx.fillRect(cx - rx - 2, py, rx * 2 + 5, 1);
+    if (east && u > 0.4 && (py & 3) === 0) {
+      ctx.fillStyle = "#8fbe52";
+      ctx.fillRect(cx - rx + 2, py, 2, 1);
+      ctx.fillRect(cx + rx - 4, py, 2, 1);
     }
-    const half = Math.round((rx - 1) * (0.62 + u * 0.4) + Math.sin(py * 0.45 + 1) * 1.2);
-    ctx.fillStyle = u > 0.72 ? near[1]! : (py & 1) === 0 ? near[0]! : near[1]!;
-    ctx.fillRect(cx - half, py, half * 2 + 1, 1);
   }
-  ctx.fillStyle = east ? "#f8e6b8" : "#ffb070";
-  ctx.fillRect(cx - 5, horizon, 11, 1);
-
-  const beam = east ? "#fff6d4" : "#ff7840";
-  const glow = Math.floor(clock * 2) % 2 === 0;
-  for (let py = sy + sunR + 1; py < horizon; py += 2) {
-    ctx.fillStyle = glow && py % 4 === 0 ? "#fffaf0" : beam;
-    ctx.fillRect(cx, py, 1, 1);
+  ctx.fillStyle = east ? "#fff0c0" : "#ff5018";
+  ctx.fillRect(cx - rx, horizon, rx * 2 + 1, 1);
+  for (let i = 0; i < 6; i++) {
+    const px = cx - 6 + i * 2;
+    const peak = 3 + (i % 3);
+    ctx.fillStyle = east ? (i === 3 ? "#fff6d4" : "#e8c888") : i === 3 ? "#ff7840" : "#3a1410";
+    ctx.fillRect(px, horizon - peak, 2, peak);
   }
-  const gemY = horizon + 5;
-  ctx.fillStyle = east ? "#1e3470" : "#4a1016";
-  ctx.fillRect(cx - 2, gemY, 5, 1);
-  ctx.fillRect(cx, gemY - 2, 1, 5);
-  ctx.fillStyle = glow ? (east ? "#fff6d4" : "#fff0c8") : east ? "#7ec8c8" : "#ff5018";
-  ctx.fillRect(cx - 1, gemY, 3, 1);
-  ctx.fillRect(cx, gemY - 1, 1, 3);
+  if (east) {
+    ctx.fillStyle = "#e2b657";
+    ctx.fillRect(cx + 3, horizon - 7, 7, 2);
+    ctx.fillRect(cx + 5, horizon - 9, 3, 2);
+    ctx.fillStyle = "#f4e2a8";
+    ctx.fillRect(cx + 4, horizon - 5, 5, 5);
+    ctx.fillStyle = "#7ec8c8";
+    ctx.fillRect(cx + 5, horizon - 3, 2, 2);
+    ctx.fillStyle = "#e6d090";
+    ctx.fillRect(cx - 1, horizon + 2, 3, landH);
+  } else {
+    ctx.fillStyle = "#1a100c";
+    ctx.fillRect(cx - 6, horizon - 8, 2, 8);
+    ctx.fillRect(cx + 4, horizon - 8, 2, 8);
+    ctx.fillStyle = "#6a4030";
+    ctx.fillRect(cx - 6, horizon - 9, 12, 2);
+    ctx.fillStyle = "#ffd060";
+    ctx.fillRect(cx - 1, horizon + 2, 2, landH);
+    ctx.fillStyle = "#c03818";
+    ctx.fillRect(cx - 2, horizon + 2, 1, landH);
+    ctx.fillRect(cx + 1, horizon + 2, 1, landH);
+  }
+  ctx.fillStyle = east ? "#fffaf0" : "#ffd060";
+  ctx.fillRect(cx, sy - sunR - 3, 1, 2);
+  ctx.fillRect(cx - sunR - 3, sy, 2, 1);
+  ctx.fillRect(cx + sunR + 2, sy, 2, 1);
+  if (east) {
+    ctx.fillStyle = "#2f6a28";
+    ctx.fillRect(cx - 7, horizon - 5, 4, 3);
+    ctx.fillStyle = "#6b4428";
+    ctx.fillRect(cx - 6, horizon - 2, 1, 2);
+    ctx.fillStyle = "#f07090";
+    ctx.fillRect(cx - 4, horizon + 4, 1, 1);
+    ctx.fillRect(cx + 3, horizon + 6, 1, 1);
+    ctx.fillStyle = "#7ec8e0";
+    ctx.fillRect(cx - 1, horizon + 4, 3, 1);
+  } else {
+    ctx.fillStyle = "#2a1410";
+    ctx.fillRect(cx - 2, horizon - 12, 2, 2);
+    ctx.fillRect(cx + 1, horizon - 14, 2, 2);
+    ctx.fillStyle = "#ffb060";
+    ctx.fillRect(cx - 3, horizon + 5, 1, 1);
+    ctx.fillRect(cx + 2, horizon + 8, 1, 1);
+    ctx.fillStyle = "#3a1810";
+    ctx.fillRect(cx + 7, horizon - 4, 2, 4);
+  }
   ctx.restore();
 }
 
