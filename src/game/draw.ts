@@ -1298,9 +1298,11 @@ function drawCastRite(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameStat
   const frames = Math.max(1, Math.floor(img.width / 72));
   const frame = Math.floor(s.clock * 8) % frames;
   paintAether(ctx, cast.spell, s.x, s.y + 2, 16, 9, s.clock);
-  paintPool(ctx, s.x, s.y + 3, 18, 10, ink.core, 0.28, ink.deep);
+  paintPool(ctx, s.x, s.y + 3, 18, 10, ink.veil, 0.14, ink.neon);
   ctx.save();
   ctx.imageSmoothingEnabled = false;
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = 0.46 + 0.1 * Math.sin(s.clock * 1.8);
   ctx.drawImage(img, frame * 72, 0, 72, 72, Math.round(s.x) - 18, Math.round(s.y + 3) - 10, 36, 20);
   ctx.restore();
   paintSpellGleam(ctx, cast.spell, s.x, s.y + 1, s.clock);
@@ -2524,58 +2526,55 @@ function ensureRock(): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
-  const lip = 16;
-  const top: readonly [number, number, number] = [156, 124, 78];
-  const mid: readonly [number, number, number] = [112, 84, 50];
-  const deep: readonly [number, number, number] = [48, 32, 18];
-  const mix = (a: readonly [number, number, number], b: readonly [number, number, number], t: number) =>
-    [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t] as const;
+  const belly = (x: number) => {
+    const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
+    return 8 + Math.round(Math.sqrt(dome) * 74);
+  };
   for (let x = 0; x < WORLD_W; x++) {
     const t = x / (WORLD_W - 1);
     const dome = Math.sin(t * Math.PI);
-    const stone = Math.min(h - 2, lip + 6 + Math.round(dome ** 0.5 * 68));
-    for (let y = lip; y < stone; y++) {
-      const u = (y - lip) / Math.max(1, stone - lip);
-      const base = u < 0.45 ? mix(top, mid, u / 0.45) : mix(mid, deep, (u - 0.45) / 0.55);
-      const spec = (noise(x, y) & 15) - 7;
-      let rgb: readonly [number, number, number] = [base[0] + spec, base[1] + spec * 0.8, base[2] + spec * 0.6];
-      if (x > 200) rgb = [rgb[0] - 6, rgb[1] - 4, rgb[2] - 2];
-      if (noise(x, y) % 23 === 0 && y > lip + 4 && y < stone - 4) rgb = [rgb[0] + 18, rgb[1] + 12, rgb[2] + 6];
-      if (noise(x + 9, y + 4) % 31 === 0 && y > lip + 6) rgb = [rgb[0] - 14, rgb[1] - 10, rgb[2] - 6];
-      if (stone - y === 1) rgb = [16, 10, 8];
+    const bot = Math.min(h - 1, belly(x));
+    const keel = 1 - Math.abs(t - 0.5) * 2;
+    for (let y = 0; y < bot; y++) {
+      const u = y / Math.max(1, bot - 1);
+      const n = noise(x, y);
+      const spec = (n & 5) - 2;
+      const lx = x & 7;
+      const ly = y & 3;
+      const light = ((x >> 3) + (y >> 2)) & 1;
+      let rgb: readonly [number, number, number];
+      if (y === 0) rgb = [232, 196, 110];
+      else if (u < 0.5) {
+        const drop = u / 0.5;
+        const sun = 1 - drop * drop * 0.62;
+        const cool = drop * 16;
+        const tile = (c: readonly [number, number, number]) =>
+          [c[0] * sun, c[1] * sun * (1 - drop * 0.08), c[2] * sun + cool] as const;
+        if (lx === 0 || ly === 0) rgb = tile([28, 18, 14]);
+        else if (light) {
+          rgb = tile(ly === 1 ? [255, 238, 204] : ly === 3 ? [132, 96, 58] : [224, 190, 132]);
+          if (lx === 3 && ly === 2 && drop < 0.5) rgb = tile([255, 214, 120]);
+        } else rgb = tile(ly === 1 ? [58, 52, 74] : ly === 3 ? [8, 6, 12] : [26, 22, 34]);
+      } else {
+        const depth = (u - 0.5) / 0.5;
+        const far = 0.4 + depth * 0.12;
+        const onRib = ly === 0;
+        const onPost = lx === 0;
+        rgb = [(34 + spec) * far, (22 + spec) * far, (52 + spec) * far + 10];
+        if (onRib || onPost) rgb = [120 * far, 86 * far, 36 * far];
+        if (keel > 0.88 && Math.abs(x - (WORLD_W >> 1)) < 2) rgb = [200 * far, 160 * far, 78 * far];
+        if (n % 29 === 0 && depth > 0.12 && depth < 0.82 && !onRib && !onPost) {
+          const gem = n % 3;
+          rgb = gem === 0 ? [170 * far, 32 * far, 56 * far] : gem === 1 ? [32 * far, 84 * far, 170 * far] : [24 * far, 136 * far, 78 * far];
+        }
+        if (depth < 0.08) rgb = [16, 12, 22];
+      }
+      if (y === bot - 1) rgb = [4, 4, 10];
+      else if (y === bot - 2 && dome > 0.16) rgb = keel > 0.45 ? [220, 176, 86] : [150, 186, 220];
       putPix(d, WORLD_W, x, y, rgb);
     }
   }
   g.putImageData(img, 0, 0);
-  const tile = 8;
-  for (let ty = 0; ty < lip / tile; ty++) {
-    for (let tx = 0; tx < 43; tx++) {
-      const x0 = tx * tile;
-      const y0 = ty * tile;
-      const light = (tx + ty) % 2 === 0;
-      g.fillStyle = "#302418";
-      g.fillRect(x0, y0, tile, tile);
-      g.fillStyle = light ? "#d6c4a0" : "#1c1814";
-      g.fillRect(x0 + 1, y0 + 1, tile - 2, tile - 2);
-      g.fillStyle = light ? "#fff8e8" : "#302820";
-      g.fillRect(x0 + 1, y0 + 1, tile - 2, 1);
-      g.fillRect(x0 + 1, y0 + 2, 1, tile - 3);
-      g.fillStyle = light ? "#6e5438" : "#0c0a08";
-      g.fillRect(x0 + 1, y0 + tile - 2, tile - 2, 1);
-      g.fillStyle = light ? "#e2b657" : "#3a5280";
-      g.fillRect(x0 + 3, y0 + 3, light ? 2 : 1, light ? 2 : 1);
-      if (light) {
-        g.fillStyle = "#ffecaa";
-        g.fillRect(x0 + 3, y0 + 3, 1, 1);
-      }
-    }
-  }
-  g.fillStyle = "#302418";
-  g.fillRect(344, 0, WORLD_W - 344, lip);
-  g.fillStyle = "#e2b657";
-  g.fillRect(0, 0, WORLD_W, 1);
-  g.fillStyle = "#241810";
-  g.fillRect(0, lip - 1, WORLD_W, 1);
   rockPlate = canvas;
   return canvas;
 }
@@ -2590,6 +2589,17 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number, space?: HTMLIma
     const nebula = ensureVoid();
     if (nebula) ctx.drawImage(nebula, 0, FARM_H);
   }
+  for (let i = 0; i < 10; i++) {
+    const fall = 1 - i / 10;
+    ctx.fillStyle = `rgba(1, 1, 6, ${0.42 * fall * fall})`;
+    ctx.fillRect(0, FARM_H + i * 8, WORLD_W, 8);
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  fillOval(ctx, 64, FARM_H + 168, 46, 16, "rgba(72, 28, 96, 0.22)");
+  fillOval(ctx, 250, FARM_H + 210, 40, 14, "rgba(28, 48, 96, 0.2)");
+  fillOval(ctx, 170, FARM_H + 280, 28, 10, "rgba(96, 36, 48, 0.16)");
+  ctx.restore();
   const skyTop = FARM_H + 100;
   const skyH = Math.max(8, WORLD_H - skyTop - 6);
   for (let i = 0; i < 72; i++) {
@@ -2799,6 +2809,16 @@ function drawVimanaTone(ctx: CanvasRenderingContext2D, time: number): void {
   }
   const top = FARM_H;
   const h = 96;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(0, top);
+  for (let x = 0; x <= WORLD_W; x += 4) {
+    const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
+    ctx.lineTo(x, top + 8 + Math.sqrt(dome) * 74);
+  }
+  ctx.lineTo(WORLD_W, top);
+  ctx.closePath();
+  ctx.clip();
   const bands = 7;
   for (let i = 0; i < bands; i++) {
     const fall = 1 - i / (bands - 1);
@@ -2809,11 +2829,18 @@ function drawVimanaTone(ctx: CanvasRenderingContext2D, time: number): void {
     ctx.fillStyle = `rgba(${tone}, ${alpha})`;
     ctx.fillRect(0, y0, WORLD_W, y1 - y0);
   }
+  ctx.restore();
 }
 
 function drawUnderside(ctx: CanvasRenderingContext2D, _vimana?: HTMLImageElement): void {
   const rock = ensureRock();
-  if (rock) ctx.drawImage(rock, 0, FARM_H);
+  if (!rock) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  fillOval(ctx, WORLD_W * 0.5, FARM_H + 84, 22, 5, "rgba(186, 148, 64, 0.22)");
+  fillOval(ctx, WORLD_W * 0.5 - 46, FARM_H + 36, 18, 4, "rgba(120, 150, 190, 0.08)");
+  ctx.restore();
+  ctx.drawImage(rock, 0, FARM_H);
 }
 
 function drawCampfire(ctx: CanvasRenderingContext2D, sheet: HTMLImageElement, clock: number) {
