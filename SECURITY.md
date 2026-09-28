@@ -1,6 +1,6 @@
 # Security
 
-XDruid I is a browser game. The playable yard is client-side. Treat the repository and any hosted copy as a public game, not a place for secrets.
+XDruid I is an alpha browser game. The playable yard is client-side. Treat the repository and any hosted copy as a public game, not a place for secrets. Features and save layout can change without a migration.
 
 ## Reporting
 

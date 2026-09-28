@@ -1032,14 +1032,78 @@ function paintCircleRite(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
   }
 }
 
+function paintSpellGleam(ctx: CanvasRenderingContext2D, spell: SpellId, x: number, y: number, clock: number): void {
+  const ink = spellInk(spell);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = ink.pale;
+  for (let i = 0; i < 12; i++) {
+    const a = clock * 0.7 + (i / 12) * Math.PI * 2;
+    const px = Math.round(Math.cos(a) * 18);
+    const py = Math.round(Math.sin(a) * 11);
+    ctx.globalAlpha = 0.28 + 0.55 * (0.5 + 0.5 * Math.sin(clock * 5 + i));
+    ctx.fillRect(px, py, 1, 1);
+    if (i % 3 === 0) ctx.fillRect(px + Math.sign(Math.cos(a) || 1), py, 1, 1);
+  }
+  ctx.fillStyle = ink.core;
+  ctx.globalAlpha = 0.85;
+  const sweep = clock * 1.6;
+  ctx.fillRect(Math.round(Math.cos(sweep) * 13), Math.round(Math.sin(sweep) * 8), 1, 1);
+  ctx.fillRect(Math.round(Math.cos(sweep + Math.PI) * 13), Math.round(Math.sin(sweep + Math.PI) * 8), 1, 1);
+  ctx.fillStyle = ink.pale;
+  if (spell === "fireball" || spell === "nova") {
+    for (let i = 0; i < 5; i++) {
+      const rise = (clock * 12 + i * 2.4) % 9;
+      ctx.globalAlpha = 0.9 - rise / 10;
+      ctx.fillRect(-8 + i * 4, -6 - Math.floor(rise), 1, i % 2 ? 2 : 1);
+    }
+  } else if (spell === "ice" || spell === "iceball") {
+    ctx.globalAlpha = 0.8;
+    for (let i = 0; i < 4; i++) {
+      const a = clock * 0.4 + (i / 4) * Math.PI * 2;
+      const px = Math.round(Math.cos(a) * 15);
+      const py = Math.round(Math.sin(a) * 9);
+      ctx.fillRect(px, py, 1, 1);
+      ctx.fillRect(px + 1, py, 1, 1);
+      ctx.fillRect(px, py - 1, 1, 1);
+    }
+  } else if (spell === "holy") {
+    ctx.globalAlpha = 0.75;
+    for (let i = 0; i < 4; i++) {
+      const a = -Math.PI / 2 + (i / 4) * Math.PI * 2 + clock * 0.3;
+      const px = Math.round(Math.cos(a) * 16);
+      const py = Math.round(Math.sin(a) * 10);
+      ctx.fillRect(px, py - 1, 1, 3);
+      ctx.fillRect(px - 1, py, 3, 1);
+    }
+  } else if (spell === "bolt" || spell === "spark") {
+    ctx.globalAlpha = 0.9;
+    const j = Math.floor(clock * 10);
+    ctx.fillRect(-2 + (j % 3), -12, 1, 2);
+    ctx.fillRect(1 - (j % 2), -10, 1, 1);
+    ctx.fillRect(3, -8 + (j % 4), 1, 1);
+  } else if (spell === "poison" || spell === "drip") {
+    for (let i = 0; i < 3; i++) {
+      const bob = Math.sin(clock * 3 + i) * 2;
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(-6 + i * 6, Math.round(-4 + bob), 2, 2);
+    }
+  }
+  ctx.restore();
+}
+
 function drawCastRite(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
   const cast = s.cast;
   if (!cast) return;
   const img = sheets[cast.spell];
   if (!img || img.width < 72) return;
+  const ink = spellInk(cast.spell);
   const frames = Math.max(1, Math.floor(img.width / 72));
   const frame = Math.floor(s.clock * 8) % frames;
+  paintPool(ctx, s.x, s.y + 3, 18, 10, ink.core, 0.28, ink.deep);
   blit(ctx, img, frame * 72, 0, 72, 72, s.x, s.y + 2, 0.5, false, 36, 40);
+  paintSpellGleam(ctx, cast.spell, s.x, s.y + 1, s.clock);
 }
 
 function drawSpell(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {

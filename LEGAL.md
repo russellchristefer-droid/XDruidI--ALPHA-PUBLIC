@@ -16,7 +16,7 @@ The fish and fishing-rod icons included in the game are third-party pixel art. T
 
 ## Disclaimer
 
-The game is provided as a work in progress. The yard, the gates, and the days can change. There is no warranty. You are responsible for the device and browser you play on.
+The game is an alpha. It is provided as a work in progress. The yard, the gates, the spells, and the days can change between saves. There is no warranty, and no promise that a save from this build will load unchanged in a later one. You are responsible for the device and browser you play on.
 
 ## Acceptable use
 

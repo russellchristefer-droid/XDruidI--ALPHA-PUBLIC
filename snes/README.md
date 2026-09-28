@@ -1,5 +1,7 @@
 # XDruid I — SNES sidecar
 
+Alpha note: the browser game is the live homestead. This cartridge is a small sidecar of that yard, not a port of every system.
+
 `xdruid.sfc` is a 32 KB LoROM cartridge. It is the homestead you can carry into an SNES emulator. It is not the browser game squeezed into the console. The console shows the yard, the seal, the west gate, the east gate, the goat pen on the upper farm, and Xiang Su's mark on the sidewalk.
 
 Open `xdruid.sfc` in Snes9x, bsnes, Mesen-S, or RetroArch with the snes9x core. Load the file the way you would load any other game. Nothing else has to be installed.
