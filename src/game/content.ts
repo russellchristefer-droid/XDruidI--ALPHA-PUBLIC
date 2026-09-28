@@ -22,7 +22,7 @@ export const HERD_HOME = {
   rooster: { x: 112, y: 344 },
   goat: { x: 268, y: 92 },
 } as const;
-export const CAT_HOME = { x: 232, y: 336 } as const;
+export const CAT_HOME = { x: 248, y: 212 } as const;
 /** Masked wizard. Courtyard guest, not stacked on the herd. */
 export const REAPER_HOME = { x: 188, y: 412 } as const;
 /** Second farmer. Works the beds north of the fence. */
@@ -977,6 +977,9 @@ export type GameState = {
     pause: number;
     mode: "sit" | "stand" | "walk" | "run";
     look?: "n" | "e" | "s" | "w";
+    /** Atlas clip from the black cat sheet. */
+    clip?: string;
+    clipT?: number;
     route?: number[];
     intent?: "court" | "drink" | "yard" | "follow";
     /** Seconds until she speaks again. Not saved as part of the story. */
@@ -1251,6 +1254,22 @@ export function ensureGoatPen(s: GameState): void {
   g.pause = 0.6;
   g.intent = "graze";
   s.goatPen = 1;
+}
+
+/** Cow and rooster live on the courtyard. A save that left them on the farm comes back. */
+export function ensureCourtHerd(s: GameState): void {
+  for (const a of s.animals) {
+    if (a.kind === "goat") continue;
+    const spot = HERD_HOME[a.kind];
+    if (!spot || a.y >= MAGIC_PLOT.y) continue;
+    a.x = spot.x;
+    a.y = spot.y;
+    a.tx = spot.x;
+    a.ty = spot.y;
+    a.route = [];
+    a.pause = a.kind === "cow" ? 1.2 : 0.4;
+    a.intent = "court";
+  }
 }
 
 export function placeHerd(s: GameState): void {

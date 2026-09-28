@@ -6,6 +6,7 @@ import { TOOL_ANIM, findItem } from "./logic.ts";
 import { drawEastGate } from "./paint/eastGate.ts";
 import { drawWestGate } from "./paint/westGate.ts";
 import { drawMosaicFloors } from "./paint/mosaicFloor.ts";
+import { CAT_CELL, catClip } from "./paint/blackCat.ts";
 
 const CHAR = 0.42;
 
@@ -1423,12 +1424,12 @@ function paintHand(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState):
   const { row, flip } = rowOf(h.dir);
   const moving = h.pose === "walk" || h.pose === "handswalk";
   const col = moving
-    ? Math.floor(h.poseT * 8) % frames
+    ? Math.floor(h.poseT * 5) % frames
     : h.pose === "idle" || h.pose === "handsidle"
       ? Math.floor(h.poseT * 2) % frames
       : Math.min(frames - 1, Math.floor(h.poseT * 6));
   const footX = row === 1 ? 37 : 35;
-  blit(ctx, img, col * CHAR_W, row * CHAR_H, CHAR_W, CHAR_H, h.x, h.y, CHAR, flip, footX, CHAR_FOOT_Y);
+  blit(ctx, img, col * CHAR_W, row * CHAR_H, CHAR_W, CHAR_H, h.x, h.y, 0.36, flip, footX, CHAR_FOOT_Y);
 }
 
 const XIANG64_SCALE = 0.67;
@@ -3464,11 +3465,11 @@ export function drawWorld(
     );
   }
 
-  type D = { y: number; paint: () => void };
+  type D = { y: number; x?: number; paint: () => void };
   const queue: D[] = [];
   const over: D[] = [];
-  const stage = (y: number, paint: () => void) => {
-    const d = { y, paint };
+  const stage = (y: number, paint: () => void, x?: number) => {
+    const d = { y, x, paint };
     queue.push(d);
     if (onFarmFrame(y)) over.push(d);
   };
@@ -3479,24 +3480,34 @@ export function drawWorld(
     const walk = sheets[a.kind === "cow" ? "cowWalk" : a.kind === "goat" ? "goatWalk" : "roosterWalk"];
     const footY = a.kind === "cow" ? 69 : 66;
     const rate = a.kind === "cow" ? 4 : 8;
-    stage(a.y, () => drawAnimal(ctx, idle, walk, s, a.x, a.y, a.dir, moving, scale, footY, rate));
+    stage(a.y, () => drawAnimal(ctx, idle, walk, s, a.x, a.y, a.dir, moving, scale, footY, rate), a.x);
   }
-  const mode = s.cat.mode || "sit";
-  const moving = mode === "walk" || mode === "run";
-  const catSheet =
-    mode === "run"
-      ? sheets.catRun ?? sheets.cat
-      : mode === "walk"
-        ? sheets.catWalk ?? sheets.cat
-        : mode === "stand"
-          ? sheets.catStand ?? sheets.catSit ?? sheets.cat
-          : sheets.catSit ?? sheets.cat;
-  if (catSheet) {
+  const black = sheets.blackCat;
+  if (black && black.naturalWidth > 0) {
     stage(s.cat.y, () => {
-      const frames = Math.max(1, Math.floor(catSheet.width / 64));
-      const col = moving ? Math.floor(s.clock * (mode === "run" ? 12 : 8)) % frames : Math.floor(s.clock * 2) % frames;
-      blit(ctx, catSheet, col * 64, 0, 64, 64, s.cat.x, s.cat.y, 0.36, s.cat.face > 0, 32, 48);
-    });
+      const clip = catClip(s.cat.clip);
+      const fps = clip.kind === "run" ? 12 : clip.kind === "walk" ? 8 : clip.kind === "jump" ? 10 : clip.kind === "sleep" ? 1.6 : 6;
+      const col = Math.floor((s.cat.clipT ?? s.clock) * fps) % Math.max(1, clip.frames);
+      blit(ctx, black, col * CAT_CELL, clip.row * CAT_CELL, CAT_CELL, CAT_CELL, s.cat.x, s.cat.y, 0.32, false, 32, 63);
+    }, s.cat.x);
+  } else {
+    const mode = s.cat.mode || "sit";
+    const moving = mode === "walk" || mode === "run";
+    const catSheet =
+      mode === "run"
+        ? sheets.catRun ?? sheets.cat
+        : mode === "walk"
+          ? sheets.catWalk ?? sheets.cat
+          : mode === "stand"
+            ? sheets.catStand ?? sheets.catSit ?? sheets.cat
+            : sheets.catSit ?? sheets.cat;
+    if (catSheet) {
+      stage(s.cat.y, () => {
+        const frames = Math.max(1, Math.floor(catSheet.width / 64));
+        const col = moving ? Math.floor(s.clock * (mode === "run" ? 12 : 8)) % frames : Math.floor(s.clock * 2) % frames;
+        blit(ctx, catSheet, col * 64, 0, 64, 64, s.cat.x, s.cat.y, 0.36, s.cat.face > 0, 32, 48);
+      }, s.cat.x);
+    }
   }
   const rocks = sheets.rocks;
   if (rocks) {
@@ -3508,15 +3519,24 @@ export function drawWorld(
     }
   }
   if (s.birds) {
-    for (const b of s.birds) stage(b.y, () => paintBird(ctx, sheets, b));
+    for (const b of s.birds) stage(b.y, () => paintBird(ctx, sheets, b), b.x);
   }
   if (s.hand) queue.push({ y: s.hand.y, paint: () => paintHand(ctx, sheets, s) });
-  if (s.xiang64) stage(s.xiang64.y, () => paintXiang64(ctx, sheets, s));
+  if (s.xiang64) stage(s.xiang64.y, () => paintXiang64(ctx, sheets, s), s.xiang64.x);
   if (sheets.idle) {
-    stage(s.y - 1, () => drawCastRite(ctx, sheets, s));
-    stage(s.y, () => paintPlayer(ctx, sheets, s));
+    stage(s.y - 1, () => drawCastRite(ctx, sheets, s), s.x);
+    stage(s.y, () => paintPlayer(ctx, sheets, s), s.x);
   }
   const cover: Array<() => void> = [];
+  const inGrown = (x: number, y: number) => {
+    for (const p of s.plots) {
+      if (!p.crop || p.stage < 2) continue;
+      const w = p.w || 20;
+      const h = p.h || 16;
+      if (x >= p.x - w / 2 && x <= p.x + w / 2 && y >= p.y - h / 2 && y <= p.y + h / 2 + 10) return true;
+    }
+    return false;
+  };
   for (const p of s.plots) {
     if (!p.crop || p.stage === 0) continue;
     const foot = Math.round(p.y + (p.h || 16) / 2 + 12);
@@ -3528,7 +3548,7 @@ export function drawWorld(
         ctx.fillRect(p.x + 5, p.y - 7 + bob, 2, 2);
       }
     };
-    stage(foot, paint);
+    queue.push({ y: foot, paint });
     if (p.stage >= 2) cover.push(paint);
   }
   const flowerSheet = sheets.flowers;
@@ -3559,6 +3579,12 @@ export function drawWorld(
   over.sort((a, b) => a.y - b.y);
   for (const d of over) d.paint();
   for (const paint of cover) paint();
+  drawFarmFrame(ctx, s.clock);
+  drawSideGates(ctx, s, sheets);
+  for (const d of over) {
+    if (d.x == null || inGrown(d.x, d.y)) continue;
+    d.paint();
+  }
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y)) && !onFarmFrame(s.y)) paintPlayer(ctx, sheets, s);
   drawSpell(ctx, sheets, s);
 

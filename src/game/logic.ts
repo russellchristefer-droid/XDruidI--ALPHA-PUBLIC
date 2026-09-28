@@ -1,6 +1,7 @@
 import { soundState } from "./audio.ts";
 import { tickBirdsong } from "./birdsong.ts";
 import { mewNow, tickCatVoice } from "./catsound.ts";
+import { catClip, catIdleIds, catMoveId, type CatLook } from "./paint/blackCat.ts";
 import {
   DEFS,
   MASS_CAP,
@@ -21,6 +22,7 @@ import {
   ensureHand,
   ensureXiang64,
   ensureGoatPen,
+  ensureCourtHerd,
   HAND_HOME,
   ensureSkills,
   ensureHealth,
@@ -2533,94 +2535,132 @@ function herdGoal(s: GameState, a: Animal): { x: number; y: number; intent: Anim
     const awayY = a.y > 190 ? clamp(a.y + 28, 220, 420) : clamp(a.y - 10, 108, 150);
     return { intent: "flee", x: awayX, y: awayY };
   }
-  const roll = unitRand(s);
-  if (roll < 0.22) return { intent: "drink", x: POND_BANK.x, y: POND_BANK.y };
-  if (roll < 0.58) {
-    const spot = pickSpot(s, FOLIAGE);
-    return { intent: "graze", x: spot.x, y: spot.y };
+  const spot = pickSpot(s, COURT_SPOTS);
+  return { intent: "court", x: spot.x, y: spot.y };
+}
+
+function beginCatClip(s: GameState, id: string, seconds: number) {
+  const clip = catClip(id);
+  const cat = s.cat;
+  cat.clip = clip.id;
+  cat.clipT = 0;
+  cat.look = clip.look;
+  cat.face = clip.look === "w" ? -1 : 1;
+  cat.pause = seconds;
+  cat.mode =
+    clip.kind === "run" || clip.kind === "jump"
+      ? "run"
+      : clip.kind === "walk"
+        ? "walk"
+        : clip.id.includes("Stand") || clip.id.startsWith("eat") || clip.id === "hind" || clip.id.startsWith("hiss")
+          ? "stand"
+          : "sit";
+  if (clip.id.startsWith("meow")) mewNow(s, unitRand(s) < 0.5 ? "short" : "trill");
+  else if (clip.id.startsWith("hiss")) mewNow(s, "groan");
+  else if (clip.id.startsWith("lick")) mewNow(s, "lick");
+}
+
+const CAT_SPOTS: { x: number; y: number }[] = [
+  { x: 120, y: 210 },
+  { x: 190, y: 214 },
+  { x: 250, y: 208 },
+  { x: 80, y: 260 },
+  { x: 160, y: 290 },
+  { x: 250, y: 270 },
+  { x: 110, y: 340 },
+  { x: 200, y: 370 },
+  { x: 280, y: 340 },
+  { x: 70, y: 420 },
+  { x: 160, y: 450 },
+  { x: 240, y: 430 },
+  { x: 130, y: 490 },
+  { x: 210, y: 480 },
+  { x: 300, y: 400 },
+];
+
+function catOpen(x: number, y: number): boolean {
+  return x >= 48 && x <= 300 && y >= 200 && y <= 500 && !footBlocked(x, y);
+}
+
+function catGoal(s: GameState, cat: GameState["cat"]): { x: number; y: number } {
+  for (let i = 0; i < 10; i++) {
+    const spot = pickSpot(s, CAT_SPOTS);
+    if (catOpen(spot.x, spot.y) && Math.hypot(spot.x - cat.x, spot.y - cat.y) > 48) return spot;
   }
-  if (roll < 0.88) {
-    const spot = pickSpot(s, COURT_SPOTS);
-    return { intent: "court", x: spot.x, y: spot.y };
-  }
-  const x = clamp(a.x + (unitRand(s) - 0.5) * (a.y > 190 ? 48 : 28), 48, 300);
-  const y = clamp(a.y + (unitRand(s) - 0.5) * (a.y > 190 ? 36 : 16), a.y > 190 ? 214 : 108, a.y > 190 ? 460 : 150);
-  if (footBlocked(x, y)) {
-    const spot = pickSpot(s, COURT_SPOTS);
-    return { intent: "court", x: spot.x, y: spot.y };
-  }
-  return { intent: "wander", x, y };
+  return { x: 160, y: 320 };
 }
 
 function stepCat(s: GameState, dt: number) {
   const cat = s.cat;
-  if (!cat.mode) cat.mode = "sit";
   if (!cat.look) cat.look = "s";
+  cat.clipT = (cat.clipT ?? 0) + dt;
+  cat.route = [];
+  if (cat.pause > 1) cat.pause = 0;
+  if (!catOpen(cat.x, cat.y)) {
+    const spot = nearestOpen(160, 300) ?? { x: 160, y: 300 };
+    cat.x = spot.x;
+    cat.y = spot.y;
+    cat.tx = spot.x;
+    cat.ty = spot.y;
+  }
   if (cat.pause > 0) {
     cat.pause -= dt;
+    if (cat.mode !== "sit") {
+      cat.mode = "sit";
+      const idle = catIdleIds(cat.look)[0] ?? "wagSitS";
+      if (!cat.clip || cat.clip.startsWith("walk") || cat.clip.startsWith("run")) cat.clip = idle;
+    }
     return;
   }
-  if (footBlocked(cat.x, cat.y)) {
-    unstick(cat);
-    cat.route = [];
-    cat.mode = "sit";
-    cat.pause = 0.4;
-    return;
-  }
-  if (cat.mode === "sit") {
-    if (unitRand(s) < 0.4) {
-      cat.face *= -1;
-      cat.look = cat.face < 0 ? "w" : "e";
-      cat.pause = 0.7 + unitRand(s) * 1.4;
+  if (Math.hypot(cat.tx - cat.x, cat.ty - cat.y) < 6 || !catOpen(cat.tx, cat.ty)) {
+    if (unitRand(s) < 0.2) {
+      const pool = catIdleIds(cat.look);
+      beginCatClip(s, pool[Math.floor(unitRand(s) * pool.length)] ?? "wagSitS", 0.35 + unitRand(s) * 0.4);
       return;
     }
-    cat.mode = "stand";
-    cat.pause = 0.2;
-    return;
+    const goal = catGoal(s, cat);
+    cat.tx = goal.x;
+    cat.ty = goal.y;
   }
-  if (cat.mode === "stand" || !cat.route || cat.route.length < 2) {
-    const near = Math.hypot(s.x - cat.x, s.y - cat.y);
-    const dash = unitRand(s) < 0.18 || near < 16;
-    cat.mode = dash ? "run" : "walk";
-    let goal = pickSpot(s, COURT_SPOTS);
-    let intent: NonNullable<typeof cat.intent> = "court";
-    const roll = unitRand(s);
-    if (near < 20) {
-      goal = { x: clamp(cat.x + Math.sign(cat.x - s.x || 1) * 24, 48, 300), y: clamp(cat.y + 20, 214, 420) };
-      intent = "court";
-    } else if (roll < 0.2) {
-      goal = POND_BANK;
-      intent = "drink";
-    } else if (roll < 0.4) {
-      goal = { x: clamp(90 + unitRand(s) * 140, 48, 300), y: 120 + unitRand(s) * 24 };
-      intent = "yard";
-    } else if (near < 80 && roll < 0.55) {
-      goal = { x: clamp(s.x + (cat.x > s.x ? 14 : -14), 48, 300), y: clamp(s.y, 100, 460) };
-      intent = "follow";
-    }
-    if (footBlocked(goal.x, goal.y)) goal = { x: 160, y: 270 };
-    cat.intent = intent;
-    cat.route = gateRoute(cat, goal);
-    cat.face = goal.x >= cat.x ? 1 : -1;
-    cat.look = Math.abs(goal.y - cat.y) > Math.abs(goal.x - cat.x) ? (goal.y >= cat.y ? "s" : "n") : goal.x >= cat.x ? "e" : "w";
-    if (cat.route.length < 2) {
+  const dx = cat.tx - cat.x;
+  const dy = cat.ty - cat.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const mag = Math.min(28 * dt, dist);
+  let nx = cat.x + (dx / dist) * mag;
+  let ny = cat.y + (dy / dist) * mag;
+  if (!catOpen(nx, ny)) {
+    const ax = cat.x + Math.sign(dx) * mag;
+    const ay = cat.y + Math.sign(dy) * mag;
+    if (Math.abs(dx) >= 1 && catOpen(ax, cat.y)) {
+      nx = ax;
+      ny = cat.y;
+    } else if (Math.abs(dy) >= 1 && catOpen(cat.x, ay)) {
+      nx = cat.x;
+      ny = ay;
+    } else {
+      const goal = catGoal(s, cat);
+      cat.tx = goal.x;
+      cat.ty = goal.y;
       cat.mode = "sit";
-      cat.pause = 0.6;
+      cat.clip = "wagSitS";
+      return;
     }
+  }
+  const movedX = nx - cat.x;
+  const movedY = ny - cat.y;
+  cat.x = nx;
+  cat.y = ny;
+  if (Math.abs(movedX) + Math.abs(movedY) < 0.01) {
+    cat.mode = "sit";
+    cat.clip = "wagSitS";
     return;
   }
-  const speed = cat.mode === "run" ? 36 : 15;
-  const step = followRoute(cat, speed, dt);
-  if (step === "arrive") {
-    cat.mode = "sit";
-    cat.route = [];
-    cat.pause = cat.intent === "drink" ? 1.6 : 1.2 + unitRand(s) * 2.4;
-  } else if (step === "stuck") {
-    unstick(cat);
-    cat.mode = "sit";
-    cat.route = [];
-    cat.pause = 0.6;
-  }
+  const look: CatLook = Math.abs(movedX) >= Math.abs(movedY) ? (movedX > 0 ? "e" : "w") : movedY > 0 ? "s" : "n";
+  const id = catMoveId(look, false);
+  cat.mode = "walk";
+  cat.look = look;
+  cat.face = look === "w" ? -1 : 1;
+  if (cat.clip !== id) cat.clip = id;
 }
 
 const BIRD_PADS: [number, number][] = [
@@ -2806,12 +2846,20 @@ function stepReaper(s: GameState, _dt: number) {
 }
 
 const FARM_SPOTS: { x: number; y: number }[] = [
-  { x: 56, y: 150 },
-  { x: 118, y: 150 },
-  { x: 164, y: 150 },
-  { x: 90, y: 132 },
-  { x: 200, y: 140 },
+  { x: 48, y: 148 },
+  { x: 72, y: 136 },
+  { x: 100, y: 152 },
+  { x: 128, y: 138 },
+  { x: 156, y: 150 },
+  { x: 188, y: 136 },
+  { x: 214, y: 148 },
+  { x: 64, y: 118 },
+  { x: 140, y: 120 },
+  { x: 176, y: 124 },
+  { x: 40, y: 160 },
+  { x: 200, y: 158 },
 ];
+const HAND_JOBS: Array<"water" | "shovel" | "scythe" | "axe" | "hammer"> = ["water", "shovel", "scythe", "axe", "hammer"];
 
 function stepXiang64(s: GameState, dt: number) {
   ensureXiang64(s);
@@ -2848,32 +2896,33 @@ function stepHand(s: GameState, dt: number) {
   }
   if (h.route.length >= 2) {
     h.pose = "walk";
-    const moved = followRoute(h, 26, dt, true);
+    const moved = followRoute(h, 12, dt, true);
     if (moved !== "walk") {
       h.route = [];
       h.pose = "idle";
-      h.pause = 0.2;
+      h.pause = 0.15;
     }
     return;
   }
-  if (h.pose !== "water" && h.pose !== "shovel") {
-    const bed = s.plots.find((p) => Math.hypot(p.x - h.x, p.y - h.y) < 36);
+  if (h.pose !== "water" && h.pose !== "shovel" && h.pose !== "scythe" && h.pose !== "axe" && h.pose !== "hammer") {
+    const bed = s.plots.find((p) => Math.hypot(p.x - h.x, p.y - h.y) < 40);
     const thirsty = bed && bed.crop && bed.stage > 0 && bed.stage < 5 && !bed.watered;
-    h.pose = thirsty || unitRand(s) < 0.72 ? "water" : "shovel";
+    h.pose = thirsty ? "water" : HAND_JOBS[Math.floor(unitRand(s) * HAND_JOBS.length)] ?? "water";
     if (thirsty && bed) bed.watered = true;
     h.poseT = 0;
-    h.dir = "n";
-    h.pause = 1.6;
+    h.dir = unitRand(s) < 0.5 ? "n" : unitRand(s) < 0.5 ? "e" : "w";
+    h.pause = 0.85 + unitRand(s) * 0.45;
     return;
   }
   const dry = s.plots.find((p) => p.crop && p.stage > 0 && p.stage < 5 && !p.watered);
-  const spot = dry ? { x: Math.max(36, Math.min(210, dry.x)), y: 150 } : pickSpot(s, FARM_SPOTS);
+  const spot = dry ? { x: Math.max(36, Math.min(220, dry.x + (unitRand(s) - 0.5) * 16)), y: Math.max(116, Math.min(160, dry.y)) } : pickSpot(s, FARM_SPOTS);
   h.route = gateRoute(h, spot, true);
   h.pose = "walk";
 }
 
 function stepCritters(s: GameState, dt: number) {
   ensureGoatPen(s);
+  ensureCourtHerd(s);
   stepCat(s, dt);
   stepBirds(s, dt);
   stepReaper(s, dt);
