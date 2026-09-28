@@ -69,8 +69,10 @@ FONT = {
     "I": ["######..", "..##....", "..##....", "..##....", "..##....", "..##....", "######..", "........"],
     "K": ["#...#...", "#..#....", "#.#.....", "##......", "#.#.....", "#..#....", "#...#...", "........"],
     "N": ["#....#..", "##...#..", "#.#..#..", "#..#.#..", "#...##..", "#....#..", "#....#..", "........"],
+    "O": [".####...", "#....#..", "#....#..", "#....#..", "#....#..", "#....#..", ".####...", "........"],
     "R": ["####....", "#...#...", "#...#...", "####....", "#.#.....", "#..#....", "#...#...", "........"],
     "S": [".####...", "#.......", "#.......", ".####...", ".....#..", ".....#..", "#####...", "........"],
+    "T": ["######..", "..##....", "..##....", "..##....", "..##....", "..##....", "..##....", "........"],
     "U": ["#....#..", "#....#..", "#....#..", "#....#..", "#....#..", "#....#..", ".####...", "........"],
     "V": ["#....#..", "#....#..", "#....#..", "#....#..", ".#..#...", ".#..#...", "..##....", "........"],
     "X": ["#....#..", ".#..#...", "..##....", "..##....", "..##....", ".#..#...", "#....#..", "........"],
@@ -280,7 +282,7 @@ def emit_dma(a: Asm, vram_word: int, src: int, size: int) -> None:
 
 
 def build_tiles() -> tuple[bytes, bytes, bytes, dict[str, int]]:
-    letters = list(" XDRUIEAGKNSVY")
+    letters = list(" XDRUIEAGKNSVYOT")
     ids = {ch: 8 + i for i, ch in enumerate(letters)}
     tiles = [
         tile2(solid(0)),
@@ -295,8 +297,8 @@ def build_tiles() -> tuple[bytes, bytes, bytes, dict[str, int]]:
     for ch in letters:
         tiles.append(tile2(glyph(FONT[ch])))
     raw = b"".join(tiles)
-    if len(tiles) != 22 or len(raw) != 22 * 16:
-        raise SystemExit(f"expected 22 tiles, got {len(tiles)}")
+    if len(tiles) != 24 or len(raw) != 24 * 16:
+        raise SystemExit(f"expected 24 tiles, got {len(tiles)}")
     names = {
         "blank": 0,
         "grass": 1,
@@ -336,6 +338,23 @@ def build_map(names: dict) -> bytes:
     for y in range(18, 22):
         for x in range(14, 18):
             grid[y][x] = tile_entry(names["seal"], 2)
+    # Goat pen, 7 by 3 tiles on the upper farm, east of the pond.
+    for y in range(5, 8):
+        for x in range(22, 29):
+            grid[y][x] = tile_entry(names["path"], 0)
+    for x in range(21, 30):
+        grid[4][x] = tile_entry(names["fence"], 0)
+        grid[8][x] = tile_entry(names["fence"], 0)
+    grid[5][21] = tile_entry(names["fence"], 0)
+    grid[6][21] = tile_entry(names["fence"], 0)
+    grid[7][21] = tile_entry(names["fence"], 0)
+    grid[5][29] = tile_entry(names["fence"], 0)
+    grid[6][29] = tile_entry(names["fence"], 0)
+    grid[7][29] = tile_entry(names["fence"], 0)
+    for i, ch in enumerate("GOAT"):
+        grid[9][22 + i] = tile_entry(letters[ch], 3)
+    for i, ch in enumerate("XIANG"):
+        grid[13][16 + i] = tile_entry(letters[ch], 3)
     title = "XDRUID I"
     for i, ch in enumerate(title):
         grid[2][12 + i] = tile_entry(letters[ch], 3)
@@ -702,7 +721,7 @@ def main() -> None:
     red = bgr(22, 4, 4)
     gold = bgr(28, 22, 6)
     tiles, sprite, _, names = build_tiles()
-    if len(tiles) != 22 * 16:
+    if len(tiles) != 24 * 16:
         raise SystemExit(f"tile bytes {len(tiles)}")
     game_map = build_map(names)
     if len(game_map) != 2048:
