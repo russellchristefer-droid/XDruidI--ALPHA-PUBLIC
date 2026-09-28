@@ -107,7 +107,7 @@ const CONTROLS = `WASD or arrows    Move. 4 directions.
 Shift             Walk faster while stamina holds. A heavy pack refuses.
 Left click        Use the highlighted tile.
 Right click       Examine, or a short menu.
-Mouse wheel       Zoom in on him. Scroll up closer, down back out.
+Mouse wheel       Zoom. Scroll up closer, down further out.
 E or Space        Use the tile you face.
 Q                 Activate or eat the hotbar slot.
 F                 Stow or draw the hand item.
@@ -530,7 +530,7 @@ export function AssayGame() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const levels = [1, 1.5, 2, 3, 4];
+    const levels = [0.2, 0.35, 0.55, 1, 1.5, 2, 3, 4];
     const onWheel = (e: WheelEvent) => {
       if (screenRef.current !== "play") return;
       e.preventDefault();
@@ -574,29 +574,41 @@ export function AssayGame() {
         const fit = Math.min(w / VIEW_W, h / VIEW_H);
         const base = Math.max(1, Math.floor(fit));
         const zoom = zoomRef.current;
-        const scale = Math.max(base, Math.round(base * zoom));
         const brace = s.cast && s.wing === 1 ? -1 : s.cast && s.wing === -1 ? 1 : 0;
         let ox: number;
         let oy: number;
         let skyW: number;
         let skyH: number;
-        if (zoom <= 1) {
-          const follow = Math.round(s.y - VIEW_H / 2);
-          const camY = Math.max(0, Math.min(WORLD_H - VIEW_H, follow + brace));
-          ox = Math.floor((w - VIEW_W * scale) / 2);
-          oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
-          skyW = VIEW_W * scale;
-          skyH = VIEW_H * scale;
+        let scale: number;
+        if (zoom < 1) {
+          const viewH = Math.min(WORLD_H, VIEW_H / zoom);
+          const viewW = WORLD_W;
+          scale = Math.min(w / viewW, h / viewH);
+          const camY = Math.max(0, Math.min(Math.max(0, WORLD_H - viewH), s.y - viewH / 2 + brace));
+          ox = Math.floor((w - viewW * scale) / 2);
+          oy = Math.floor((h - viewH * scale) / 2 - camY * scale);
+          skyW = viewW * scale;
+          skyH = viewH * scale;
         } else {
-          const viewW = w / scale;
-          const viewH = h / scale;
-          const pad = 24;
-          const camX = Math.max(-pad, Math.min(WORLD_W - viewW + pad, s.x - viewW / 2));
-          const camY = Math.max(-pad, Math.min(WORLD_H - viewH + pad, s.y - viewH / 2 + brace));
-          ox = Math.round(w / 2 - (camX + viewW / 2) * scale);
-          oy = Math.round(h / 2 - (camY + viewH / 2) * scale);
-          skyW = WORLD_W * scale;
-          skyH = WORLD_H * scale;
+          scale = Math.max(base, Math.round(base * zoom));
+          if (zoom <= 1) {
+            const follow = Math.round(s.y - VIEW_H / 2);
+            const camY = Math.max(0, Math.min(WORLD_H - VIEW_H, follow + brace));
+            ox = Math.floor((w - VIEW_W * scale) / 2);
+            oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
+            skyW = VIEW_W * scale;
+            skyH = VIEW_H * scale;
+          } else {
+            const viewW = w / scale;
+            const viewH = h / scale;
+            const pad = 24;
+            const camX = Math.max(-pad, Math.min(WORLD_W - viewW + pad, s.x - viewW / 2));
+            const camY = Math.max(-pad, Math.min(WORLD_H - viewH + pad, s.y - viewH / 2 + brace));
+            ox = Math.round(w / 2 - (camX + viewW / 2) * scale);
+            oy = Math.round(h / 2 - (camY + viewH / 2) * scale);
+            skyW = WORLD_W * scale;
+            skyH = WORLD_H * scale;
+          }
         }
         camRef.current = { scale, ox, oy };
         const ctx = canvas.getContext("2d");
