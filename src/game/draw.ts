@@ -1363,6 +1363,19 @@ function gateXs(wing: number): number[] {
 
 const PORTAL_BASE = 228;
 
+function portalCovers(px: number, py: number): boolean {
+  const boxes: Array<[number, number, number]> = [
+    [40, 64, 112],
+    [308, 72, 104],
+  ];
+  for (const [cx, dw, dh] of boxes) {
+    const x = Math.max(1, Math.min(WORLD_W - dw - 1, Math.round(cx - dw / 2)));
+    const y = PORTAL_BASE - dh;
+    if (px >= x && px < x + dw && py >= y && py < PORTAL_BASE) return true;
+  }
+  return false;
+}
+
 function drawPortal(
   ctx: CanvasRenderingContext2D,
   sheets: Sheets,
@@ -1528,17 +1541,17 @@ function paintMouthScene(
 
   const sky: ReadonlyArray<readonly [number, number, string]> = east
     ? [
-        [0, 0.16, "#141c48"],
-        [0.16, 0.3, "#243878"],
-        [0.3, 0.42, "#6888c8"],
-        [0.42, 0.52, "#f0b0a0"],
-        [0.52, 0.58, "#f8d8a0"],
+        [0, 0.14, "#10163c"],
+        [0.14, 0.28, "#1e3f92"],
+        [0.28, 0.4, "#7eb4ee"],
+        [0.4, 0.5, "#f4b8c4"],
+        [0.5, 0.58, "#ffe6a8"],
       ]
     : [
-        [0, 0.18, "#140810"],
-        [0.18, 0.34, "#4a1018"],
-        [0.34, 0.48, "#a02818"],
-        [0.48, 0.58, "#e06028"],
+        [0, 0.16, "#0c0608"],
+        [0.16, 0.32, "#3a0810"],
+        [0.32, 0.46, "#9a1418"],
+        [0.46, 0.58, "#e04018"],
       ];
   const height = Math.max(1, bot - top);
   for (const [a, b, color] of sky) {
@@ -1547,10 +1560,14 @@ function paintMouthScene(
     ctx.fillStyle = color;
     for (let py = y0; py < y1; py++) ctx.fillRect(cx - rx - 2, py, rx * 2 + 5, 1);
   }
-  ctx.fillStyle = east ? "#f4f7ff" : "#2a1418";
+  ctx.fillStyle = east ? "#fffaf4" : "#1a0a0c";
   ctx.fillRect(cx - rx + 2, top + 4, 5, 2);
   ctx.fillRect(cx - rx + 3, top + 3, 3, 1);
   ctx.fillRect(cx + 2, top + 8, 4, 2);
+  if (east) {
+    ctx.fillStyle = "#fff0f4";
+    ctx.fillRect(cx - rx + 3, top + 4, 2, 1);
+  }
 
   const sy = top + Math.round(height * 0.28);
   const sunR = east ? 5 : 4;
@@ -1559,13 +1576,13 @@ function paintMouthScene(
     cx,
     sy,
     sunR,
-    east ? ["#fffaf0", "#fff0c0", "#f0c078", "#c07838"] : ["#fff0c0", "#ff9840", "#d03818", "#681410"],
+    east ? ["#fffef8", "#ffe9a4", "#f0c060", "#d09040"] : ["#fff0a0", "#ff7020", "#c01810", "#4a0808"],
   );
-  ctx.fillStyle = east ? "#fffaf0" : "#ffd060";
+  ctx.fillStyle = east ? "#fffef8" : "#ffe080";
   ctx.fillRect(cx - 2, sy - 2, 2, 1);
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
-    ctx.fillStyle = east ? "#fff6d4" : "#ff7840";
+    ctx.fillStyle = east ? "#fff6d0" : "#ff5010";
     ctx.fillRect(Math.round(cx + Math.cos(a) * (sunR + 2)), Math.round(sy + Math.sin(a) * (sunR + 2)), 1, 1);
   }
 
@@ -1573,67 +1590,73 @@ function paintMouthScene(
   const landH = Math.max(1, bot - horizon);
   for (let py = horizon; py < bot; py++) {
     const u = (py - horizon) / landH;
-    ctx.fillStyle = east ? (u < 0.35 ? "#c8a060" : u < 0.7 ? "#5a8840" : "#2e5828") : u < 0.35 ? "#5a2018" : u < 0.7 ? "#2a100c" : "#140806";
+    ctx.fillStyle = east ? (u < 0.35 ? "#f0d48a" : u < 0.7 ? "#3f9a48" : "#1c5a32") : u < 0.35 ? "#4a1214" : u < 0.7 ? "#1a0808" : "#080404";
     ctx.fillRect(cx - rx - 2, py, rx * 2 + 5, 1);
     if (east && u > 0.4 && (py & 3) === 0) {
-      ctx.fillStyle = "#8fbe52";
+      ctx.fillStyle = "#b8ee78";
       ctx.fillRect(cx - rx + 2, py, 2, 1);
       ctx.fillRect(cx + rx - 4, py, 2, 1);
     }
   }
-  ctx.fillStyle = east ? "#fff0c0" : "#ff5018";
+  ctx.fillStyle = east ? "#fff8d8" : "#ff4810";
   ctx.fillRect(cx - rx, horizon, rx * 2 + 1, 1);
   for (let i = 0; i < 6; i++) {
     const px = cx - 6 + i * 2;
     const peak = 3 + (i % 3);
-    ctx.fillStyle = east ? (i === 3 ? "#fff6d4" : "#e8c888") : i === 3 ? "#ff7840" : "#3a1410";
+    ctx.fillStyle = east ? (i === 3 ? "#fffef4" : "#f4d898") : i === 3 ? "#ff4010" : "#140808";
     ctx.fillRect(px, horizon - peak, 2, peak);
   }
   if (east) {
-    ctx.fillStyle = "#e2b657";
+    ctx.fillStyle = "#ffe08a";
     ctx.fillRect(cx + 3, horizon - 7, 7, 2);
     ctx.fillRect(cx + 5, horizon - 9, 3, 2);
-    ctx.fillStyle = "#f4e2a8";
+    ctx.fillStyle = "#fff6e4";
     ctx.fillRect(cx + 4, horizon - 5, 5, 5);
-    ctx.fillStyle = "#7ec8c8";
+    ctx.fillStyle = "#3ec8c4";
     ctx.fillRect(cx + 5, horizon - 3, 2, 2);
-    ctx.fillStyle = "#e6d090";
+    ctx.fillStyle = "#e87898";
+    ctx.fillRect(cx + 7, horizon - 8, 1, 1);
+    ctx.fillStyle = "#fff0b0";
     ctx.fillRect(cx - 1, horizon + 2, 3, landH);
   } else {
-    ctx.fillStyle = "#1a100c";
+    ctx.fillStyle = "#0c0808";
     ctx.fillRect(cx - 6, horizon - 8, 2, 8);
     ctx.fillRect(cx + 4, horizon - 8, 2, 8);
-    ctx.fillStyle = "#6a4030";
+    ctx.fillStyle = "#a07840";
     ctx.fillRect(cx - 6, horizon - 9, 12, 2);
-    ctx.fillStyle = "#ffd060";
+    ctx.fillStyle = "#ffe080";
     ctx.fillRect(cx - 1, horizon + 2, 2, landH);
-    ctx.fillStyle = "#c03818";
+    ctx.fillStyle = "#ff3010";
     ctx.fillRect(cx - 2, horizon + 2, 1, landH);
     ctx.fillRect(cx + 1, horizon + 2, 1, landH);
   }
-  ctx.fillStyle = east ? "#fffaf0" : "#ffd060";
+  ctx.fillStyle = east ? "#fffef8" : "#ffe080";
   ctx.fillRect(cx, sy - sunR - 3, 1, 2);
   ctx.fillRect(cx - sunR - 3, sy, 2, 1);
   ctx.fillRect(cx + sunR + 2, sy, 2, 1);
   if (east) {
-    ctx.fillStyle = "#2f6a28";
+    ctx.fillStyle = "#1f7a38";
     ctx.fillRect(cx - 7, horizon - 5, 4, 3);
-    ctx.fillStyle = "#6b4428";
+    ctx.fillStyle = "#c8f090";
+    ctx.fillRect(cx - 6, horizon - 4, 2, 1);
+    ctx.fillStyle = "#8a5a30";
     ctx.fillRect(cx - 6, horizon - 2, 1, 2);
-    ctx.fillStyle = "#f07090";
+    ctx.fillStyle = "#e87898";
     ctx.fillRect(cx - 4, horizon + 4, 1, 1);
     ctx.fillRect(cx + 3, horizon + 6, 1, 1);
-    ctx.fillStyle = "#7ec8e0";
+    ctx.fillStyle = "#b8f4ff";
     ctx.fillRect(cx - 1, horizon + 4, 3, 1);
   } else {
-    ctx.fillStyle = "#2a1410";
+    ctx.fillStyle = "#18080a";
     ctx.fillRect(cx - 2, horizon - 12, 2, 2);
     ctx.fillRect(cx + 1, horizon - 14, 2, 2);
-    ctx.fillStyle = "#ffb060";
+    ctx.fillStyle = "#ffd060";
     ctx.fillRect(cx - 3, horizon + 5, 1, 1);
     ctx.fillRect(cx + 2, horizon + 8, 1, 1);
-    ctx.fillStyle = "#3a1810";
+    ctx.fillStyle = "#100808";
     ctx.fillRect(cx + 7, horizon - 4, 2, 4);
+    ctx.fillStyle = "#ff6820";
+    ctx.fillRect(cx, horizon + 6, 1, 1);
   }
   ctx.restore();
 }
@@ -1891,27 +1914,44 @@ function ensureVoid(): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
+  const bands: ReadonlyArray<readonly [number, number, number]> = [
+    [6, 8, 18],
+    [8, 10, 26],
+    [10, 14, 34],
+    [12, 16, 42],
+    [14, 18, 48],
+    [10, 14, 36],
+  ];
   for (let y = 0; y < h; y++) {
-    const u = y / h;
-    for (let x = 0; x < WORLD_W; x++) {
-      const grit = (noise(x, y) & 3) - 1;
-      let rgb: readonly [number, number, number] = [
-        6 + u * 10 + grit,
-        8 + u * 12 + grit,
-        22 + u * 18 + grit,
-      ];
-      const arm = Math.abs(x * 0.18 + (y - 120) - 80);
-      if (arm < 16 && noise(x, y) % 6 === 0) rgb = [36 + grit, 48 + grit, 96];
-      if (arm < 6 && noise(x, y) % 11 === 0) rgb = [180, 190, 230];
-      const veil = (x - 70) * (x - 70) / 5200 + (y - 150) * (y - 150) / 1800;
-      if (veil < 1 && noise(x, y) % 5 === 0) rgb = [110, 62, 140];
-      const coal = (x - 260) * (x - 260) / 4200 + (y - 250) * (y - 250) / 1600;
-      if (coal < 1 && noise(x, y) % 5 === 0) rgb = [150, 78, 42];
-      if (noise(x, y) % 220 === 0) rgb = noise(x, y + 1) % 4 === 0 ? [255, 244, 210] : [214, 222, 240];
-      putPix(d, WORLD_W, x, y, rgb);
-    }
+    const rgb = bands[Math.min(bands.length - 1, Math.floor((y / h) * bands.length))]!;
+    for (let x = 0; x < WORLD_W; x++) putPix(d, WORLD_W, x, y, rgb);
   }
   g.putImageData(img, 0, 0);
+  for (let y = 96; y < h - 16; y++) {
+    const x = 36 + Math.round((y - 96) * 0.62);
+    g.fillStyle = "#1a2868";
+    g.fillRect(x, y, 12, 1);
+    if (y % 3 === 0) {
+      g.fillStyle = "#3a4a90";
+      g.fillRect(x + 4, y, 3, 1);
+    }
+    if (y % 9 === 0) {
+      g.fillStyle = "#e8eefc";
+      g.fillRect(x + 5, y, 1, 1);
+    }
+  }
+  fillOval(g, 72, 168, 26, 14, "#2a1458");
+  fillOval(g, 72, 166, 14, 7, "#6a3098");
+  fillOval(g, 78, 162, 5, 3, "#e0b0f0");
+  fillOval(g, 274, 292, 24, 12, "#4a2014");
+  fillOval(g, 274, 290, 12, 6, "#b05028");
+  fillOval(g, 280, 286, 4, 2, "#f0c888");
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 59 + 11) % WORLD_W;
+    const y = 88 + ((i * 41) % (h - 100));
+    g.fillStyle = i % 7 === 0 ? "#fff6d0" : "#d5def4";
+    g.fillRect(x, y, 1, 1);
+  }
   voidPlate = canvas;
   return canvas;
 }
@@ -1990,19 +2030,72 @@ function drawSpace(ctx: CanvasRenderingContext2D, clock: number): void {
     }
   }
   paintCrescent(ctx, 64, skyTop + 36, 10);
+  ctx.fillStyle = "#8a96b0";
+  ctx.fillRect(60, skyTop + 34, 2, 1);
+  ctx.fillRect(66, skyTop + 40, 1, 1);
   const bob = Math.sin(clock * 0.35);
   paintOrb(ctx, 250, skyTop + 78 + bob, 14, "#fff0c0", "#e2b657", "#6a4820");
+  ctx.fillStyle = "#a87830";
+  ctx.fillRect(246, Math.round(skyTop + 74 + bob), 8, 1);
+  ctx.fillRect(244, Math.round(skyTop + 82 + bob), 10, 1);
   paintRing(ctx, 250, skyTop + 78 + bob, 28, 7);
   paintOrb(ctx, 46, skyTop + 150, 6, "#f0a080", "#c46a4a", "#3a1814");
-  paintOrb(ctx, 300, skyTop + 190, 4, "#d7e8f4", "#6a98b8", "#1c3044");
-  paintGalaxy(ctx, 150, skyTop + 210);
+  paintOrb(ctx, 300, skyTop + 190, 5, "#d7e8f4", "#6a98b8", "#1c3044");
+  ctx.fillStyle = "#f4fbff";
+  ctx.fillRect(297, skyTop + 186, 3, 1);
+  paintGalaxy(ctx, 150, skyTop + 220);
+  paintRocklet(ctx, 90, skyTop + 250);
+  paintRocklet(ctx, 108, skyTop + 258);
+  paintRocklet(ctx, 80, skyTop + 266);
+  const stars: Array<[number, number]> = [
+    [28, 18],
+    [46, 12],
+    [64, 24],
+    [78, 16],
+    [70, 36],
+    [50, 42],
+  ];
+  ctx.fillStyle = "#6a7cac";
+  for (let i = 0; i < stars.length - 1; i++) {
+    const a = stars[i]!;
+    const b = stars[i + 1]!;
+    ctx.fillRect(a[0] + Math.round((b[0] - a[0]) / 2), skyTop + a[1] + Math.round((b[1] - a[1]) / 2), 1, 1);
+  }
+  ctx.fillStyle = "#fffaf0";
+  for (const [sx, sy] of stars) ctx.fillRect(sx, skyTop + sy, 1, 1);
+  paintPulsar(ctx, 176, skyTop + 28);
+  paintBinary(ctx, 118, skyTop + 128, clock);
+  const cluster: Array<[number, number]> = [
+    [0, 0],
+    [3, -2],
+    [6, 1],
+    [2, 3],
+    [5, 4],
+    [-2, 2],
+    [4, -4],
+  ];
+  ctx.fillStyle = "#fffaf0";
+  for (const [dx, dy] of cluster) ctx.fillRect(318 + dx, skyTop + 118 + dy, 1, 1);
+  paintOrb(ctx, 196, skyTop + 300, 7, "#c8f090", "#3f9a48", "#1c4a28");
+  ctx.fillStyle = "#e8eef8";
+  ctx.fillRect(184, skyTop + 296, 2, 2);
+  ctx.fillRect(206, skyTop + 304, 2, 1);
+  const craft = (clock * 10) % (WORLD_W + 24) - 12;
+  paintVimana(ctx, craft, skyTop + 168);
   const comet = (clock * 16) % (WORLD_W + 40);
   ctx.fillStyle = "#6a88b0";
   ctx.fillRect(comet - 16, skyTop + 48, 8, 1);
+  ctx.fillStyle = "#9eb6ff";
+  ctx.fillRect(comet - 10, skyTop + 47, 4, 1);
   ctx.fillStyle = "#cfe0ff";
-  ctx.fillRect(comet - 8, skyTop + 47, 8, 1);
+  ctx.fillRect(comet - 6, skyTop + 46, 6, 1);
   ctx.fillStyle = "#fffaf0";
-  ctx.fillRect(comet, skyTop + 46, 2, 1);
+  ctx.fillRect(comet, skyTop + 45, 2, 2);
+  const meteor = (clock * 22 + 90) % (WORLD_W + 28);
+  ctx.fillStyle = "#ff7840";
+  ctx.fillRect(meteor - 8, skyTop + 286, 6, 1);
+  ctx.fillStyle = "#fff6d0";
+  ctx.fillRect(meteor, skyTop + 285, 2, 1);
 }
 
 function paintCrescent(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
@@ -2031,14 +2124,63 @@ function paintRing(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: nu
 }
 
 function paintGalaxy(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
-  for (let i = 0; i < 70; i++) {
-    const a = i * 0.45;
-    const rad = 2 + i * 0.16;
-    const x = Math.round(cx + Math.cos(a) * rad);
-    const y = Math.round(cy + Math.sin(a) * rad * 0.45);
-    ctx.fillStyle = i % 5 === 0 ? "#fff6d0" : i % 2 === 0 ? "#9eb6ff" : "#3a5280";
-    ctx.fillRect(x, y, 1, 1);
+  diskRamp(ctx, cx, cy, 4, ["#fff6d0", "#d0d8ff", "#5a6cb0", "#1c2858"]);
+  for (let arm = 0; arm < 2; arm++) {
+    for (let i = 0; i < 28; i++) {
+      const a = arm * Math.PI + i * 0.28;
+      const rad = 5 + i * 0.45;
+      ctx.fillStyle = i % 4 === 0 ? "#fff6d0" : i % 2 === 0 ? "#9eb6ff" : "#3a5280";
+      ctx.fillRect(Math.round(cx + Math.cos(a) * rad), Math.round(cy + Math.sin(a) * rad * 0.42), 1, 1);
+    }
   }
+}
+
+function paintRocklet(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = "#2a261f";
+  ctx.fillRect(x, y, 5, 3);
+  ctx.fillStyle = "#6a6054";
+  ctx.fillRect(x, y, 3, 1);
+  ctx.fillStyle = "#12100c";
+  ctx.fillRect(x + 3, y + 2, 2, 1);
+}
+
+function paintPulsar(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
+  ctx.fillStyle = "#3a5280";
+  ctx.fillRect(cx - 10, cy, 7, 1);
+  ctx.fillRect(cx + 3, cy, 7, 1);
+  ctx.fillRect(cx, cy - 10, 1, 7);
+  ctx.fillRect(cx, cy + 3, 1, 7);
+  ctx.fillStyle = "#d7e4ff";
+  ctx.fillRect(cx - 4, cy, 3, 1);
+  ctx.fillRect(cx + 1, cy, 3, 1);
+  ctx.fillRect(cx, cy - 4, 1, 3);
+  ctx.fillRect(cx, cy + 1, 1, 3);
+  ctx.fillStyle = "#fffaf0";
+  ctx.fillRect(cx, cy, 1, 1);
+}
+
+function paintBinary(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number): void {
+  const a = clock * 0.7;
+  const x1 = Math.round(cx + Math.cos(a) * 7);
+  const y1 = Math.round(cy + Math.sin(a) * 3);
+  const x2 = Math.round(cx - Math.cos(a) * 7);
+  const y2 = Math.round(cy - Math.sin(a) * 3);
+  paintOrb(ctx, x1, y1, 3, "#fff6d0", "#e2b657", "#6a4820");
+  paintOrb(ctx, x2, y2, 2, "#f4fbff", "#8ab4d8", "#2a4868");
+}
+
+function paintVimana(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.fillStyle = "#8a6428";
+  ctx.fillRect(x, y + 3, 14, 1);
+  ctx.fillStyle = "#e2b657";
+  ctx.fillRect(x + 1, y + 2, 12, 2);
+  ctx.fillStyle = "#fff6d0";
+  ctx.fillRect(x + 4, y, 6, 2);
+  ctx.fillStyle = "#7ec8e0";
+  ctx.fillRect(x + 6, y + 1, 2, 2);
+  ctx.fillStyle = "#fffaf0";
+  ctx.fillRect(x - 2, y + 3, 2, 1);
+  ctx.fillRect(x + 14, y + 3, 2, 1);
 }
 
 function paintOrb(
@@ -3331,7 +3473,7 @@ export function drawWorld(
         for (let k = 0; k < len; k++) {
           const py = y - k;
           const px = x + (k >> 1);
-          if (py < 0 || py >= landH || px < 0 || px >= WORLD_W) continue;
+          if (py < 0 || py >= landH || px < 0 || px >= WORLD_W || portalCovers(px, py)) continue;
           ctx.fillStyle = k < 2 ? `rgba(236, 244, 252, ${fade})` : `rgba(150, 186, 208, ${fade * 0.35})`;
           ctx.fillRect(px, py, 1, 1);
         }
@@ -3340,7 +3482,7 @@ export function drawWorld(
         const blot = (dx: number, dy: number, a: number, bright: boolean) => {
           const px = x + dx;
           const py = ground + dy;
-          if (px < 0 || py < 0 || px >= WORLD_W || py >= landH) return;
+          if (px < 0 || py < 0 || px >= WORLD_W || py >= landH || portalCovers(px, py)) return;
           ctx.fillStyle = bright ? `rgba(244, 250, 255, ${a})` : `rgba(176, 208, 224, ${a})`;
           ctx.fillRect(px, py, 1, 1);
         };
