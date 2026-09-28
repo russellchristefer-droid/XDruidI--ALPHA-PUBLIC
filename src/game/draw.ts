@@ -1256,6 +1256,39 @@ function castHands(s: GameState): { x: number; y: number } {
   return { x: s.x + lx, y: s.y + (21 - CHAR_FOOT_Y) * CHAR };
 }
 
+function paintKiOrb(ctx: CanvasRenderingContext2D, spell: SpellId, x: number, y: number, clock: number): void {
+  const ink = spellInk(spell);
+  const r = 3;
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.imageSmoothingEnabled = false;
+  for (let py = -r; py <= r; py++) {
+    for (let px = -r; px <= r; px++) {
+      if (px * px + py * py > r * r) continue;
+      ctx.globalAlpha = 0.94;
+      ctx.fillStyle = -px - py > 1 ? ink.core : ink.deep;
+      ctx.fillRect(px, py, 1, 1);
+    }
+  }
+  ctx.fillStyle = ink.neon;
+  for (let i = 0; i < 8; i++) {
+    if (i % 3 === 1) continue;
+    const a = (i / 8) * Math.PI * 2 + clock * 0.9;
+    ctx.globalAlpha = 0.72 + 0.22 * Math.sin(clock * 5 + i);
+    ctx.fillRect(Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r), 1, 1);
+  }
+  ctx.globalAlpha = 0.95;
+  ctx.fillRect(0, 0, 1, 1);
+  ctx.globalAlpha = 0.65;
+  ctx.fillRect(-1, -1, 1, 1);
+  for (let i = 0; i < 3; i++) {
+    const a = clock * 3.2 + (i / 3) * Math.PI * 2;
+    ctx.globalAlpha = 0.5 + 0.45 * Math.sin(clock * 6 + i);
+    ctx.fillRect(Math.round(Math.cos(a) * (r + 2)), Math.round(Math.sin(a) * (r + 2)), 1, 1);
+  }
+  ctx.restore();
+}
+
 function drawCastRite(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
   const cast = s.cast;
   if (!cast) return;
@@ -1273,11 +1306,7 @@ function drawCastRite(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameStat
   paintSpellGleam(ctx, cast.spell, s.x, s.y + 1, s.clock);
   paintAether(ctx, cast.spell, s.x, s.y + 2, 16, 9, s.clock + 1.3);
   const hand = castHands(s);
-  const hx = hand.x;
-  const hy = hand.y - 7;
-  paintAether(ctx, cast.spell, hx, hy, 6, 4, s.clock + 0.7);
-  blit(ctx, img, frame * 72, 0, 72, 72, hx, hy, 0.23, false, 36, 36);
-  paintAether(ctx, cast.spell, hx, hy, 6, 4, s.clock + 2.1);
+  paintKiOrb(ctx, cast.spell, hand.x, hand.y - 7, s.clock);
 }
 
 function drawSpell(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
