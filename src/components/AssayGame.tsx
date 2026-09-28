@@ -57,7 +57,6 @@ import {
   swapPack,
   takeItem,
   totalMass,
-  watcherLine,
   withdraw,
   type InteractResult,
 } from "@/game/logic";
@@ -126,10 +125,13 @@ function placeName(s: GameState): string {
   const wing = s.wing ?? 0;
   if (wing === 1) return "Svarga";
   if (wing === -1) return "Naraka";
-  if (Math.abs(s.x - 40) < 40 && s.y > 150 && s.y < 250) return "Naraka gate";
-  if (Math.abs(s.x - 308) < 40 && s.y > 150 && s.y < 250) return "Svarga gate";
-  if (Math.hypot(s.x - 172, s.y - 380) < 30) return "Courtyard, magic plot";
-  if (s.y < 168) return "Farm";
+  if (Math.abs(s.x - 40) < 36 && s.y > 150 && s.y < 236) return "Naraka gate";
+  if (Math.abs(s.x - 308) < 36 && s.y > 150 && s.y < 236) return "Svarga gate";
+  if (s.x >= 240 && s.x <= 296 && s.y >= 76 && s.y <= 108) return "Goat pen";
+  if (Math.hypot(s.x - 260, s.y - 146) < 28) return "House";
+  if (Math.hypot(s.x - 172, s.y - 380) < 36) return "Courtyard, magic plot";
+  if (s.y >= 192 && s.y < 236) return "Sidewalk";
+  if (s.y < 192) return "Farm";
   if (s.y < 528) return "Courtyard";
   return "Below the yard";
 }
@@ -1286,128 +1288,134 @@ export function AssayGame() {
       {screen === "play" && s && (
         <>
           <div className="hud-top">
-            <div className="panel hud-card">
-              <div className="hud-head">
+            <div className="hud-row">
+              <div className="panel hud-card">
+                <div className="hud-head">
+                  <b>Body</b>
+                  <span>Day {s.day}</span>
+                </div>
+                <Vital
+                  label="Health"
+                  value={String(Math.round(s.health ?? 100))}
+                  pct={s.health ?? 100}
+                  color={(s.health ?? 100) < 30 ? "#e07a5f" : "#c4544a"}
+                />
+                <Vital label="Stamina" value={String(Math.round(s.stamina))} pct={s.stamina} color={s.stamina < 20 ? "#e07a5f" : "#7dba5a"} />
+                <Vital
+                  label="Mana"
+                  value={String(Math.round(s.mana ?? 100))}
+                  pct={s.mana ?? 100}
+                  color={(s.mana ?? 100) < 20 ? "#c47ad4" : "#6aa7e8"}
+                />
+                <Vital label="Carry" value={mass.toFixed(1)} pct={(mass / MASS_CAP) * 100} color={mass >= 16 ? "#e07a5f" : "#c4a574"} />
+                <div className="need-row">
+                  <Need label="Hunger" value={s.life?.hunger ?? 0} />
+                  <Need label="Thirst" value={s.life?.thirst ?? 0} />
+                  <Need label="Grime" value={s.life?.dirt ?? 0} />
+                </div>
+                <Vital
+                  label="Mood"
+                  value={String(Math.round(s.life?.mood ?? 0))}
+                  pct={s.life?.mood ?? 0}
+                  color={(s.life?.mood ?? 0) < 40 ? "#e07a5f" : "#e2b657"}
+                />
+              </div>
+              <div className="panel hud-crest">
                 <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : "Homestead"}</b>
-                <span>{skyLabel(s)}</span>
+                <span>{placeName(s)}</span>
+                <span>
+                  {clockLabel(s.time)} · {skyLabel(s)}
+                </span>
+                <span className="hud-sub">{s.cast ? liturgyName(s.cast.spell, s.wing ?? 0) : s.downed ? "Downed" : "Clear"}</span>
               </div>
-              <div className="hud-sub">
-                {placeName(s)} · {clockLabel(s.time)} · Day {s.day}
-                {s.cast ? ` · ${liturgyName(s.cast.spell, s.wing ?? 0)}` : ""}
-              </div>
-              <div className="need-row">
-                <Need label="Hunger" value={s.life?.hunger ?? 0} />
-                <Need label="Thirst" value={s.life?.thirst ?? 0} />
-                <Need label="Grime" value={s.life?.dirt ?? 0} />
-              </div>
-              <Vital
-                label="Mood"
-                value={String(Math.round(s.life?.mood ?? 0))}
-                pct={s.life?.mood ?? 0}
-                color={(s.life?.mood ?? 0) < 40 ? "#e07a5f" : "#e2b657"}
-              />
-              <div className="hud-sub">{s.downed ? "Downed. Crawl to the tub." : watcherLine(s)}</div>
-              <div className="fn-grid">
-                <button type="button" className={panel === "pack" ? "on" : ""} onClick={() => toggle("pack")}>
-                  Pack
-                </button>
-                <button type="button" className={panel === "body" ? "on" : ""} onClick={() => toggle("body")}>
-                  Body
-                </button>
-                <button type="button" className={panel === "skills" ? "on" : ""} onClick={() => toggle("skills")}>
-                  Skills
-                </button>
-                <button type="button" className={panel === "map" ? "on" : ""} onClick={() => toggle("map")}>
-                  Map
-                </button>
-                <button
-                  type="button"
-                  className={panel === "vault" ? "on" : ""}
-                  onClick={() => {
-                    if (Math.hypot(s.x - 260, s.y - 146) > 40) {
-                      s.message = "Stand at the house.";
+              <div className="panel hud-card">
+                <div className="hud-head">
+                  <b>Hands</b>
+                  <span>Purse {coinCount(s)}</span>
+                </div>
+                <div className="fn-grid">
+                  <button type="button" className={panel === "pack" ? "on" : ""} onClick={() => toggle("pack")}>
+                    Pack
+                  </button>
+                  <button type="button" className={panel === "body" ? "on" : ""} onClick={() => toggle("body")}>
+                    Body
+                  </button>
+                  <button type="button" className={panel === "skills" ? "on" : ""} onClick={() => toggle("skills")}>
+                    Skills
+                  </button>
+                  <button type="button" className={panel === "map" ? "on" : ""} onClick={() => toggle("map")}>
+                    Map
+                  </button>
+                  <button
+                    type="button"
+                    className={panel === "vault" ? "on" : ""}
+                    onClick={() => {
+                      if (Math.hypot(s.x - 260, s.y - 146) > 40) {
+                        s.message = "Stand at the house.";
+                        bump();
+                        return;
+                      }
+                      toggle("vault");
+                    }}
+                  >
+                    Chest
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      s.message = onQ(s);
                       bump();
-                      return;
+                    }}
+                  >
+                    Eat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      s.message = onF(s);
+                      bump();
+                    }}
+                  >
+                    Stow
+                  </button>
+                  <button
+                    type="button"
+                    className={running ? "on" : ""}
+                    onClick={() => {
+                      runHold.current = !runHold.current;
+                      setRunning(runHold.current);
+                      const cur = stateRef.current;
+                      if (cur) cur.message = runHold.current ? "Run is on. He moves faster." : "Run is off. He walks.";
+                      bump();
+                    }}
+                  >
+                    Run
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className={`hud-wide${s.auto === false ? "" : " on"}`}
+                  onClick={() => {
+                    s.auto = s.auto === false;
+                    if (!s.auto) {
+                      s.life.errand = null;
+                      s.life.route = [];
+                      s.life.chore = "";
+                      s.cast = null;
                     }
-                    toggle("vault");
-                  }}
-                >
-                  Chest
-                </button>
-              </div>
-              <button
-                type="button"
-                className={`hud-wide${s.auto === false ? "" : " on"}`}
-                onClick={() => {
-                  s.auto = s.auto === false;
-                  if (!s.auto) {
-                    s.life.errand = null;
-                    s.life.route = [];
-                    s.life.chore = "";
-                    s.cast = null;
-                  }
-                  s.message = s.auto ? "Autonomy on. He tends the farm." : "Autonomy off. He waits for you.";
-                  persist(s);
-                  bump();
-                }}
-              >
-                {s.auto === false ? "Autonomy off" : "Autonomy on"}
-              </button>
-            </div>
-            <div className="panel hud-card">
-              <Vital
-                label="Health"
-                value={String(Math.round(s.health ?? 100))}
-                pct={s.health ?? 100}
-                color={(s.health ?? 100) < 30 ? "#e07a5f" : "#c4544a"}
-              />
-              <Vital label="Stamina" value={String(Math.round(s.stamina))} pct={s.stamina} color={s.stamina < 20 ? "#e07a5f" : "#7dba5a"} />
-              <Vital
-                label="Mana"
-                value={String(Math.round(s.mana ?? 100))}
-                pct={s.mana ?? 100}
-                color={(s.mana ?? 100) < 20 ? "#c47ad4" : "#6aa7e8"}
-              />
-              <Vital label="Carry" value={mass.toFixed(1)} pct={(mass / MASS_CAP) * 100} color={mass >= 16 ? "#e07a5f" : "#c4a574"} />
-              <div className="hud-sub">
-                Purse {coinCount(s)} · cap {MASS_CAP.toFixed(0)}
-              </div>
-              <div className="fn-grid">
-                <button
-                  type="button"
-                  onClick={() => {
-                    s.message = onQ(s);
+                    s.message = s.auto ? "Autonomy on. He tends the farm." : "Autonomy off. He waits for you.";
+                    persist(s);
                     bump();
                   }}
                 >
-                  Eat
+                  {s.auto === false ? "Autonomy off" : "Autonomy on"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    s.message = onF(s);
-                    bump();
-                  }}
-                >
-                  Stow
-                </button>
-                <button
-                  type="button"
-                  className={running ? "on" : ""}
-                  onClick={() => {
-                    runHold.current = !runHold.current;
-                    setRunning(runHold.current);
-                    const cur = stateRef.current;
-                    if (cur) cur.message = runHold.current ? "Run is on. He moves faster." : "Run is off. He walks.";
-                    bump();
-                  }}
-                >
-                  Run
-                </button>
-                <button type="button" className={panel === "pause" ? "on" : ""} onClick={() => toggle("pause")}>
+                <button type="button" className={`hud-wide${panel === "pause" ? " on" : ""}`} onClick={() => toggle("pause")}>
                   Pause
                 </button>
               </div>
+            </div>
+            <div className="panel hud-band">
               <SoundControls />
             </div>
           </div>
@@ -2037,8 +2045,16 @@ export function AssayGame() {
                   <span className="pin naraka" style={{ left: `${(40 / WORLD_W) * 100}%`, top: `${(210 / 528) * 100}%` }}>Naraka</span>
                   <span className="pin svarga" style={{ left: `${(308 / WORLD_W) * 100}%`, top: `${(210 / 528) * 100}%` }}>Svarga</span>
                   <span className="pin seal" style={{ left: `${(172 / WORLD_W) * 100}%`, top: `${(380 / 528) * 100}%` }}>Magic</span>
-                  <span className="pin spot" style={{ left: `${(134 / WORLD_W) * 100}%`, top: `${(84 / 528) * 100}%` }}>Pond</span>
-                  <span className="pin spot" style={{ left: `${(250 / WORLD_W) * 100}%`, top: `${(140 / 528) * 100}%` }}>House</span>
+                  <span className="pin spot" style={{ left: `${(134 / WORLD_W) * 100}%`, top: `${(88 / 528) * 100}%` }}>Pond</span>
+                  <span className="pin spot" style={{ left: `${(260 / WORLD_W) * 100}%`, top: `${(146 / 528) * 100}%` }}>House</span>
+                  <span className="pin spot" style={{ left: `${(268 / WORLD_W) * 100}%`, top: `${(92 / 528) * 100}%` }}>Goat</span>
+                  <span className="pin spot" style={{ left: `${(220 / WORLD_W) * 100}%`, top: `${(212 / 528) * 100}%` }}>Xiang Su</span>
+                  {s.cat && (
+                    <span className="pin spot" style={{ left: `${(s.cat.x / WORLD_W) * 100}%`, top: `${(s.cat.y / 528) * 100}%` }}>Cat</span>
+                  )}
+                  {s.hand && (
+                    <span className="pin spot" style={{ left: `${(s.hand.x / WORLD_W) * 100}%`, top: `${(s.hand.y / 528) * 100}%` }}>Hand</span>
+                  )}
                 </>
               )}
               {s.wing === 1 && (
@@ -2060,9 +2076,10 @@ export function AssayGame() {
             <ul>
               {(s.wing === 0 || s.wing == null) && (
                 <>
-                  <li>West gate is Naraka. East gate is Svarga. Both stand on the sidewalk.</li>
-                  <li>Pond, well, and tub are on the farm. The house chest is east.</li>
-                  <li>The seal in the courtyard is where he trains.</li>
+                  <li>West arch is Naraka. East arch is Svarga. Both stand on the sidewalk.</li>
+                  <li>The farm is above the sidewalk. The goat pen is the upper-right fence. The pond and the house are on the farm.</li>
+                  <li>Xiang Su stands on the sidewalk. The cat walks the sidewalk and the courtyard.</li>
+                  <li>The seal in the courtyard is the magic plot. The field hand works the beds.</li>
                 </>
               )}
               {s.wing === 1 && (

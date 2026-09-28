@@ -19,7 +19,7 @@ This build is a work in progress. The yard, the gates, and the days can change. 
 
 ## Play
 
-On a computer, use the keyboard. On a phone, use the stick and the buttons along the bottom. Pause holds the controls, the legal note, and the security note.
+On a computer, use the keyboard. On a phone, use the stick on the left and the round button on the right. The hotbar and the action row sit between them so the labels do not cover each other. The top bar is split the same way on both sides: body on the left, the place and the clock in the middle, hands on the right, and the four volume sliders in one row under that. Pause holds the controls, the legal note, and the security note. The map names the farm, the sidewalk, the courtyard seal, the goat pen, Xiang Su, the cat, and the field hand.
 
 Open the page in a browser. A link that the phone tries to launch as an app is the wrong kind of link. Use the site address.
 

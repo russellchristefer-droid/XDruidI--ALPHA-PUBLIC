@@ -58,16 +58,54 @@
   left: 8px;
   right: 8px;
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   pointer-events: none;
   z-index: 2;
 }
 
+.hud-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.hud-crest {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.hud-crest b {
+  color: #e6c86a;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+.hud-crest span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-band {
+  padding: 4px 8px;
+  pointer-events: auto;
+}
+
 .panel {
-  background: #2a2118;
+  background: #241c14ee;
   border: 2px solid #c4a574;
-  box-shadow: 3px 3px 0 #120e0a;
+  box-shadow: inset 0 0 0 1px #3d2e1c, 0 2px 0 #120e0a;
   color: #f3e6c8;
 }
 
@@ -174,13 +212,15 @@
 }
 
 .hud-card {
-  width: 196px;
-  max-width: 46vw;
+  width: auto;
+  max-width: none;
+  min-width: 0;
   padding: 6px 8px;
   font-size: 12px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  justify-content: space-between;
+  gap: 4px;
   box-sizing: border-box;
 }
 
@@ -315,21 +355,21 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 32%;
-  height: 16%;
+  top: 36.4%;
+  height: 7.6%;
   background: #6a6256;
   z-index: 0;
 }
 
 .live-map-court {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 48%;
-  bottom: 6%;
+  left: 0;
+  right: 0;
+  top: 44%;
+  bottom: 0;
   background:
-    linear-gradient(#c4a574 1px, transparent 1px) 0 0 / 12px 12px,
-    linear-gradient(90deg, #c4a574 1px, transparent 1px) 0 0 / 12px 12px,
+    linear-gradient(#c4a574 1px, transparent 1px) 0 0 / 14px 14px,
+    linear-gradient(90deg, #c4a574 1px, transparent 1px) 0 0 / 14px 14px,
     #3d3428;
   z-index: 0;
 }
@@ -541,10 +581,11 @@
 }
 
 .sound-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 180px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px 12px;
+  width: 100%;
+  min-width: 0;
   pointer-events: auto;
 }
 
@@ -604,9 +645,24 @@
   gap: 4px;
 }
 
+.assay.touch .hud-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+}
+
+.assay.touch .hud-crest {
+  grid-column: 1 / -1;
+  order: -1;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  padding: 4px 6px;
+}
+
 .assay.touch .hud-top .panel {
   min-width: 0;
-  flex: 1 1 0;
+  flex: none;
   max-width: none;
   width: auto;
   overflow: hidden;
@@ -660,6 +716,8 @@
 .assay.touch .sound-stack {
   min-width: 0;
   width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 8px;
 }
 
 .assay.touch .sound-row span {
@@ -675,9 +733,9 @@
 
 .assay.touch .touch-actions {
   top: auto;
-  bottom: calc(156px + env(safe-area-inset-bottom));
-  left: 4px;
-  right: 4px;
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  left: 86px;
+  right: 70px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 3px;
 }
@@ -690,9 +748,9 @@
 }
 
 .assay.touch .hotbar-wrap {
-  left: 4px;
-  right: 4px;
-  bottom: calc(78px + env(safe-area-inset-bottom));
+  left: 84px;
+  right: 68px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
   transform: none;
   width: auto;
   gap: 3px;
