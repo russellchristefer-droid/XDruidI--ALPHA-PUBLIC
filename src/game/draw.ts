@@ -1398,6 +1398,37 @@ function paintReaper(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   blit(ctx, img, col * 32, row * 32, 32, 32, r.x, r.y, 1, flip, anchor.x, anchor.y);
 }
 
+const HAND_SHEET: Record<ReaperPose, string> = {
+  idle: "handIdle",
+  walk: "handWalk",
+  handsidle: "handHandsIdle",
+  handswalk: "handHandsWalk",
+  water: "handWater",
+  shovel: "handShovel",
+  scythe: "handScythe",
+  axe: "handAxe",
+  hammer: "handHammer",
+  pickaxe: "handPickaxe",
+};
+
+function paintHand(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
+  if ((s.wing ?? 0) !== 0) return;
+  const h = s.hand;
+  if (!h) return;
+  const img = sheets[HAND_SHEET[h.pose]] ?? sheets.handIdle;
+  if (!img || img.width < CHAR_W) return;
+  const frames = Math.max(1, Math.min(REAPER_FRAMES[h.pose], Math.floor(img.width / CHAR_W)));
+  const { row, flip } = rowOf(h.dir);
+  const moving = h.pose === "walk" || h.pose === "handswalk";
+  const col = moving
+    ? Math.floor(h.poseT * 8) % frames
+    : h.pose === "idle" || h.pose === "handsidle"
+      ? Math.floor(h.poseT * 2) % frames
+      : Math.min(frames - 1, Math.floor(h.poseT * 6));
+  const footX = row === 1 ? 37 : 35;
+  blit(ctx, img, col * CHAR_W, row * CHAR_H, CHAR_W, CHAR_H, h.x, h.y, CHAR, flip, footX, CHAR_FOOT_Y);
+}
+
 const PLATE = 192;
 const FARM_H = MEADOW.y;
 
@@ -3472,6 +3503,7 @@ export function drawWorld(
   if (s.birds) {
     for (const b of s.birds) stage(b.y, () => paintBird(ctx, sheets, b));
   }
+  if (s.hand) queue.push({ y: s.hand.y, paint: () => paintHand(ctx, sheets, s) });
   if (sheets.idle) {
     stage(s.y - 1, () => drawCastRite(ctx, sheets, s));
     stage(s.y, () => paintPlayer(ctx, sheets, s));

@@ -138,9 +138,13 @@ const URLS: Record<string, string> = {
   handIdle: art("/game/char/hand/idle.png"),
   handWalk: art("/game/char/hand/walk.png"),
   handHandsIdle: art("/game/char/hand/handsidle.png"),
+  handHandsWalk: art("/game/char/hand/handswalk.png"),
   handWater: art("/game/char/hand/water.png"),
   handShovel: art("/game/char/hand/shovel.png"),
   handScythe: art("/game/char/hand/scythe.png"),
+  handAxe: art("/game/char/hand/axe.png"),
+  handHammer: art("/game/char/hand/hammer.png"),
+  handPickaxe: art("/game/char/hand/pickaxe.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
@@ -164,7 +168,7 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
       "reaperPickaxe",
     ],
   },
-  { id: "hand", label: "Field hand", keys: ["handIdle", "handWalk", "handHandsIdle", "handWater", "handShovel", "handScythe"] },
+  { id: "hand", label: "Field hand", keys: ["handIdle", "handWalk", "handHandsIdle", "handHandsWalk", "handWater", "handShovel", "handScythe", "handAxe", "handHammer", "handPickaxe"] },
   { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "handsUpIdle", "handsUpWalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
@@ -205,6 +209,7 @@ const SOON = [
   "handIdle",
   "handWalk",
   "handHandsIdle",
+  "handHandsWalk",
   "handWater",
   "handScythe",
   "handShovel",
