@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260927aura2";
+export const ART = "20260927snes";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -25,6 +25,8 @@ const URLS: Record<string, string> = {
   hammer: art("/game/char/hammer.png"),
   handsidle: art("/game/char/handsidle.png"),
   handswalk: art("/game/char/handswalk.png"),
+  handsUpIdle: art("/game/char/handsup-idle.png"),
+  handsUpWalk: art("/game/char/handsup-walk.png"),
   plainIdle: art("/game/char/plain/idle.png"),
   plainWalk: art("/game/char/plain/walk.png"),
   plainWater: art("/game/char/plain/water.png"),
@@ -163,7 +165,7 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
     ],
   },
   { id: "hand", label: "Field hand", keys: ["handIdle", "handWalk", "handHandsIdle", "handWater", "handShovel", "handScythe"] },
-  { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
+  { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "handsUpIdle", "handsUpWalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
   { id: "covers", label: "Covers", keys: ["tree-nw", "tree-n", "tree-ne", "tree-e", "tree-sw", "tree-s", "tree-se", "bush-w", "bush-e"] },
@@ -215,6 +217,8 @@ const SOON = [
   "spark",
   "poison",
   "drip",
+  "handsUpIdle",
+  "handsUpWalk",
 ];
 
 function loadOne(key: string, sheets: Sheets, ms: number): Promise<void> {
