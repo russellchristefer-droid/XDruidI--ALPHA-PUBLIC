@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260928spell1";
+export const ART = "20260928ink1";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -153,6 +153,8 @@ const URLS: Record<string, string> = {
   maidS: art("/game/char/maid/south.png"),
   maidN: art("/game/char/maid/north.png"),
   maidW: art("/game/char/maid/west.png"),
+  stableIdle: art("/game/char/stable/idle.png"),
+  stableWalk: art("/game/char/stable/walk.png"),
 };
 
 export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
@@ -179,6 +181,7 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "hand", label: "Field hand", keys: ["handIdle", "handWalk", "handHandsIdle", "handHandsWalk", "handWater", "handShovel", "handScythe", "handAxe", "handHammer", "handPickaxe"] },
   { id: "xiang", label: "Xiang Su", keys: ["xiang64Idle"] },
   { id: "maid", label: "Milkmaid", keys: ["maidS", "maidN", "maidW"] },
+  { id: "stable", label: "Stable hand", keys: ["stableIdle", "stableWalk"] },
   { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "handsUpIdle", "handsUpWalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
   { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "blackCat", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
@@ -199,39 +202,72 @@ export function assetFile(id: string): string | null {
 
 export type Sheets = Record<string, HTMLImageElement>;
 
-const FIRST = [
+/** Pictures already on the homestead when the yard opens. */
+const BOOT = [
   "yard",
+  "meadow",
   "house",
   "path",
   "occlude",
   "rocks",
-  "idle",
-  "rod",
-  "walk",
-  "plainIdle",
-  "plainWalk",
-  "portalSvarga",
-  "portalNaraka",
+  "meadowDress",
   "vimana",
   "space",
   "heavenIsle",
   "hellIsle",
-  "grove",
-];
-
-/** The other farmer. Loaded with the yard, not after every other picture. */
-const SOON = [
+  "portalSvarga",
+  "portalNaraka",
+  "idle",
+  "walk",
+  "rod",
+  "scythe",
+  "handsUpIdle",
+  "handsUpWalk",
   "handIdle",
   "handWalk",
-  "handHandsIdle",
-  "handHandsWalk",
   "handWater",
   "handScythe",
-  "handShovel",
-  "xiang64Idle",
   "maidS",
   "maidN",
   "maidW",
+  "xiang64Idle",
+  "cowIdle",
+  "cowWalk",
+  "roosterIdle",
+  "roosterWalk",
+  "goatIdle",
+  "goatWalk",
+  "blackCat",
+  "cat",
+  "catWalk",
+  "tomato",
+  "cabbage",
+  "greens",
+  "flowers",
+  "treeOak",
+  "treeApple",
+  "treeBirch",
+  "treePine",
+  "treeStump",
+  "tree-nw",
+  "tree-n",
+  "tree-ne",
+  "tree-e",
+  "tree-sw",
+  "tree-s",
+  "tree-se",
+  "bush-w",
+  "bush-e",
+  "campfire",
+];
+
+/** The next door, the seal, and the tools. Starts the moment the yard is up. */
+const NEXT = [
+  "grove",
+  "stableIdle",
+  "stableWalk",
+  "svarga",
+  "naraka",
   "fireball",
   "nova",
   "holy",
@@ -241,38 +277,70 @@ const SOON = [
   "spark",
   "poison",
   "drip",
-  "handsUpIdle",
-  "handsUpWalk",
+  "courtIdle",
+  "courtWalk",
+  "plainIdle",
+  "plainWalk",
+  "water",
+  "shovel",
+  "axe",
+  "hammer",
+  "handsidle",
+  "handswalk",
+  "birdWalk",
+  "birdFly",
+  "birdTakeoff",
 ];
+
+function known(keys: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const key of keys) {
+    if (!URLS[key] || seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
 
 function loadOne(key: string, sheets: Sheets, ms: number): Promise<void> {
   const url = URLS[key];
   if (!url || typeof window === "undefined") return Promise.resolve();
-  return new Promise((resolve) => {
-    const img = new Image();
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      resolve();
-    };
-    const timer = window.setTimeout(finish, ms);
-    img.onload = () => {
-      window.clearTimeout(timer);
-      if (img.naturalWidth > 0) sheets[key] = img;
-      finish();
-    };
-    img.onerror = () => {
-      window.clearTimeout(timer);
-      finish();
-    };
-    img.src = url;
-  });
+  const once = (attempt: number): Promise<void> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const timer = window.setTimeout(finish, ms);
+      img.onload = () => {
+        window.clearTimeout(timer);
+        const keep = () => {
+          if (img.naturalWidth > 0) sheets[key] = img;
+          finish();
+        };
+        if (typeof img.decode === "function") img.decode().then(keep, keep);
+        else keep();
+      };
+      img.onerror = () => {
+        window.clearTimeout(timer);
+        if (attempt < 1) {
+          once(1).then(finish);
+          return;
+        }
+        finish();
+      };
+      img.src = url;
+    });
+  return once(0);
 }
 
-async function loadQueue(keys: string[], sheets: Sheets, limit: number, ms: number): Promise<void> {
+async function loadQueue(keys: string[], sheets: Sheets, limit: number, ms: number, onSettled?: (key: string) => void): Promise<void> {
   let next = 0;
-  const workers = Math.max(1, Math.min(limit, keys.length));
+  const workers = Math.max(1, Math.min(limit, Math.max(1, keys.length)));
   await Promise.all(
     Array.from({ length: workers }, async () => {
       for (;;) {
@@ -281,6 +349,7 @@ async function loadQueue(keys: string[], sheets: Sheets, limit: number, ms: numb
         const key = keys[i];
         if (!key) return;
         await loadOne(key, sheets, ms);
+        onSettled?.(key);
       }
     }),
   );
@@ -288,19 +357,23 @@ async function loadQueue(keys: string[], sheets: Sheets, limit: number, ms: numb
 
 export function loadSheets(): Promise<Sheets> {
   const sheets: Sheets = {};
-  const first = FIRST.filter((key) => URLS[key]);
-  const soon = SOON.filter((key) => URLS[key]);
-  const rest = Object.keys(URLS).filter((key) => !first.includes(key) && !soon.includes(key));
+  const boot = known(BOOT);
+  const bootSet = new Set(boot);
+  const next = known(NEXT).filter((key) => !bootSet.has(key));
+  const rest = Object.keys(URLS).filter((key) => !bootSet.has(key) && !next.includes(key));
   const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-  const firstLimit = coarse ? 2 : 4;
-  return loadQueue(first, sheets, firstLimit, coarse ? 8000 : 6000).then(() => {
-    void loadQueue(soon, sheets, coarse ? 2 : 3, 8000);
-    const later = () => {
-      void loadQueue(rest, sheets, coarse ? 1 : 2, 12000);
-    };
-    const idle = window.requestIdleCallback;
-    if (typeof idle === "function") idle(() => later(), { timeout: 1200 });
-    else window.setTimeout(later, 600);
-    return sheets;
+  const pool = coarse ? 4 : 6;
+  const ms = coarse ? 9000 : 7000;
+  let left = boot.length;
+  let open: () => void = () => {};
+  const ready = new Promise<void>((resolve) => {
+    open = resolve;
   });
+  if (left === 0) open();
+  void loadQueue([...boot, ...next, ...rest], sheets, pool, ms, (key) => {
+    if (!bootSet.has(key)) return;
+    left -= 1;
+    if (left <= 0) open();
+  });
+  return ready.then(() => sheets);
 }

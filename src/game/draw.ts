@@ -420,26 +420,26 @@ function paintPool(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: nu
   ctx.restore();
 }
 
-function spellInk(spell: SpellId): { deep: string; core: string; pale: string; scale: number } {
+function spellInk(spell: SpellId): { deep: string; core: string; pale: string; veil: string; neon: string; scale: number } {
   switch (spell) {
     case "fireball":
-      return { deep: "#4a0810", core: "#c81828", pale: "#e84048", scale: 0.95 };
+      return { deep: "#4a0810", core: "#c81828", pale: "#e84048", veil: "#ffb0a8", neon: "#ff2d6a", scale: 0.95 };
     case "nova":
-      return { deep: "#6a2208", core: "#e25810", pale: "#f07828", scale: 1.12 };
+      return { deep: "#6a2208", core: "#e25810", pale: "#f07828", veil: "#ffc890", neon: "#ff6a18", scale: 1.12 };
     case "holy":
-      return { deep: "#3a1468", core: "#7a38c8", pale: "#b070e8", scale: 1 };
+      return { deep: "#3a1468", core: "#7a38c8", pale: "#b070e8", veil: "#e8c8ff", neon: "#d24bff", scale: 1 };
     case "ice":
-      return { deep: "#0c3058", core: "#1878c8", pale: "#38a0e0", scale: 1 };
+      return { deep: "#0c3058", core: "#1878c8", pale: "#38a0e0", veil: "#c8ecff", neon: "#2ad8ff", scale: 1 };
     case "iceball":
-      return { deep: "#124868", core: "#2890c0", pale: "#40b0d4", scale: 0.78 };
+      return { deep: "#124868", core: "#2890c0", pale: "#40b0d4", veil: "#c8f4f0", neon: "#24e6d4", scale: 0.78 };
     case "spark":
-      return { deep: "#6a4808", core: "#d89810", pale: "#f0c040", scale: 0.64 };
+      return { deep: "#6a4808", core: "#d89810", pale: "#f0c040", veil: "#ffe8a0", neon: "#ffe036", scale: 0.64 };
     case "bolt":
-      return { deep: "#1a1048", core: "#4030c8", pale: "#7060e0", scale: 1 };
+      return { deep: "#1a1048", core: "#4030c8", pale: "#7060e0", veil: "#d8d0ff", neon: "#7a4dff", scale: 1 };
     case "poison":
-      return { deep: "#0c3018", core: "#188838", pale: "#30b858", scale: 0.86 };
+      return { deep: "#0c3018", core: "#188838", pale: "#30b858", veil: "#c8f0c0", neon: "#3cf06e", scale: 0.86 };
     case "drip":
-      return { deep: "#102010", core: "#146028", pale: "#2a8040", scale: 0.58 };
+      return { deep: "#102010", core: "#146028", pale: "#2a8040", veil: "#d8ecd0", neon: "#4ee070", scale: 0.58 };
   }
 }
 
@@ -1149,6 +1149,44 @@ function paintCircleRite(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
   }
 }
 
+function paintAether(ctx: CanvasRenderingContext2D, spell: SpellId, x: number, y: number, rx: number, ry: number, clock: number): void {
+  const ink = spellInk(spell);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.imageSmoothingEnabled = false;
+  const breath = Math.floor(clock * 3);
+  for (let py = -ry; py <= ry; py++) {
+    for (let px = -rx; px <= rx; px++) {
+      const nx = px / rx;
+      const ny = py / ry;
+      const d = nx * nx + ny * ny;
+      if (d > 0.92 || d < 0.08) continue;
+      const hash = (px * 13 + py * 7 + breath) & 7;
+      if (hash > 2) continue;
+      ctx.globalAlpha = 0.16 + 0.22 * (1 - d);
+      ctx.fillStyle = hash === 0 ? ink.veil : ink.pale;
+      ctx.fillRect(px, py, 1, 1);
+    }
+  }
+  ctx.fillStyle = ink.veil;
+  const n = Math.max(14, Math.round(rx * 5));
+  for (let i = 0; i < n; i++) {
+    if ((i + breath) % 3 === 0) continue;
+    const a = (i / n) * Math.PI * 2 + clock * 0.15;
+    ctx.globalAlpha = 0.28 + 0.18 * Math.sin(clock * 2 + i);
+    ctx.fillRect(Math.round(Math.cos(a) * rx * 0.78), Math.round(Math.sin(a) * ry * 0.78), 1, 1);
+  }
+  for (let i = 0; i < 6; i++) {
+    const a = clock * 0.4 + (i / 6) * Math.PI * 2;
+    const rise = (clock * 5 + i * 2.2) % (ry + 4);
+    const fade = 1 - rise / (ry + 4);
+    ctx.globalAlpha = 0.2 + 0.45 * fade;
+    ctx.fillStyle = i % 2 === 0 ? ink.veil : ink.pale;
+    ctx.fillRect(Math.round(Math.cos(a) * rx * 0.62), Math.round(Math.sin(a) * ry * 0.55 - rise), 1, 1);
+  }
+  ctx.restore();
+}
+
 function paintSpellGleam(ctx: CanvasRenderingContext2D, spell: SpellId, x: number, y: number, clock: number): void {
   const ink = spellInk(spell);
   ctx.save();
@@ -1226,11 +1264,20 @@ function drawCastRite(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameStat
   const ink = spellInk(cast.spell);
   const frames = Math.max(1, Math.floor(img.width / 72));
   const frame = Math.floor(s.clock * 8) % frames;
+  paintAether(ctx, cast.spell, s.x, s.y + 2, 16, 9, s.clock);
   paintPool(ctx, s.x, s.y + 3, 18, 10, ink.core, 0.28, ink.deep);
-  blit(ctx, img, frame * 72, 0, 72, 72, s.x, s.y + 2, 0.5, false, 36, 40);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, frame * 72, 0, 72, 72, Math.round(s.x) - 18, Math.round(s.y + 3) - 10, 36, 20);
+  ctx.restore();
   paintSpellGleam(ctx, cast.spell, s.x, s.y + 1, s.clock);
+  paintAether(ctx, cast.spell, s.x, s.y + 2, 16, 9, s.clock + 1.3);
   const hand = castHands(s);
-  blit(ctx, img, frame * 72, 0, 72, 72, hand.x, hand.y - 7, 0.28, false, 36, 36);
+  const hx = hand.x;
+  const hy = hand.y - 7;
+  paintAether(ctx, cast.spell, hx, hy, 6, 4, s.clock + 0.7);
+  blit(ctx, img, frame * 72, 0, 72, 72, hx, hy, 0.23, false, 36, 36);
+  paintAether(ctx, cast.spell, hx, hy, 6, 4, s.clock + 2.1);
 }
 
 function drawSpell(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
@@ -1636,6 +1683,22 @@ function paintMaid(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState):
   const moving = m.pause <= 0 && (m.route?.length ?? 0) >= 2;
   const col = moving ? Math.floor(m.poseT * 8) % frames : 0;
   blit(ctx, img, col * 72, 0, 72, 72, m.x, m.y, 0.46, east, 36, 70);
+}
+
+const STABLE_ROW: Record<"s" | "w" | "e" | "n", number> = { s: 0, w: 1, e: 2, n: 3 };
+const STABLE_SCALE = 0.2;
+
+function paintStable(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
+  if ((s.wing ?? 0) !== 2) return;
+  const n = s.stable;
+  if (!n) return;
+  const moving = n.pause <= 0 && (n.route?.length ?? 0) >= 2;
+  const img = moving ? sheets.stableWalk : sheets.stableIdle;
+  if (!img || img.width < 144) return;
+  const row = STABLE_ROW[n.dir] ?? 0;
+  const frames = moving ? Math.max(1, Math.floor(img.width / 144)) : 1;
+  const col = moving ? Math.floor(n.poseT * 8) % frames : 0;
+  blit(ctx, img, col * 144, row * 144, 144, 144, n.x, n.y, STABLE_SCALE, false, 72, 139);
 }
 
 const PLATE = 192;
@@ -3756,9 +3819,20 @@ export function drawWorld(
   if (wing === 2) {
     drawGrove(ctx, sheets.grove);
     paintFlatPortal(ctx, GROVE_RETURN.x, GROVE_RETURN.y, s.clock);
-    if (sheets.idle) drawCastRite(ctx, sheets, s);
-    if (sheets.idle) paintPlayer(ctx, sheets, s);
-    if (sheets.idle) drawSpell(ctx, sheets, s);
+    const grovePaint: Array<{ y: number; paint: () => void }> = [];
+    if (s.stable) grovePaint.push({ y: s.stable.y, paint: () => paintStable(ctx, sheets, s) });
+    if (sheets.idle) {
+      grovePaint.push({
+        y: s.y,
+        paint: () => {
+          drawCastRite(ctx, sheets, s);
+          paintPlayer(ctx, sheets, s);
+          drawSpell(ctx, sheets, s);
+        },
+      });
+    }
+    grovePaint.sort((a, b) => a.y - b.y);
+    for (const bit of grovePaint) bit.paint();
     if (s.cross) {
       const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
       const a = u < 0.5 ? u * 2 : (1 - u) * 2;

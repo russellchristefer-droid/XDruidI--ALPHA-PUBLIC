@@ -25,6 +25,7 @@ import {
   ensureHand,
   ensureXiang64,
   ensureMaid,
+  ensureStable,
   ensureGoatPen,
   ensureCourtHerd,
   HEAVEN_GATE,
@@ -35,6 +36,7 @@ import {
   grovePlotAt,
   DAY_LEN,
   HAND_HOME,
+  STABLE_HOME,
   ensureSkills,
   ensureHealth,
   skillLevel,
@@ -634,6 +636,7 @@ export function promptAt(s: GameState, px: number, py: number): string {
   }
   if ((s.wing ?? 0) === 2) {
     if (!inReach(s, px, py)) return "";
+    if (onStable(s, px, py)) return "Greet the stable hand  [E]";
     const plot = grovePlotAt(px, py);
     if (!plot) return "";
     if (plot.skill === "magic") return "Magic stays on the courtyard seal.  [E]";
@@ -650,6 +653,7 @@ export function examineAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
   if (gate && Math.hypot(px - gate.x, py - gate.y) <= 40) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
   if ((s.wing ?? 0) === 2) {
+    if (onStable(s, px, py)) return "The stable hand. He walks the lanes between the training plots.";
     const plot = grovePlotAt(px, py);
     if (plot?.skill === "magic") return "A marker only. Elemental magic is trained on the courtyard seal.";
     if (plot) return `${plot.name}. A place to train ${SKILL_NAME[plot.skill]}.`;
@@ -733,6 +737,7 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (crossed) return crossed;
   if ((s.wing ?? 0) === 2) {
     if (!inReach(s, px, py)) return { msg: "Too far." };
+    if (onStable(s, px, py)) return greetStable(s);
     const plot = grovePlotAt(px, py);
     if (!plot) return { msg: "Open grass. The plots are the work." };
     if (plot.skill === "magic") return { msg: "Magic is trained on the courtyard seal, not here." };
@@ -962,6 +967,25 @@ function greetMaid(s: GameState): InteractResult {
   m.route = [];
   m.pause = 1.8;
   return { msg: `The milkmaid keeps the cow. The pail can wait.${grant(s, "farming", 3)}` };
+}
+
+function onStable(s: GameState, px: number, py: number): boolean {
+  const n = s.stable;
+  if (!n || (s.wing ?? 0) !== 2) return false;
+  return px >= n.x - 12 && px <= n.x + 12 && py >= n.y - 32 && py <= n.y + 4;
+}
+
+function greetStable(s: GameState): InteractResult {
+  ensureStable(s);
+  const n = s.stable;
+  if (!n) return { msg: "The lanes are empty." };
+  const dx = s.x - n.x;
+  const dy = s.y - n.y;
+  if (Math.abs(dx) >= Math.abs(dy)) n.dir = dx >= 0 ? "e" : "w";
+  else n.dir = dy >= 0 ? "s" : "n";
+  n.route = [];
+  n.pause = 1.8;
+  return { msg: `The stable hand keeps the trough and the lanes.${grant(s, "husbandry", 3)}` };
 }
 
 function pickFlower(s: GameState, id: string): InteractResult {
@@ -3010,6 +3034,79 @@ const MAID_SPOTS: { x: number; y: number }[] = [
   { x: 84, y: 252 },
 ];
 
+const STABLE_SPOTS: { x: number; y: number }[] = [
+  { x: 150, y: 348 },
+  { x: 174, y: 400 },
+  { x: 132, y: 300 },
+  { x: 168, y: 250 },
+  { x: 140, y: 200 },
+  { x: 176, y: 150 },
+  { x: 124, y: 110 },
+  { x: 188, y: 430 },
+  { x: 150, y: 460 },
+];
+
+function groveSlide(body: { x: number; y: number; dir?: "n" | "e" | "s" | "w" }, tx: number, ty: number, speed: number, dt: number): "walk" | "arrive" | "stuck" {
+  const dx = tx - body.x;
+  const dy = ty - body.y;
+  if (Math.abs(dx) < 1.4 && Math.abs(dy) < 1.4) {
+    if (!footBlocked(tx, ty)) {
+      body.x = tx;
+      body.y = ty;
+    }
+    return "arrive";
+  }
+  const step = Math.min(3.2, speed * dt, Math.max(Math.abs(dx), Math.abs(dy)));
+  const go = (nx: number, ny: number) => {
+    if (footBlocked(nx, ny)) return false;
+    faceDelta(body, nx - body.x, ny - body.y);
+    body.x = nx;
+    body.y = ny;
+    return true;
+  };
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (go(body.x + Math.sign(dx) * Math.min(Math.abs(dx), step), body.y)) return "walk";
+    if (Math.abs(dy) > 0.4 && go(body.x, body.y + Math.sign(dy) * Math.min(Math.abs(dy), step))) return "walk";
+  } else {
+    if (go(body.x, body.y + Math.sign(dy) * Math.min(Math.abs(dy), step))) return "walk";
+    if (Math.abs(dx) > 0.4 && go(body.x + Math.sign(dx) * Math.min(Math.abs(dx), step), body.y)) return "walk";
+  }
+  return "stuck";
+}
+
+function stepStable(s: GameState, dt: number) {
+  ensureStable(s);
+  const n = s.stable;
+  if (!n || (s.wing ?? 0) !== 2) return;
+  n.poseT += dt;
+  if (n.pause > 0) {
+    n.pause -= dt;
+    return;
+  }
+  if (n.route.length >= 2) {
+    const moved = groveSlide(n, n.route[0]!, n.route[1]!, 22, dt);
+    if (moved === "walk") return;
+    n.route = n.route.slice(2);
+    if (n.route.length < 2) n.pause = 0.7 + unitRand(s) * 1.1;
+    return;
+  }
+  if (footBlocked(n.x, n.y)) {
+    n.x = STABLE_HOME.x;
+    n.y = STABLE_HOME.y;
+    n.dir = "s";
+    n.pause = 0.2;
+    return;
+  }
+  const goal = pickSpot(s, STABLE_SPOTS);
+  const spot = nearestOpen(goal.x, goal.y);
+  if (!spot || (Math.abs(spot.x - n.x) < 8 && Math.abs(spot.y - n.y) < 8)) {
+    n.pause = 0.4;
+    return;
+  }
+  const elbow = Math.abs(spot.x - n.x) > 6 && Math.abs(spot.y - n.y) > 6;
+  n.route = elbow ? [spot.x, n.y, spot.x, spot.y] : [spot.x, spot.y];
+}
+
 function stepMaid(s: GameState, dt: number) {
   ensureMaid(s);
   const m = s.maid;
@@ -3098,6 +3195,7 @@ function stepCritters(s: GameState, dt: number) {
   stepReaper(s, dt);
   stepHand(s, dt);
   stepMaid(s, dt);
+  stepStable(s, dt);
   stepXiang64(s, dt);
   for (const a of s.animals) {
     if (!a.route) a.route = [];

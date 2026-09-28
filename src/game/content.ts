@@ -813,6 +813,33 @@ export function ensureMaid(s: GameState): void {
   }
 }
 
+export const STABLE_HOME = { x: 156, y: 368 } as const;
+
+export function freshStable(): XiangSu {
+  return { x: STABLE_HOME.x, y: STABLE_HOME.y, dir: "s", pause: 0.25, route: [], poseT: 0 };
+}
+
+export function ensureStable(s: GameState): void {
+  const n = s.stable;
+  if (s.stablePlace !== 2 || !n || typeof n.x !== "number" || typeof n.y !== "number") {
+    s.stable = freshStable();
+    s.stablePlace = 2;
+    return;
+  }
+  if (!Array.isArray(n.route)) n.route = [];
+  if (typeof n.pause !== "number") n.pause = 0.4;
+  if (typeof n.poseT !== "number") n.poseT = 0;
+  if (n.dir !== "n" && n.dir !== "e" && n.dir !== "s" && n.dir !== "w") n.dir = "s";
+  if (n.y < 56 || n.y > 490 || n.x < 36 || n.x > 310) {
+    const home = freshStable();
+    n.x = home.x;
+    n.y = home.y;
+    n.route = [];
+    n.pause = 0.3;
+    n.dir = "s";
+  }
+}
+
 export function ensureXiang64(s: GameState): void {
   const n = s.xiang64;
   if (!n || typeof n.x !== "number" || typeof n.y !== "number") {
@@ -1099,6 +1126,10 @@ export type GameState = {
   xiang64?: XiangSu;
   /** Milkmaid. She keeps to the courtyard near the cow. */
   maid?: XiangSu;
+  /** 2 = stable hand stands by the grove entrance and walks the lanes. */
+  stablePlace?: number;
+  /** Stable hand. He keeps the lanes of the skill grove. */
+  stable?: XiangSu;
   /** Farm portal rack. Seeds are generated farms. 0 is the original yard. */
   farmRack?: FarmRack;
 };
@@ -1804,6 +1835,7 @@ export function createGame(): GameState {
     goatPen: 1,
     xiang64: freshXiang64(),
     maid: freshMaid(),
+    stable: freshStable(),
     farmRack: freshFarmRack(),
   };
 }

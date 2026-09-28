@@ -14,6 +14,10 @@ import {
   ensureHealth,
   ensureReaper,
   ensureHand,
+  ensureMaid,
+  ensureStable,
+  ensureXiang64,
+  ensureCourtHerd,
   ensureSkills,
   isNight,
   skyLabel,
@@ -453,8 +457,22 @@ export function AssayGame() {
       ensureHealth(stateRef.current);
       ensureReaper(stateRef.current);
       ensureHand(stateRef.current);
+      ensureMaid(stateRef.current);
+      ensureStable(stateRef.current);
+      ensureXiang64(stateRef.current);
+      ensureCourtHerd(stateRef.current);
       setReady(true);
-    }, 7000);
+    }, 12000);
+    const wake = (state: GameState) => {
+      ensureSkills(state);
+      ensureHealth(state);
+      ensureReaper(state);
+      ensureHand(state);
+      ensureMaid(state);
+      ensureStable(state);
+      ensureXiang64(state);
+      ensureCourtHerd(state);
+    };
     loadSheets()
       .then((sheets) => {
         if (dead) return;
@@ -464,14 +482,11 @@ export function AssayGame() {
         if (!stateRef.current) {
           try {
             stateRef.current = readSave() ?? createGame();
-            ensureSkills(stateRef.current);
-            ensureHealth(stateRef.current);
-            ensureReaper(stateRef.current);
-            ensureHand(stateRef.current);
           } catch {
             stateRef.current = createGame();
           }
         }
+        wake(stateRef.current);
         setReady(true);
         if (new URLSearchParams(location.search).has("qa")) {
           screenRef.current = "play";
