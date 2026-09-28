@@ -253,7 +253,8 @@ test("he feeds himself when hungry and you are not steering", () => {
   assert.equal(s.pack.some((p) => p?.id === loaf.id), false);
   assert.equal(s.life.face, "heart");
   s.life.hunger = 90;
-  s.x = 40;
+  s.x = 180;
+  s.y = 140;
   const x = s.x;
   step(s, 0.2, { mx: 1, my: 0, run: false, frozen: false });
   assert.ok(s.x > x);

@@ -24,6 +24,7 @@ import {
   skillLevel,
   skillFill,
 } from "@/game/content";
+import { farmRackAt, pressFarmRack } from "@/game/paint/farmPortals";
 import { drawMarginSky } from "@/game/paint/marginSky";
 import { ART, loadSheets, type Sheets } from "@/game/assets";
 import { armWind, heavyWind, onSound, playBirdsongs, setAnimalVolume, setMusicVolume, setVolume, setWeatherVolume, setWind, soundState, syncSky, toggleMute } from "@/game/audio";
@@ -755,6 +756,15 @@ export function AssayGame() {
     const cur = stateRef.current;
     if (!cur || screenRef.current !== "play") return;
     if (panelRef.current) return;
+    if ((cur.wing ?? 0) === 0) {
+      const rack = farmRackAt(x, y);
+      if (rack >= 0) {
+        cur.message = pressFarmRack(cur, rack);
+        persist(cur);
+        bump();
+        return;
+      }
+    }
     apply(interact(cur, x, y));
   };
   api.current.useAt = useAt;

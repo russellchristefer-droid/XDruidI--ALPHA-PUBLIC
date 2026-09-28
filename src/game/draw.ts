@@ -7,6 +7,7 @@ import { drawEastGate } from "./paint/eastGate.ts";
 import { drawWestGate } from "./paint/westGate.ts";
 import { drawMosaicFloors } from "./paint/mosaicFloor.ts";
 import { CAT_CELL, catClip } from "./paint/blackCat.ts";
+import { drawFarmRack, farmPlate, farmSeed } from "./paint/farmPortals.ts";
 
 const CHAR = 0.42;
 
@@ -3538,7 +3539,9 @@ export function drawWorld(
   }
   drawSpace(ctx, s.clock);
   const yard = sheets.yard;
-  if (yard && yard.naturalWidth > 0) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
+  const plate = farmPlate(sheets, farmSeed(s));
+  if (plate) ctx.drawImage(plate, 0, 0);
+  else if (yard && yard.naturalWidth > 0) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   drawMosaicFloors(ctx, s.clock, s.wet, yard, sheets.svarga, sheets.naraka);
 
   ctx.save();
@@ -3738,6 +3741,17 @@ export function drawWorld(
     if (d.x == null || behindCrop(d.x, d.y)) continue;
     d.paint();
   }
+  if ((s.wing ?? 0) === 0 && sheets.occlude && sheets.occlude.naturalWidth > 0) {
+    ctx.drawImage(sheets.occlude, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
+  }
+  if ((s.wing ?? 0) === 0 && sheets.campfire) drawCampfire(ctx, sheets.campfire, s.clock);
+  drawFarmFrame(ctx, s.clock);
+  drawSideGates(ctx, s, sheets);
+  for (const d of over) {
+    if (d.y < 188) continue;
+    if (d.x != null && behindCrop(d.x, d.y)) continue;
+    d.paint();
+  }
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y)) && !onFarmFrame(s.y)) paintPlayer(ctx, sheets, s);
   drawSpell(ctx, sheets, s);
 
@@ -3845,5 +3859,6 @@ export function drawWorld(
     ctx.strokeRect(tx + 0.5, ty + 0.5, TILE - 1, TILE - 1);
   }
   drawUnderside(ctx);
+  drawFarmRack(ctx, s);
   drawGoatSlash(ctx, s);
 }

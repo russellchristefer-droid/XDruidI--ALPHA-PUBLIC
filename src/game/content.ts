@@ -9,6 +9,8 @@ export const MEADOW = { x: 0, y: 528, w: 347, h: 432 } as const;
 /** Courtyard starts. Spread so the herd, the cat, and the farmer do not share a tile. */
 /** Center of the courtyard, on the seal. */
 export const FARMER_HOME = { x: 172, y: 380 } as const;
+/** Where a game opens: the path on the upper farmland, not the courtyard or another realm. */
+export const FARM_START = { x: 180, y: 140 } as const;
 
 /** The courtyard stone. This is the only plot where magic skill is trained. */
 export const MAGIC_PLOT = { x: 16, y: 232, w: 316, h: 288 } as const;
@@ -929,8 +931,8 @@ export function freshLife(): Life {
     face: "ok",
     emote: 0,
     errand: null,
-    tx: FARMER_HOME.x,
-    ty: FARMER_HOME.y,
+    tx: FARM_START.x,
+    ty: FARM_START.y,
     pause: 1.1,
     route: [],
     chore: "",
@@ -949,8 +951,8 @@ export function ensureLife(s: GameState): void {
   if (!life.face) life.face = "ok";
   if (typeof life.emote !== "number") life.emote = 0;
   if (life.errand === undefined) life.errand = null;
-  if (typeof life.tx !== "number") life.tx = FARMER_HOME.x;
-  if (typeof life.ty !== "number") life.ty = FARMER_HOME.y;
+  if (typeof life.tx !== "number") life.tx = FARM_START.x;
+  if (typeof life.ty !== "number") life.ty = FARM_START.y;
   if (typeof life.pause !== "number") life.pause = 0.4;
   if (!Array.isArray(life.route)) life.route = [];
   if (typeof life.chore !== "string") life.chore = "";
@@ -1056,8 +1058,8 @@ export type GameState = {
     moved: boolean;
   } | null;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
-  /** 4 = courtyard center, scythe held. Older saves move once, then stay put. */
-  courtSpawn?: boolean | 2 | 3 | 4;
+  /** 5 = opens on the upper farmland. Older saves are moved there on load. */
+  courtSpawn?: boolean | 2 | 3 | 4 | 5;
   /** 3 = field hand works the farm beds. */
   handPlace?: number;
   /** 1 = goat lives in the pen. 2 = the old code let him roam the courtyard. */
@@ -1068,7 +1070,30 @@ export type GameState = {
   goatSlash?: { x: number; y: number; t: number }[];
   /** Xiang Su at 64, walking the courtyard and the sidewalk. */
   xiang64?: XiangSu;
+  /** Farm portal rack. Seeds are generated farms. 0 is the original yard. */
+  farmRack?: FarmRack;
 };
+
+export type FarmRack = {
+  seeds: number[];
+  at: number;
+  pins: Array<number | null>;
+};
+
+export function freshFarmRack(): FarmRack {
+  return { seeds: [0], at: 0, pins: [null, null, null] };
+}
+
+export function ensureFarmRack(s: GameState): FarmRack {
+  const rack = s.farmRack;
+  if (!rack || !Array.isArray(rack.seeds) || rack.seeds.length === 0) {
+    s.farmRack = freshFarmRack();
+    return s.farmRack;
+  }
+  if (!Number.isInteger(rack.at) || rack.at < 0 || rack.at >= rack.seeds.length) rack.at = 0;
+  if (!Array.isArray(rack.pins) || rack.pins.length !== 3) rack.pins = [null, null, null];
+  return rack;
+}
 
 export type PanelId = "pack" | "body" | "vault" | "craft" | "map" | "pause" | "summary" | "controls" | "backpack" | "skills";
 
@@ -1213,6 +1238,23 @@ const PROP_SOLIDS: Rect[] = [
   { x: 274, y: 68, w: 18, h: 14 },
 ];
 
+const YARD_FEET: Rect[] = [
+  { x: 118, y: 78, w: 32, h: 16 },
+  { x: 104, y: 40, w: 28, h: 12 },
+  { x: 168, y: 74, w: 18, h: 14 },
+  { x: 42, y: 70, w: 14, h: 12 },
+  { x: 252, y: 100, w: 36, h: 28 },
+  { x: 202, y: 110, w: 24, h: 12 },
+  { x: 198, y: 90, w: 16, h: 12 },
+  { x: 24, y: 36, w: 8, h: 8 },
+  { x: 52, y: 34, w: 8, h: 8 },
+  { x: 168, y: 32, w: 8, h: 8 },
+  { x: 214, y: 34, w: 8, h: 8 },
+  { x: 286, y: 36, w: 8, h: 8 },
+  { x: 86, y: 144, w: 10, h: 8 },
+  { x: 198, y: 148, w: 10, h: 8 },
+];
+
 export function emptyBody(): Body {
   return {
     head: null,
@@ -1246,11 +1288,11 @@ export function itemMass(it: Item): number {
 
 export function placeFarmer(s: GameState): void {
   if (s.y >= MEADOW.y - 16) {
-    s.x = FARMER_HOME.x;
-    s.y = FARMER_HOME.y;
+    s.x = FARM_START.x;
+    s.y = FARM_START.y;
     if (s.life) {
-      s.life.tx = FARMER_HOME.x;
-      s.life.ty = FARMER_HOME.y;
+      s.life.tx = FARM_START.x;
+      s.life.ty = FARM_START.y;
       s.life.route = [];
       s.life.pause = 0.4;
     }
@@ -1327,22 +1369,20 @@ export function placeHerd(s: GameState): void {
   placeFarmer(s);
 }
 
-/** Stand him on the courtyard seal. A save that left him in Svarga or Naraka comes back here. */
+/** Every load opens on the upper farmland. A save that left him in Svarga, Naraka, or the courtyard comes back here. */
 export function placeCourtSpawn(s: GameState): void {
-  const away = (s.wing ?? 0) !== 0 || !!s.cross;
-  if (s.courtSpawn === 4 && !away) return;
-  const first = s.courtSpawn !== 4;
-  s.courtSpawn = 4;
+  const first = s.courtSpawn !== 5;
+  s.courtSpawn = 5;
   setRealm(0);
   s.wing = 0;
   s.cross = null;
-  s.x = FARMER_HOME.x;
-  s.y = FARMER_HOME.y;
-  s.dir = "s";
+  s.x = FARM_START.x;
+  s.y = FARM_START.y;
+  s.dir = "n";
   s.speed = 0;
   if (s.life) {
-    s.life.tx = FARMER_HOME.x;
-    s.life.ty = FARMER_HOME.y;
+    s.life.tx = FARM_START.x;
+    s.life.ty = FARM_START.y;
     s.life.route = [];
     s.life.pause = 0.8;
     if (s.life.chore === "svarga" || s.life.errand === "svarga") {
@@ -1455,6 +1495,7 @@ export function footBlocked(x: number, y: number): boolean {
   }
   if (overlap(box, FISH_WATER)) return true;
   if (onBed(x, y)) return true;
+  for (const s of YARD_FEET) if (overlap(box, s)) return true;
   if (onPortal(x, y)) return true;
   if (extraFeet(x, y)) return true;
   return false;
@@ -1589,9 +1630,9 @@ export function createGame(): GameState {
   pack[16] = boots;
   return {
     version: 1,
-    x: FARMER_HOME.x,
-    y: FARMER_HOME.y,
-    dir: "s",
+    x: FARM_START.x,
+    y: FARM_START.y,
+    dir: "n",
     speed: 0,
     stamina: 100,
     downed: false,
@@ -1647,9 +1688,10 @@ export function createGame(): GameState {
     cast: null,
     wing: 0,
     cross: null,
-    courtSpawn: 4,
+    courtSpawn: 5,
     handPlace: 3,
     goatPen: 1,
     xiang64: freshXiang64(),
+    farmRack: freshFarmRack(),
   };
 }

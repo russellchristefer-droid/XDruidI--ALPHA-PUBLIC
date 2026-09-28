@@ -1,8 +1,10 @@
-import { SAVE_KEY, defaultFlowers, ensureAuto, ensureBirds, ensureFishing, ensureHealth, ensureLife, ensureMagic, ensureReaper, ensureHand, ensureXiang64, ensureGoatPen, ensureCourtHerd, ensureSkills, ensureWeather, ensureWing, lockBeds, placeCourtSpawn, placeHerd, type GameState } from "./content.ts";
+import { SAVE_KEY, defaultFlowers, ensureAuto, ensureBirds, ensureFishing, ensureHealth, ensureLife, ensureMagic, ensureReaper, ensureHand, ensureXiang64, ensureGoatPen, ensureCourtHerd, ensureSkills, ensureWeather, ensureWing, lockBeds, placeCourtSpawn, placeHerd, ensureFarmRack, type GameState } from "./content.ts";
 
 export const BAK1 = `${SAVE_KEY}.bak1`;
 export const BAK2 = `${SAVE_KEY}.bak2`;
 export const QUARANTINE = `${SAVE_KEY}-quarantine`;
+/** The farmland as it was before a later experiment. Never rotated away. */
+export const LANDMARK = `${SAVE_KEY}.farmland`;
 
 export type SaveStore = {
   get(key: string): string | null;
@@ -62,15 +64,18 @@ function quarantine(store: SaveStore, key: string, raw: string) {
 }
 
 export function writeSave(store: SaveStore, s: GameState) {
+  const rack = ensureFarmRack(s);
   const cur = store.get(SAVE_KEY);
   const bak1 = store.get(BAK1);
   if (bak1 != null) store.set(BAK2, bak1);
   if (cur != null) store.set(BAK1, cur);
-  store.set(SAVE_KEY, encodeState(s));
+  const raw = encodeState(s);
+  store.set(SAVE_KEY, raw);
+  if ((rack.seeds[rack.at] ?? 0) === 0 && !store.get(LANDMARK)) store.set(LANDMARK, raw);
 }
 
 export function readSaveFrom(store: SaveStore): GameState | null {
-  for (const key of [SAVE_KEY, BAK1, BAK2]) {
+  for (const key of [SAVE_KEY, BAK1, BAK2, LANDMARK]) {
     const raw = store.get(key);
     if (!raw) continue;
     const decoded = decodeState(raw);
