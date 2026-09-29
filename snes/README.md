@@ -2,7 +2,7 @@
 
 **Stage:** Alpha companion. Not a port of the browser client.
 
-The browser game is the live homestead. This cartridge is a small sidecar of that yard. It does not include the DNA ladder halls, Floor 332, the vimana, the volume buses, or the later courtyard gates.
+The browser game is the live homestead. This cartridge is a small sidecar of that yard. It does not include the DNA ladder halls, Floor 332, the vimana, the mansion, the offline visit gate, the sow, the volume buses, or the later courtyard gates.
 
 `xdruid.sfc` is a 32 KB LoROM cartridge. Header title: `XDRUID I ALPHA`. It shows the yard, the seal, the west gate, the east gate, the goat pen on the upper farm, and Xiang Su's mark on the sidewalk.
 

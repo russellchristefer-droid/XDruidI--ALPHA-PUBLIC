@@ -45,6 +45,8 @@ Alpha means the loop can be played and the art direction is set. It does not mea
 | Library | Indigo DNA ladder, just above the combat yard portal. |
 | Jyotisha | Star-silver DNA ladder, just above the quarry portal. |
 | Mantra | Lotus DNA ladder, on the Svarga tile under the pond. |
+| Visit Other Courtyard | Portal between the armour yard and the market. Marked offline. It does not open. |
+| Mansion | Egyptian gate on the left of the courtyard, between the weapon yard and Jyotisha. The house rises after 6 branches and 2 repair kits. |
 
 The other 332 floors are not cut yet. Floor 332 is the only descent floor in this alpha.
 
@@ -52,7 +54,8 @@ The other 332 floors are not cut yet. Floor 332 is the only descent floor in thi
 
 - Day and night on the clock. Clear weather more often than rain. Heavy rain when rain comes. The hour bell.
 - Crops, flowers, a pond, and a rod he holds in his hand. Fish are items from the pond.
-- Cow and rooster in the courtyard, goat in the upper pen, black cat on the sidewalk and the courtyard, milkmaid with the cow, field hand on the farm. Xiang Su stands on the sidewalk. Grown crops draw in front of people and animals when they stand behind the beds.
+- Cow and rooster in the courtyard, goat in the upper pen, black cat on the sidewalk and the courtyard, a sow on the farm who can be trained to follow, milkmaid with the cow, field hand on the farm. Xiang Su stands on the sidewalk. Grown crops draw in front of people and animals when they stand behind the beds.
+- Emotion faces over the farmer, the same size and fall as the hearts.
 - Nine casts in the courtyard only: fireball, nova, iceball, ice, spark, bolt, holy, poison, and drip. Hands rise when a cast starts, then come down.
 - Volume buses: Master, Music, Weather, Animals, Bell.
 - Mouse-wheel zoom on PC, including a view wider than the yard. The margin behind every map is the same space.
@@ -64,7 +67,7 @@ PC: keyboard. Phone: stick on the left, round button on the right. The hotbar si
 
 ## SNES sidecar
 
-`snes/xdruid.sfc` is a 32 KB LoROM cartridge. Internal title: `XDRUID I ALPHA`. It is a homestead you can carry into an emulator. It is not the browser game. It does not include the DNA halls, Floor 332, or the volume buses.
+`snes/xdruid.sfc` is a 32 KB LoROM cartridge. Internal title: `XDRUID I ALPHA`. It is a homestead you can carry into an emulator. It is not the browser game. It does not include the DNA halls, Floor 332, the mansion, the offline visit gate, the sow, or the volume buses.
 
 [Download xdruid.sfc](https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/raw/main/snes/xdruid.sfc)
 

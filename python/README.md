@@ -2,7 +2,7 @@
 
 **Stage:** Alpha companion. Not a port of the browser client.
 
-`xdruid.py` opens the homestead in a desktop window. Window title: `XDruid I — Alpha`. It is not the browser game and it is not the SNES cartridge. It does not include the DNA ladder halls, Floor 332, or the volume buses.
+`xdruid.py` opens the homestead in a desktop window. Window title: `XDruid I — Alpha`. It is not the browser game and it is not the SNES cartridge. It does not include the DNA ladder halls, Floor 332, the mansion, the offline visit gate, the sow, or the volume buses.
 
 Python 3 is enough. Tkinter comes with Python on Windows and macOS.
 

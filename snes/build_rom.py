@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Build snes/xdruid.sfc — a LoROM cartridge sidecar of the homestead.
 
+Alpha companion. Not a port. It does not include the DNA halls, Floor 332,
+the mansion, the offline visit gate, or the sow. Those stay in the browser.
+
 Open it in Snes9x, bsnes, Mesen, or RetroArch's snes9x core.
 D-pad walks the yard. The west edge turns the grass to Naraka red.
 The east edge turns it to Svarga gold. Step back to the middle for the farm.

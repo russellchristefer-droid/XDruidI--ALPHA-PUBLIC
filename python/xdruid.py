@@ -3,7 +3,8 @@
 
 A windowed homestead. It is not the browser client and not the SNES cartridge.
 WASD or arrows walk. The mouse wheel zooms. The goat stays in the 7 by 3 pen.
-Xiang Su stands on the sidewalk.
+Xiang Su stands on the sidewalk. The mansion, the DNA halls, Floor 332, and
+the offline visit gate live only in the browser client.
 
     python3 python/xdruid.py
 """
@@ -154,7 +155,7 @@ class Yard:
         dot(self.goat_x, self.goat_y, 5, "#d8d0c4")
         dot(210, 212, 4, "#e07030")
         dot(self.x, self.y, 6, "#f4e2b0")
-        c.create_text(12, 12, anchor="nw", fill="#f4e2b0", text="XDruid I  ·  wheel zooms  ·  WASD walks")
+        c.create_text(12, 12, anchor="nw", fill="#f4e2b0", text="XDruid I — Alpha  ·  companion  ·  WASD walks  ·  wheel zooms")
 
     def run(self) -> None:
         self.root.mainloop()
