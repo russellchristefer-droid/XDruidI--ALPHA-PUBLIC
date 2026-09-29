@@ -1,4 +1,4 @@
-import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, FISH_WATER, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MEADOW, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
@@ -4052,15 +4052,23 @@ function drawRealmFringe(ctx: CanvasRenderingContext2D, s: GameState): void {
   }
 }
 
+function ink(hex: string, n: number): string {
+  const v = Number.parseInt(hex.slice(1), 16);
+  const r = Math.max(0, ((v >> 16) & 255) - n);
+  const g = Math.max(0, ((v >> 8) & 255) - n);
+  const b = Math.max(0, (v & 255) - n);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+}
+
 function paintFlatPortal(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   clock: number,
-  kind: "skill" | "combat" | "home" | "ring" | "armour" | "weapon",
+  kind: "skill" | "combat" | "home" | "ring" | "armour" | "weapon" | "quarry" | "sanctum" | "market" | "enchant" | "wilds",
 ): void {
   const rx = 12;
-  const ry = 7;
+  const ry = 6;
   const drift = clock * 1.2;
   const tone =
     kind === "combat"
@@ -4073,33 +4081,53 @@ function paintFlatPortal(
             ? { mist: ["#c8f4b4", "#d8f8c8", "#b8e8a8", "#e4f8d4"], deep: "#7aaa72", heart: "#f4fff0", glow: "188, 228, 168" }
             : kind === "weapon"
               ? { mist: ["#fff0b4", "#ffe6a4", "#fff6cc", "#f8e49a"], deep: "#c8b070", heart: "#fffce8", glow: "240, 220, 150" }
-              : { mist: ["#efe6d4", "#d8dcf0", "#e8e0d0", "#dce6f4"], deep: "#c0b8a8", heart: "#fffaf0", glow: "232, 226, 210" };
-  const breathe = 0.1 + 0.05 * Math.sin(clock * 1.6);
-  for (let y = -ry - 3; y <= ry + 3; y++) {
-    for (let x = -rx - 3; x <= rx + 3; x++) {
-      const d = (x / rx) * (x / rx) + (y / ry) * (y / ry);
-      if (d <= 1.02 || d > 1.32) continue;
-      if (((x + y) & 1) !== 0) continue;
-      ctx.fillStyle = `rgba(${tone.glow}, ${((1.32 - d) / 0.3 * breathe).toFixed(3)})`;
-      ctx.fillRect(cx + x, cy + y, 1, 1);
-    }
-  }
-  for (let y = -ry - 1; y <= ry + 1; y++) {
-    for (let x = -rx - 1; x <= rx + 1; x++) {
+              : kind === "quarry"
+                ? { mist: ["#f0c4a4", "#e8a878", "#f6d2b4", "#d89870"], deep: "#a87858", heart: "#fff3ea", glow: "228, 168, 128" }
+                : kind === "sanctum"
+                  ? { mist: ["#e6d6f8", "#d8c8f0", "#f0e6ff", "#c8b4e8"], deep: "#9884c0", heart: "#faf6ff", glow: "196, 176, 224" }
+                  : kind === "market"
+                    ? { mist: ["#ffe0a4", "#f6c888", "#fff0c4", "#e8b878"], deep: "#b88848", heart: "#fff8e6", glow: "232, 184, 110" }
+                    : kind === "enchant"
+                      ? { mist: ["#d6e6f8", "#c8d8f2", "#eef4ff", "#b4c6e6"], deep: "#8090b4", heart: "#f7faff", glow: "180, 204, 230" }
+                      : kind === "wilds"
+                        ? { mist: ["#b8ebe4", "#9adcd4", "#d4f6f2", "#88ccc4"], deep: "#5e9890", heart: "#f3fffc", glow: "140, 206, 196" }
+                        : { mist: ["#efe6d4", "#d8dcf0", "#e8e0d0", "#dce6f4"], deep: "#c0b8a8", heart: "#fffaf0", glow: "232, 226, 210" };
+  for (let y = -ry; y <= ry; y++) {
+    for (let x = -rx; x <= rx; x++) {
       const nx = x / rx;
       const ny = y / ry;
       const d = nx * nx + ny * ny;
-      if (d > 1.05) continue;
+      if (d > 1) continue;
       const wx = cx + x;
       const wy = cy + y;
-      if (d > 0.9) {
-        ctx.fillStyle = y > 1 ? "#5c4836" : "#c8b48e";
+      const ang = Math.atan2(ny, nx);
+      const crest = 0.5 + 0.5 * Math.sin(ang * 5 + drift);
+      const splash = (ny < 0.2 ? 0.18 : 0.06) * crest;
+      const wave = 0.5 + 0.5 * Math.sin(ang * 3 + drift + d * 5);
+      const inner = tone.mist[Math.min(tone.mist.length - 1, Math.floor(wave * tone.mist.length))]!;
+      if (d > 0.76 - splash) {
+        ctx.fillStyle = d > 0.9 ? ink(inner, 78) : ink(inner, 42);
         ctx.fillRect(wx, wy, 1, 1);
         continue;
       }
-      const wave = 0.5 + 0.5 * Math.sin(Math.atan2(ny, nx) * 3 + drift + d * 5);
-      ctx.fillStyle = d < 0.22 ? tone.heart : d > 0.74 ? tone.deep : tone.mist[Math.min(tone.mist.length - 1, Math.floor(wave * tone.mist.length))]!;
+      ctx.fillStyle = d < 0.22 ? tone.heart : d > 0.62 ? tone.deep : inner;
       ctx.fillRect(wx, wy, 1, 1);
+    }
+  }
+  const parts = tone.glow.split(",").map((n) => Number(n.trim()));
+  const lift = (c: number, k: number) => Math.min(255, Math.round(c + (255 - c) * k));
+  const hot = `rgb(${lift(parts[0] ?? 255, 0.7)}, ${lift(parts[1] ?? 255, 0.7)}, ${lift(parts[2] ?? 255, 0.45)})`;
+  const core = `rgb(${lift(parts[0] ?? 255, 0.95)}, ${lift(parts[1] ?? 255, 0.95)}, ${lift(parts[2] ?? 255, 0.88)})`;
+  for (let i = 0; i < 5; i++) {
+    const life = (clock * 0.55 + i * 0.37) % 1;
+    if (life < 0.12 || life > 0.94) continue;
+    const x = cx + Math.round(Math.sin(i * 2.4 + clock * 0.7) * 6);
+    const y = cy - 1 - Math.round(life * 12);
+    ctx.fillStyle = hot;
+    ctx.fillRect(x, y, 1, 1);
+    if (life > 0.3 && life < 0.72) {
+      ctx.fillStyle = core;
+      ctx.fillRect(x, y - 1, 1, 1);
     }
   }
 }
@@ -4492,10 +4520,11 @@ function drawRealmGate(ctx: CanvasRenderingContext2D, s: GameState, sheets: Shee
 
 const smithPlates = new Map<string, HTMLCanvasElement>();
 
-function paintSmithPlots(g: CanvasRenderingContext2D, kind: "armour" | "weapon"): void {
-  const plots = kind === "armour" ? ARMOUR_PLOTS : WEAPON_PLOTS;
-  const cloth = kind === "armour" ? "#7aaa72" : "#c8b070";
-  const pale = kind === "armour" ? "#d8f4c8" : "#fff0b4";
+function paintSmithPlots(g: CanvasRenderingContext2D, kind: "armour" | "weapon" | "quarry" | "sanctum" | "market" | "enchant" | "wilds"): void {
+  const plots =
+    kind === "armour" ? ARMOUR_PLOTS : kind === "weapon" ? WEAPON_PLOTS : kind === "quarry" ? QUARRY_PLOTS : kind === "sanctum" ? SANCTUM_PLOTS : kind === "market" ? MARKET_PLOTS : kind === "enchant" ? ENCHANT_PLOTS : WILDS_PLOTS;
+  const cloth = kind === "armour" ? "#7aaa72" : kind === "weapon" ? "#c8b070" : kind === "quarry" ? "#c48860" : kind === "sanctum" ? "#a898d0" : kind === "market" ? "#e0a858" : kind === "enchant" ? "#8090b4" : "#5e9890";
+  const pale = kind === "armour" ? "#d8f4c8" : kind === "weapon" ? "#fff0b4" : kind === "quarry" ? "#f0d0b8" : kind === "sanctum" ? "#ece4f8" : kind === "market" ? "#ffe6b8" : kind === "enchant" ? "#e4eef8" : "#d4f4f0";
   for (const plot of plots) {
     const { id, x, y, w, h } = plot;
     if (id.endsWith("plot")) {
@@ -4538,11 +4567,70 @@ function paintSmithPlots(g: CanvasRenderingContext2D, kind: "armour" | "weapon")
       yardLip(g, x, y, w, h);
       g.fillStyle = "#e07040";
       g.fillRect(x + 10, y + 12, 8, 4);
+    } else if (id === "q-face" || id === "q-stone") {
+      g.fillStyle = "#8a6848";
+      g.fillRect(x + 2, y + 6, w - 4, h - 8);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = "#e8c090";
+      g.fillRect(x + 8, y + 10, 4, 3);
+      g.fillRect(x + 16, y + 16, 3, 3);
+    } else if (id === "q-ingot" || id === "q-cart" || id === "m-crate") {
+      g.fillStyle = YARD_GOLD_D;
+      g.fillRect(x + 2, y + 6, w - 4, h - 8);
+      g.fillStyle = pale;
+      g.fillRect(x + 6, y + 4, w - 12, 6);
+      g.fillStyle = cloth;
+      g.fillRect(x + 8, y + 10, w - 16, 4);
+    } else if (id === "s-shrine" || id === "s-lamp") {
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x + 6, y + 8, w - 12, h - 10);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = cloth;
+      g.fillRect(x + Math.floor(w / 2) - 1, y + 4, 2, 6);
+    } else if (id === "s-bowl" || id === "s-incense") {
+      g.fillStyle = pale;
+      g.fillRect(x + 4, y + 6, w - 8, h - 8);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = cloth;
+      g.fillRect(x + 8, y + 4, 2, 6);
+    } else if (id === "m-stall" || id === "m-counter" || id === "m-scale") {
+      g.fillStyle = YARD_GOLD_D;
+      g.fillRect(x, y + 8, w, h - 8);
+      g.fillStyle = pale;
+      g.fillRect(x, y, w, 8);
+      g.fillStyle = cloth;
+      g.fillRect(x + 4, y + 2, w - 8, 2);
+    } else if (id === "e-bind" || id === "e-oil") {
+      g.fillStyle = pale;
+      g.fillRect(x + 4, y + 6, w - 8, h - 8);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = cloth;
+      g.fillRect(x + Math.floor(w / 2) - 2, y + Math.floor(h / 2) - 2, 4, 4);
+    } else if (id === "e-rune" || id === "e-rack") {
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x + 2, y + 6, w - 4, h - 8);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = cloth;
+      g.fillRect(x + 6, y + 8, w - 12, 2);
+      g.fillRect(x + 8, y + 12, 2, h - 16);
+    } else if (id === "v-trail" || id === "v-camp") {
+      g.fillStyle = "#6a5038";
+      g.fillRect(x + 2, y + 8, w - 4, h - 10);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = pale;
+      g.fillRect(x + 6, y + 4, w - 12, 4);
+    } else if (id === "v-forage" || id === "v-thicket") {
+      g.fillStyle = "#3e6a48";
+      g.fillRect(x + 4, y + 8, w - 8, h - 10);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = pale;
+      g.fillRect(x + 8, y + 6, 4, 4);
+      g.fillRect(x + 16, y + 12, 3, 3);
     }
   }
 }
 
-function ensureSmith(sheets: Sheets, kind: "armour" | "weapon"): HTMLCanvasElement | null {
+function ensureSmith(sheets: Sheets, kind: "armour" | "weapon" | "quarry" | "sanctum" | "market" | "enchant" | "wilds"): HTMLCanvasElement | null {
   const hit = smithPlates.get(kind);
   if (hit) return hit;
   if (typeof document === "undefined") return null;
@@ -4567,7 +4655,7 @@ function ensureSmith(sheets: Sheets, kind: "armour" | "weapon"): HTMLCanvasEleme
     fitStamp(g, sheets.treePine, i % 2 === 0 ? 16 : WORLD_W - 48, py, 32, 48);
   }
   paintSmithPlots(g, kind);
-  paintPlotSigns(g, kind === "armour" ? ARMOUR_PLOTS : WEAPON_PLOTS);
+  paintPlotSigns(g, kind === "armour" ? ARMOUR_PLOTS : kind === "weapon" ? WEAPON_PLOTS : kind === "quarry" ? QUARRY_PLOTS : kind === "sanctum" ? SANCTUM_PLOTS : kind === "market" ? MARKET_PLOTS : kind === "enchant" ? ENCHANT_PLOTS : WILDS_PLOTS);
   smithPlates.set(kind, canvas);
   return canvas;
 }
@@ -4658,10 +4746,12 @@ export function drawWorld(
     }
     return;
   }
-  if (wing === 5 || wing === 6) {
-    const yard = ensureSmith(sheets, wing === 5 ? "armour" : "weapon");
+  if (wing >= 5 && wing <= 11) {
+    const kind = wing === 5 ? "armour" : wing === 6 ? "weapon" : wing === 7 ? "quarry" : wing === 8 ? "sanctum" : wing === 9 ? "market" : wing === 10 ? "enchant" : "wilds";
+    const back = wing === 5 ? ARMOUR_RETURN : wing === 6 ? WEAPON_RETURN : wing === 7 ? QUARRY_RETURN : wing === 8 ? SANCTUM_RETURN : wing === 9 ? MARKET_RETURN : wing === 10 ? ENCHANT_RETURN : WILDS_RETURN;
+    const yard = ensureSmith(sheets, kind);
     if (yard) ctx.drawImage(yard, 0, 0);
-    paintFlatPortal(ctx, wing === 5 ? ARMOUR_RETURN.x : WEAPON_RETURN.x, wing === 5 ? ARMOUR_RETURN.y : WEAPON_RETURN.y, s.clock, "home");
+    paintFlatPortal(ctx, back.x, back.y, s.clock, "home");
     if (sheets.idle) {
       drawCastRite(ctx, sheets, s);
       paintPlayer(ctx, sheets, s);
@@ -4670,7 +4760,7 @@ export function drawWorld(
     if (s.cross) {
       const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
       const a = u < 0.5 ? u * 2 : (1 - u) * 2;
-      ctx.fillStyle = wing === 5 ? `rgba(180, 220, 160, ${0.1 + a * 0.45})` : `rgba(230, 200, 120, ${0.1 + a * 0.45})`;
+      ctx.fillStyle = kind === "quarry" ? `rgba(210, 150, 110, ${0.1 + a * 0.45})` : kind === "sanctum" ? `rgba(180, 160, 210, ${0.1 + a * 0.45})` : kind === "market" ? `rgba(220, 170, 90, ${0.1 + a * 0.45})` : kind === "enchant" ? `rgba(170, 196, 224, ${0.1 + a * 0.45})` : kind === "wilds" ? `rgba(120, 190, 180, ${0.1 + a * 0.45})` : wing === 5 ? `rgba(180, 220, 160, ${0.1 + a * 0.45})` : `rgba(230, 200, 120, ${0.1 + a * 0.45})`;
       ctx.fillRect(0, 0, WORLD_W, WORLD_H);
     }
     return;
@@ -4710,6 +4800,11 @@ export function drawWorld(
   if (plate) ctx.drawImage(plate, 0, 0);
   else if (yard && yard.naturalWidth > 0) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   drawMosaicFloors(ctx, s.clock, s.wet, yard, sheets.svarga, sheets.naraka);
+  paintFlatPortal(ctx, ENCHANT_DOOR.x, ENCHANT_DOOR.y, s.clock, "enchant");
+  paintFlatPortal(ctx, WILDS_DOOR.x, WILDS_DOOR.y, s.clock, "wilds");
+  paintFlatPortal(ctx, QUARRY_DOOR.x, QUARRY_DOOR.y, s.clock, "quarry");
+  paintFlatPortal(ctx, SANCTUM_DOOR.x, SANCTUM_DOOR.y, s.clock, "sanctum");
+  paintFlatPortal(ctx, MARKET_DOOR.x, MARKET_DOOR.y, s.clock, "market");
   paintFlatPortal(ctx, ARMOUR_DOOR.x, ARMOUR_DOOR.y, s.clock, "armour");
   paintFlatPortal(ctx, WEAPON_DOOR.x, WEAPON_DOOR.y, s.clock, "weapon");
   paintFlatPortal(ctx, RING_DOOR.x, RING_DOOR.y, s.clock, "ring");

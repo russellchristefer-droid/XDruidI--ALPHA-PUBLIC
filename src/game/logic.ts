@@ -52,6 +52,31 @@ import {
   WEAPON_RETURN,
   WEAPON_PLOTS,
   weaponPlotAt,
+  QUARRY_DOOR,
+  QUARRY_ARRIVE,
+  QUARRY_RETURN,
+  QUARRY_PLOTS,
+  quarryPlotAt,
+  SANCTUM_DOOR,
+  SANCTUM_ARRIVE,
+  SANCTUM_RETURN,
+  SANCTUM_PLOTS,
+  sanctumPlotAt,
+  MARKET_DOOR,
+  MARKET_ARRIVE,
+  MARKET_RETURN,
+  MARKET_PLOTS,
+  marketPlotAt,
+  ENCHANT_DOOR,
+  ENCHANT_ARRIVE,
+  ENCHANT_RETURN,
+  ENCHANT_PLOTS,
+  enchantPlotAt,
+  WILDS_DOOR,
+  WILDS_ARRIVE,
+  WILDS_RETURN,
+  WILDS_PLOTS,
+  wildsPlotAt,
   onGroveDoor,
   DAY_LEN,
   HAND_HOME,
@@ -190,7 +215,27 @@ function stepRing(s: GameState, dt: number): void {
   if (biting) s.health = Math.max(20, s.health - dt * 6);
 }
 
-type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
+function craftPlotAt(wing: number, x: number, y: number) {
+  if (wing === 5) return armourPlotAt(x, y);
+  if (wing === 6) return weaponPlotAt(x, y);
+  if (wing === 7) return quarryPlotAt(x, y);
+  if (wing === 8) return sanctumPlotAt(x, y);
+  if (wing === 9) return marketPlotAt(x, y);
+  if (wing === 10) return enchantPlotAt(x, y);
+  if (wing === 11) return wildsPlotAt(x, y);
+  return null;
+}
+
+function craftBlurb(wing: number): string {
+  if (wing === 7) return "The quarry. The face, the stone, and the mold.";
+  if (wing === 8) return "The sanctum. Offerings, not a spell circle.";
+  if (wing === 9) return "The market. Goods in, coin out.";
+  if (wing === 10) return "The enchanting yard. Bind a working onto a finished piece.";
+  if (wing === 11) return "The wilds. Trail, forage, and a camp.";
+  return wing === 5 ? "The armour yard. The stand, the mail, and the plot." : "The weapon yard. The bench, the blade, and the plot.";
+}
+
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
 
 const GATE_REACH = 46;
 
@@ -225,6 +270,26 @@ export function sideGate(s: GameState): SideGate | null {
     if (Math.hypot(s.x - WEAPON_RETURN.x, s.y - WEAPON_RETURN.y) > 28) return null;
     return { x: WEAPON_RETURN.x, y: WEAPON_RETURN.y, wing: 0, landX: WEAPON_DOOR.x, landY: WEAPON_DOOR.y + 18, dir: "s", name: "the courtyard" };
   }
+  if (wing === 7) {
+    if (Math.hypot(s.x - QUARRY_RETURN.x, s.y - QUARRY_RETURN.y) > 28) return null;
+    return { x: QUARRY_RETURN.x, y: QUARRY_RETURN.y, wing: 0, landX: QUARRY_DOOR.x, landY: QUARRY_DOOR.y + 18, dir: "s", name: "the courtyard" };
+  }
+  if (wing === 8) {
+    if (Math.hypot(s.x - SANCTUM_RETURN.x, s.y - SANCTUM_RETURN.y) > 28) return null;
+    return { x: SANCTUM_RETURN.x, y: SANCTUM_RETURN.y, wing: 0, landX: SANCTUM_DOOR.x, landY: SANCTUM_DOOR.y + 18, dir: "s", name: "the courtyard" };
+  }
+  if (wing === 9) {
+    if (Math.hypot(s.x - MARKET_RETURN.x, s.y - MARKET_RETURN.y) > 28) return null;
+    return { x: MARKET_RETURN.x, y: MARKET_RETURN.y, wing: 0, landX: MARKET_DOOR.x, landY: MARKET_DOOR.y - 22, dir: "n", name: "the courtyard" };
+  }
+  if (wing === 10) {
+    if (Math.hypot(s.x - ENCHANT_RETURN.x, s.y - ENCHANT_RETURN.y) > 28) return null;
+    return { x: ENCHANT_RETURN.x, y: ENCHANT_RETURN.y, wing: 0, landX: ENCHANT_DOOR.x, landY: ENCHANT_DOOR.y - 18, dir: "n", name: "the courtyard" };
+  }
+  if (wing === 11) {
+    if (Math.hypot(s.x - WILDS_RETURN.x, s.y - WILDS_RETURN.y) > 28) return null;
+    return { x: WILDS_RETURN.x, y: WILDS_RETURN.y, wing: 0, landX: WILDS_DOOR.x, landY: WILDS_DOOR.y + 16, dir: "s", name: "the courtyard" };
+  }
   if (wing === 0) {
     const skill = onGroveDoor(s.x, s.y, GROVE_DOOR.x, GROVE_DOOR.y);
     const fight = onGroveDoor(s.x, s.y, COMBAT_DOOR.x, COMBAT_DOOR.y);
@@ -236,6 +301,21 @@ export function sideGate(s: GameState): SideGate | null {
     }
     if (weapon) {
       return { x: WEAPON_DOOR.x, y: WEAPON_DOOR.y, wing: 6, landX: WEAPON_ARRIVE.x, landY: WEAPON_ARRIVE.y, dir: "s", name: "the weapon yard" };
+    }
+    if (onGroveDoor(s.x, s.y, QUARRY_DOOR.x, QUARRY_DOOR.y)) {
+      return { x: QUARRY_DOOR.x, y: QUARRY_DOOR.y, wing: 7, landX: QUARRY_ARRIVE.x, landY: QUARRY_ARRIVE.y, dir: "s", name: "the quarry" };
+    }
+    if (onGroveDoor(s.x, s.y, SANCTUM_DOOR.x, SANCTUM_DOOR.y)) {
+      return { x: SANCTUM_DOOR.x, y: SANCTUM_DOOR.y, wing: 8, landX: SANCTUM_ARRIVE.x, landY: SANCTUM_ARRIVE.y, dir: "s", name: "the sanctum" };
+    }
+    if (onGroveDoor(s.x, s.y, MARKET_DOOR.x, MARKET_DOOR.y)) {
+      return { x: MARKET_DOOR.x, y: MARKET_DOOR.y, wing: 9, landX: MARKET_ARRIVE.x, landY: MARKET_ARRIVE.y, dir: "s", name: "the market" };
+    }
+    if (onGroveDoor(s.x, s.y, ENCHANT_DOOR.x, ENCHANT_DOOR.y)) {
+      return { x: ENCHANT_DOOR.x, y: ENCHANT_DOOR.y, wing: 10, landX: ENCHANT_ARRIVE.x, landY: ENCHANT_ARRIVE.y, dir: "s", name: "the enchanting yard" };
+    }
+    if (onGroveDoor(s.x, s.y, WILDS_DOOR.x, WILDS_DOOR.y)) {
+      return { x: WILDS_DOOR.x, y: WILDS_DOOR.y, wing: 11, landX: WILDS_ARRIVE.x, landY: WILDS_ARRIVE.y, dir: "s", name: "the wilds" };
     }
     if (ring && !skill && !fight) {
       return { x: RING_DOOR.x, y: RING_DOOR.y, wing: 4, landX: RING_ARRIVE.x, landY: RING_ARRIVE.y, dir: "s", name: "the combat ring" };
@@ -283,7 +363,16 @@ function unitRand(s: GameState): number {
 
 function aimPoint(s: GameState, kind: string, target: string): { x: number; y: number } | null {
   if (kind === "drill") {
-    const plot = GROVE_PLOTS.find((p) => p.id === target) ?? COMBAT_PLOTS.find((p) => p.id === target) ?? ARMOUR_PLOTS.find((p) => p.id === target) ?? WEAPON_PLOTS.find((p) => p.id === target);
+    const plot =
+      GROVE_PLOTS.find((p) => p.id === target) ??
+      COMBAT_PLOTS.find((p) => p.id === target) ??
+      ARMOUR_PLOTS.find((p) => p.id === target) ??
+      WEAPON_PLOTS.find((p) => p.id === target) ??
+      QUARRY_PLOTS.find((p) => p.id === target) ??
+      SANCTUM_PLOTS.find((p) => p.id === target) ??
+      MARKET_PLOTS.find((p) => p.id === target) ??
+      ENCHANT_PLOTS.find((p) => p.id === target) ??
+      WILDS_PLOTS.find((p) => p.id === target);
     if (!plot) return null;
     return {
       x: Math.max(plot.x, Math.min(plot.x + plot.w, s.x)),
@@ -773,9 +862,9 @@ export function promptAt(s: GameState, px: number, py: number): string {
     if (!inReach(s, px, py)) return "";
     return foeAt(px, py) ? "Strike the shade  [E]" : "";
   }
-  if ((s.wing ?? 0) === 5 || (s.wing ?? 0) === 6) {
+  if ((s.wing ?? 0) >= 5 && (s.wing ?? 0) <= 11) {
     if (!inReach(s, px, py)) return "";
-    const plot = (s.wing ?? 0) === 5 ? armourPlotAt(px, py) : weaponPlotAt(px, py);
+    const plot = craftPlotAt(s.wing ?? 0, px, py);
     if (!plot) return "";
     return `Train ${SKILL_NAME[plot.skill]}  [E]`;
   }
@@ -808,10 +897,10 @@ export function examineAt(s: GameState, px: number, py: number): string {
     if (foe) return "A shade in the combat ring. Strike it.";
     return "The combat ring. Shades come here to be fought.";
   }
-  if ((s.wing ?? 0) === 5 || (s.wing ?? 0) === 6) {
-    const plot = (s.wing ?? 0) === 5 ? armourPlotAt(px, py) : weaponPlotAt(px, py);
+  if ((s.wing ?? 0) >= 5 && (s.wing ?? 0) <= 11) {
+    const plot = craftPlotAt(s.wing ?? 0, px, py);
     if (plot) return `${plot.name}. A place to train ${SKILL_NAME[plot.skill]}.`;
-    return (s.wing ?? 0) === 5 ? "The armour yard. The stand, the mail, and the plot." : "The weapon yard. The bench, the blade, and the plot.";
+    return craftBlurb(s.wing ?? 0);
   }
   if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
   if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
@@ -924,9 +1013,9 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
     }
     return { msg: `You strike the shade.${grant(s, "combat", 4)}` };
   }
-  if ((s.wing ?? 0) === 5 || (s.wing ?? 0) === 6) {
+  if ((s.wing ?? 0) >= 5 && (s.wing ?? 0) <= 11) {
     if (!inReach(s, px, py)) return { msg: "Too far." };
-    const plot = (s.wing ?? 0) === 5 ? armourPlotAt(px, py) : weaponPlotAt(px, py);
+    const plot = craftPlotAt(s.wing ?? 0, px, py);
     if (!plot) return { msg: "Open ground. The plot is the work." };
     return startAct(s, "drill", plot.id, 0.8);
   }
@@ -1227,7 +1316,16 @@ export function resolveAction(s: GameState): string {
   const act = s.action;
   if (!act) return s.message;
   if (act.kind === "drill") {
-    const plot = GROVE_PLOTS.find((p) => p.id === act.target) ?? COMBAT_PLOTS.find((p) => p.id === act.target) ?? ARMOUR_PLOTS.find((p) => p.id === act.target) ?? WEAPON_PLOTS.find((p) => p.id === act.target);
+    const plot =
+      GROVE_PLOTS.find((p) => p.id === act.target) ??
+      COMBAT_PLOTS.find((p) => p.id === act.target) ??
+      ARMOUR_PLOTS.find((p) => p.id === act.target) ??
+      WEAPON_PLOTS.find((p) => p.id === act.target) ??
+      QUARRY_PLOTS.find((p) => p.id === act.target) ??
+      SANCTUM_PLOTS.find((p) => p.id === act.target) ??
+      MARKET_PLOTS.find((p) => p.id === act.target) ??
+      ENCHANT_PLOTS.find((p) => p.id === act.target) ??
+      WILDS_PLOTS.find((p) => p.id === act.target);
     if (!plot || plot.skill === "magic") return "Magic is trained on the courtyard seal.";
     s.stamina = Math.max(0, s.stamina - 2);
     return `He works the ${plot.name.toLowerCase()}.${grant(s, plot.skill, 8)}`;

@@ -932,8 +932,8 @@ export function liturgyOf(spell: SpellId): Liturgy {
 }
 
 /** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
-export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6): string {
-  if (wing === 0 || wing === 2 || wing === 3 || wing === 4 || wing === 5 || wing === 6) return SPELL_NAME[spell];
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): string {
+  if (wing === 0 || wing >= 2) return SPELL_NAME[spell];
   const east = wing === 1;
   switch (spell) {
     case "fireball":
@@ -1100,11 +1100,11 @@ export type GameState = {
   rune: number;
   cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy, 2 the skill grove. */
-  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
   /** A portal crossing. The land changes halfway through the fade. */
   cross: {
     t: number;
-    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
     x: number;
     y: number;
     dir: Dir;
@@ -1175,6 +1175,9 @@ export const SKILL_IDS = [
   "combat",
   "armour",
   "weapon",
+  "quarry",
+  "trade",
+  "enchant",
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -1198,6 +1201,9 @@ export const SKILL_NAME: Record<SkillId, string> = {
   combat: "Combat",
   armour: "Armour",
   weapon: "Weapons",
+  quarry: "Quarry",
+  trade: "Trade",
+  enchant: "Enchanting",
 };
 
 export const SKILL_NOTE: Record<SkillId, string> = {
@@ -1218,6 +1224,9 @@ export const SKILL_NOTE: Record<SkillId, string> = {
   combat: "Drill the combat plot, the dummy, and the range.",
   armour: "Shape the armour plot, the stand, and the mail.",
   weapon: "Work the weapon plot, the blade, and the haft.",
+  quarry: "Cut ore, stone, and ingots from the face.",
+  trade: "Sell what the homestead has made.",
+  enchant: "Bind a working onto a finished piece.",
 };
 
 export function freshSkills(): SkillBook {
@@ -1527,10 +1536,10 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
-let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0;
+let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 = 0;
 
 /** Farm collision stays on the homestead. Each other land has its own ground. */
-export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6): void {
+export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
   realmWing = wing;
 }
 
@@ -1540,6 +1549,11 @@ function realmFeet(x: number, y: number): boolean {
   if (realmWing === 4) return ringFeet(x, y);
   if (realmWing === 5) return armourFeet(x, y);
   if (realmWing === 6) return weaponFeet(x, y);
+  if (realmWing === 7) return quarryFeet(x, y);
+  if (realmWing === 8) return sanctumFeet(x, y);
+  if (realmWing === 9) return marketFeet(x, y);
+  if (realmWing === 10) return enchantFeet(x, y);
+  if (realmWing === 11) return wildsFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
@@ -1773,7 +1787,7 @@ export const WEAPON_RETURN = { x: 174, y: 460 } as const;
 export type SmithPlot = {
   id: string;
   name: string;
-  skill: "armour" | "weapon";
+  skill: "armour" | "weapon" | "quarry" | "ritual" | "trade" | "enchant" | "tracking" | "foraging" | "survival";
   x: number;
   y: number;
   w: number;
@@ -1842,12 +1856,172 @@ function weaponFeet(x: number, y: number): boolean {
   return yardFeet(WEAPON_SOLIDS, x, y);
 }
 
+/** Left courtyard, between the weapon portal and the combat ring. */
+export const QUARRY_DOOR = { x: 36, y: 380 } as const;
+export const QUARRY_ARRIVE = { x: 174, y: 200 } as const;
+export const QUARRY_RETURN = { x: 174, y: 460 } as const;
+
+/** Right courtyard, between the armour portal and the combat yard. */
+export const SANCTUM_DOOR = { x: 308, y: 380 } as const;
+export const SANCTUM_ARRIVE = { x: 174, y: 200 } as const;
+export const SANCTUM_RETURN = { x: 174, y: 460 } as const;
+
+/** Right courtyard, just above the sanctum portal. */
+export const MARKET_DOOR = { x: 308, y: 356 } as const;
+export const MARKET_ARRIVE = { x: 174, y: 200 } as const;
+export const MARKET_RETURN = { x: 174, y: 460 } as const;
+
+export const QUARRY_PLOTS: SmithPlot[] = [
+  { id: "q-plot", name: "Quarry plot", skill: "quarry", x: 118, y: 250, w: 110, h: 56 },
+  { id: "q-face", name: "Ore face", skill: "quarry", x: 44, y: 72, w: 36, h: 40 },
+  { id: "q-stone", name: "Stone pile", skill: "quarry", x: 46, y: 168, w: 40, h: 28 },
+  { id: "q-ingot", name: "Ingot mold", skill: "quarry", x: 236, y: 80, w: 48, h: 22 },
+  { id: "q-cart", name: "Ore cart", skill: "quarry", x: 244, y: 176, w: 40, h: 26 },
+];
+
+export const SANCTUM_PLOTS: SmithPlot[] = [
+  { id: "s-plot", name: "Offering plot", skill: "ritual", x: 118, y: 250, w: 110, h: 56 },
+  { id: "s-shrine", name: "Shrine", skill: "ritual", x: 44, y: 68, w: 32, h: 44 },
+  { id: "s-bowl", name: "Offering bowl", skill: "ritual", x: 48, y: 168, w: 28, h: 20 },
+  { id: "s-incense", name: "Incense", skill: "ritual", x: 244, y: 76, w: 28, h: 32 },
+  { id: "s-lamp", name: "Lamp", skill: "ritual", x: 252, y: 176, w: 18, h: 36 },
+];
+
+export const MARKET_PLOTS: SmithPlot[] = [
+  { id: "m-plot", name: "Trade plot", skill: "trade", x: 118, y: 250, w: 110, h: 56 },
+  { id: "m-stall", name: "Stall", skill: "trade", x: 40, y: 68, w: 56, h: 28 },
+  { id: "m-crate", name: "Crates", skill: "trade", x: 48, y: 164, w: 32, h: 24 },
+  { id: "m-scale", name: "Scale", skill: "trade", x: 240, y: 76, w: 32, h: 28 },
+  { id: "m-counter", name: "Counter", skill: "trade", x: 228, y: 172, w: 56, h: 22 },
+];
+
+export const QUARRY_SOLIDS: Rect[] = [
+  { x: 48, y: 80, w: 28, h: 24 },
+  { x: 50, y: 172, w: 32, h: 18 },
+  { x: 240, y: 84, w: 40, h: 14 },
+  { x: 248, y: 180, w: 32, h: 16 },
+];
+
+export const SANCTUM_SOLIDS: Rect[] = [
+  { x: 48, y: 76, w: 24, h: 28 },
+  { x: 52, y: 172, w: 20, h: 12 },
+  { x: 248, y: 80, w: 16, h: 22 },
+  { x: 254, y: 184, w: 12, h: 22 },
+];
+
+export const MARKET_SOLIDS: Rect[] = [
+  { x: 44, y: 72, w: 48, h: 16 },
+  { x: 52, y: 168, w: 24, h: 16 },
+  { x: 244, y: 80, w: 24, h: 18 },
+  { x: 232, y: 176, w: 48, h: 14 },
+];
+
+export function quarryPlotAt(px: number, py: number): SmithPlot | null {
+  for (let i = QUARRY_PLOTS.length - 1; i >= 0; i--) {
+    const p = QUARRY_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+export function sanctumPlotAt(px: number, py: number): SmithPlot | null {
+  for (let i = SANCTUM_PLOTS.length - 1; i >= 0; i--) {
+    const p = SANCTUM_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+export function marketPlotAt(px: number, py: number): SmithPlot | null {
+  for (let i = MARKET_PLOTS.length - 1; i >= 0; i--) {
+    const p = MARKET_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+function quarryFeet(x: number, y: number): boolean {
+  return yardFeet(QUARRY_SOLIDS, x, y);
+}
+
+function sanctumFeet(x: number, y: number): boolean {
+  return yardFeet(SANCTUM_SOLIDS, x, y);
+}
+
+function marketFeet(x: number, y: number): boolean {
+  return yardFeet(MARKET_SOLIDS, x, y);
+}
+
+/** Left courtyard, just below the quarry. */
+export const ENCHANT_DOOR = { x: 36, y: 430 } as const;
+export const ENCHANT_ARRIVE = { x: 174, y: 200 } as const;
+export const ENCHANT_RETURN = { x: 174, y: 460 } as const;
+
+/** Left courtyard, just below the enchanting portal and above the combat ring. */
+export const WILDS_DOOR = { x: 36, y: 454 } as const;
+export const WILDS_ARRIVE = { x: 174, y: 200 } as const;
+export const WILDS_RETURN = { x: 174, y: 460 } as const;
+
+export const ENCHANT_PLOTS: SmithPlot[] = [
+  { id: "e-plot", name: "Enchant plot", skill: "enchant", x: 118, y: 250, w: 110, h: 56 },
+  { id: "e-bind", name: "Binding stone", skill: "enchant", x: 44, y: 72, w: 32, h: 32 },
+  { id: "e-rune", name: "Rune table", skill: "enchant", x: 40, y: 164, w: 52, h: 24 },
+  { id: "e-oil", name: "Oil dish", skill: "enchant", x: 244, y: 76, w: 28, h: 20 },
+  { id: "e-rack", name: "Aether rack", skill: "enchant", x: 248, y: 168, w: 24, h: 36 },
+];
+
+export const WILDS_PLOTS: SmithPlot[] = [
+  { id: "v-plot", name: "Wilds plot", skill: "survival", x: 118, y: 250, w: 110, h: 56 },
+  { id: "v-trail", name: "Game trail", skill: "tracking", x: 44, y: 72, w: 48, h: 28 },
+  { id: "v-forage", name: "Forage patch", skill: "foraging", x: 46, y: 164, w: 40, h: 28 },
+  { id: "v-camp", name: "Camp", skill: "survival", x: 236, y: 72, w: 40, h: 32 },
+  { id: "v-thicket", name: "Thicket", skill: "foraging", x: 244, y: 168, w: 36, h: 36 },
+];
+
+export const ENCHANT_SOLIDS: Rect[] = [
+  { x: 48, y: 78, w: 24, h: 20 },
+  { x: 44, y: 168, w: 44, h: 14 },
+  { x: 248, y: 80, w: 20, h: 12 },
+  { x: 252, y: 176, w: 16, h: 22 },
+];
+
+export const WILDS_SOLIDS: Rect[] = [
+  { x: 48, y: 76, w: 40, h: 16 },
+  { x: 50, y: 168, w: 32, h: 16 },
+  { x: 240, y: 78, w: 32, h: 18 },
+  { x: 248, y: 176, w: 28, h: 20 },
+];
+
+export function enchantPlotAt(px: number, py: number): SmithPlot | null {
+  for (let i = ENCHANT_PLOTS.length - 1; i >= 0; i--) {
+    const p = ENCHANT_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+export function wildsPlotAt(px: number, py: number): SmithPlot | null {
+  for (let i = WILDS_PLOTS.length - 1; i >= 0; i--) {
+    const p = WILDS_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+function enchantFeet(x: number, y: number): boolean {
+  return yardFeet(ENCHANT_SOLIDS, x, y);
+}
+
+function wildsFeet(x: number, y: number): boolean {
+  return yardFeet(WILDS_SOLIDS, x, y);
+}
+
 export function ensureAuto(s: GameState): void {
   if (typeof s.auto !== "boolean") s.auto = true;
 }
 
 export function onPortal(x: number, y: number): boolean {
-  if (realmWing === 2 || realmWing === 3 || realmWing === 4 || realmWing === 5 || realmWing === 6) return false;
+  if (realmWing >= 2) return false;
   // The picture is wider than this. The body stops on the stone. The step in front, on the sidewalk and in the courtyard, stays open.
   const gates: Array<{ x: number; half: number; top: number }> = [];
   if (realmWing !== -1) gates.push({ x: 40, half: 30, top: 124 });
@@ -1859,7 +2033,7 @@ export function onPortal(x: number, y: number): boolean {
 }
 
 export function ensureWing(s: GameState): void {
-  if (s.wing !== -1 && s.wing !== 0 && s.wing !== 1 && s.wing !== 2 && s.wing !== 3 && s.wing !== 4 && s.wing !== 5 && s.wing !== 6) s.wing = 0;
+  if (s.wing !== -1 && (s.wing < 0 || s.wing > 11)) s.wing = 0;
   if (!s.cross || typeof s.cross.t !== "number") s.cross = null;
 }
 
