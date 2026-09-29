@@ -932,7 +932,7 @@ export function liturgyOf(spell: SpellId): Liturgy {
 }
 
 /** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
-export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): string {
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16): string {
   if (wing === 0 || wing >= 2) return SPELL_NAME[spell];
   const east = wing === 1;
   switch (spell) {
@@ -1100,11 +1100,11 @@ export type GameState = {
   rune: number;
   cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy, 2 the skill grove. */
-  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
   /** A portal crossing. The land changes halfway through the fade. */
   cross: {
     t: number;
-    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
     x: number;
     y: number;
     dir: Dir;
@@ -1536,10 +1536,10 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
-let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 = 0;
+let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 = 0;
 
 /** Farm collision stays on the homestead. Each other land has its own ground. */
-export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): void {
+export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16): void {
   realmWing = wing;
 }
 
@@ -1555,6 +1555,10 @@ function realmFeet(x: number, y: number): boolean {
   if (realmWing === 10) return enchantFeet(x, y);
   if (realmWing === 11) return wildsFeet(x, y);
   if (realmWing === 12) return stairFeet(x, y);
+  if (realmWing === 13) return techFeet(x, y);
+  if (realmWing === 14) return medicFeet(x, y);
+  if (realmWing === 15) return bioFeet(x, y);
+  if (realmWing === 16) return libraryFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
@@ -2019,22 +2023,100 @@ function wildsFeet(x: number, y: number): boolean {
 
 /** Golden ladder-hole, portal-sized, high in the top-left of the courtyard. */
 export const DESCENT_DOOR = { x: 100, y: 248 } as const;
-export const DESCENT_ARRIVE = { x: 174, y: 100 } as const;
-export const DESCENT_RETURN = { x: 174, y: 78 } as const;
+export const DESCENT_ARRIVE = { x: 174, y: 150 } as const;
+export const DESCENT_RETURN = { x: 174, y: 120 } as const;
 
-/** Floor 1 only. The well is longer than a training yard. Floors 2–333 are not cut yet. */
-export const STAIR_WELL = { x: 80, y: 48, w: 188, h: 812 } as const;
-export const STAIR_LAND = 140;
-export const STAIR_PITCH = 16;
-export const STAIR_COUNT = 45;
-export const STAIR_SEAL = STAIR_LAND + STAIR_COUNT * STAIR_PITCH;
+/** Blue ladder-hole. Green sits just to its left, red just to its right. */
+export const TECH_DOOR = { x: 244, y: 248 } as const;
+export const TECH_ARRIVE = { x: 174, y: 118 } as const;
+export const TECH_RETURN = { x: 174, y: 86 } as const;
+export const TECH_SOLIDS: Rect[] = [
+  { x: 28, y: 168, w: 84, h: 26 },
+  { x: 236, y: 168, w: 84, h: 26 },
+  { x: 112, y: 248, w: 124, h: 22 },
+];
+
+function techFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y < 40 || box.y + box.h > 500) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of TECH_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
+/** Red ladder-hole, just to the right of the blue tech portal. */
+export const MEDIC_DOOR = { x: 272, y: 248 } as const;
+export const MEDIC_ARRIVE = { x: 174, y: 118 } as const;
+export const MEDIC_RETURN = { x: 174, y: 86 } as const;
+export const MEDIC_SOLIDS: Rect[] = [
+  { x: 36, y: 168, w: 64, h: 22 },
+  { x: 248, y: 168, w: 64, h: 22 },
+  { x: 132, y: 236, w: 84, h: 20 },
+];
+
+function medicFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y < 40 || box.y + box.h > 500) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of MEDIC_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
+/** Green ladder-hole, just to the left of the blue tech portal. */
+export const BIO_DOOR = { x: 216, y: 248 } as const;
+export const BIO_ARRIVE = { x: 174, y: 118 } as const;
+export const BIO_RETURN = { x: 174, y: 86 } as const;
+export const BIO_SOLIDS: Rect[] = [
+  { x: 32, y: 160, w: 72, h: 28 },
+  { x: 244, y: 160, w: 72, h: 28 },
+  { x: 118, y: 236, w: 112, h: 24 },
+];
+
+function bioFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y < 40 || box.y + box.h > 500) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of BIO_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
+/** Indigo ladder-hole, just above the combat yard portal. */
+export const LIBRARY_DOOR = { x: 308, y: 458 } as const;
+export const LIBRARY_ARRIVE = { x: 174, y: 118 } as const;
+export const LIBRARY_RETURN = { x: 174, y: 86 } as const;
+export const LIBRARY_SOLIDS: Rect[] = [
+  { x: 24, y: 150, w: 18, h: 120 },
+  { x: 306, y: 150, w: 18, h: 120 },
+  { x: 118, y: 250, w: 112, h: 20 },
+];
+
+function libraryFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y < 40 || box.y + box.h > 500) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of LIBRARY_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
+/** Floor 332. A triangle the shape of the cube's ship, point above a band of space. */
+export const FLOOR_H = 1560;
+const FLOOR_TIP = 22;
+const FLOOR_POINT = FLOOR_H - 56;
+
+export function floorEdge(y: number): number {
+  if (y < 0 || y >= FLOOR_POINT) return 0;
+  const t = y / (FLOOR_POINT - 1);
+  return FLOOR_TIP + ((WORLD_W - 1) / 2 - FLOOR_TIP) * (1 - t);
+}
+
+export function onFloor332(x: number, y: number): boolean {
+  const edge = floorEdge(y);
+  if (edge < 16) return false;
+  return Math.abs(x - (WORLD_W - 1) / 2) <= edge - 11;
+}
 
 function stairFeet(x: number, y: number): boolean {
-  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
-  if (box.y < STAIR_WELL.y) return true;
-  if (box.y + box.h > STAIR_SEAL - 4) return true;
-  if (box.x < STAIR_WELL.x || box.x + box.w > STAIR_WELL.x + STAIR_WELL.w) return true;
-  return false;
+  return !onFloor332(x, y);
 }
 
 export function ensureAuto(s: GameState): void {
@@ -2054,7 +2136,7 @@ export function onPortal(x: number, y: number): boolean {
 }
 
 export function ensureWing(s: GameState): void {
-  if (s.wing !== -1 && (s.wing < 0 || s.wing > 12)) s.wing = 0;
+  if (s.wing !== -1 && (s.wing < 0 || s.wing > 16)) s.wing = 0;
   if (!s.cross || typeof s.cross.t !== "number") s.cross = null;
 }
 

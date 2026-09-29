@@ -80,6 +80,18 @@ import {
   DESCENT_DOOR,
   DESCENT_ARRIVE,
   DESCENT_RETURN,
+  TECH_DOOR,
+  TECH_ARRIVE,
+  TECH_RETURN,
+  MEDIC_DOOR,
+  MEDIC_ARRIVE,
+  MEDIC_RETURN,
+  BIO_DOOR,
+  BIO_ARRIVE,
+  BIO_RETURN,
+  LIBRARY_DOOR,
+  LIBRARY_ARRIVE,
+  LIBRARY_RETURN,
   onGroveDoor,
   DAY_LEN,
   HAND_HOME,
@@ -238,7 +250,7 @@ function craftBlurb(wing: number): string {
   return wing === 5 ? "The armour yard. The stand, the mail, and the plot." : "The weapon yard. The bench, the blade, and the plot.";
 }
 
-type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
 
 const GATE_REACH = 46;
 
@@ -297,6 +309,22 @@ export function sideGate(s: GameState): SideGate | null {
     if (Math.hypot(s.x - DESCENT_RETURN.x, s.y - DESCENT_RETURN.y) > 28) return null;
     return { x: DESCENT_RETURN.x, y: DESCENT_RETURN.y, wing: 0, landX: DESCENT_DOOR.x, landY: DESCENT_DOOR.y + 16, dir: "s", name: "the courtyard" };
   }
+  if (wing === 13) {
+    if (Math.hypot(s.x - TECH_RETURN.x, s.y - TECH_RETURN.y) > 28) return null;
+    return { x: TECH_RETURN.x, y: TECH_RETURN.y, wing: 0, landX: TECH_DOOR.x, landY: TECH_DOOR.y + 16, dir: "s", name: "the courtyard" };
+  }
+  if (wing === 14) {
+    if (Math.hypot(s.x - MEDIC_RETURN.x, s.y - MEDIC_RETURN.y) > 28) return null;
+    return { x: MEDIC_RETURN.x, y: MEDIC_RETURN.y, wing: 0, landX: MEDIC_DOOR.x, landY: MEDIC_DOOR.y + 16, dir: "s", name: "the courtyard" };
+  }
+  if (wing === 15) {
+    if (Math.hypot(s.x - BIO_RETURN.x, s.y - BIO_RETURN.y) > 28) return null;
+    return { x: BIO_RETURN.x, y: BIO_RETURN.y, wing: 0, landX: BIO_DOOR.x, landY: BIO_DOOR.y + 16, dir: "s", name: "the courtyard" };
+  }
+  if (wing === 16) {
+    if (Math.hypot(s.x - LIBRARY_RETURN.x, s.y - LIBRARY_RETURN.y) > 28) return null;
+    return { x: LIBRARY_RETURN.x, y: LIBRARY_RETURN.y, wing: 0, landX: LIBRARY_DOOR.x, landY: LIBRARY_DOOR.y - 18, dir: "n", name: "the courtyard" };
+  }
   if (wing === 0) {
     const skill = onGroveDoor(s.x, s.y, GROVE_DOOR.x, GROVE_DOOR.y);
     const fight = onGroveDoor(s.x, s.y, COMBAT_DOOR.x, COMBAT_DOOR.y);
@@ -325,7 +353,23 @@ export function sideGate(s: GameState): SideGate | null {
       return { x: WILDS_DOOR.x, y: WILDS_DOOR.y, wing: 11, landX: WILDS_ARRIVE.x, landY: WILDS_ARRIVE.y, dir: "s", name: "the wilds" };
     }
     if (onGroveDoor(s.x, s.y, DESCENT_DOOR.x, DESCENT_DOOR.y)) {
-      return { x: DESCENT_DOOR.x, y: DESCENT_DOOR.y, wing: 12, landX: DESCENT_ARRIVE.x, landY: DESCENT_ARRIVE.y, dir: "s", name: "floor 1" };
+      return { x: DESCENT_DOOR.x, y: DESCENT_DOOR.y, wing: 12, landX: DESCENT_ARRIVE.x, landY: DESCENT_ARRIVE.y, dir: "s", name: "floor 332" };
+    }
+    const trio = [
+      { door: TECH_DOOR, wing: 13 as const, landX: TECH_ARRIVE.x, landY: TECH_ARRIVE.y, name: "the tech market" },
+      { door: MEDIC_DOOR, wing: 14 as const, landX: MEDIC_ARRIVE.x, landY: MEDIC_ARRIVE.y, name: "the medical hall" },
+      { door: BIO_DOOR, wing: 15 as const, landX: BIO_ARRIVE.x, landY: BIO_ARRIVE.y, name: "the biology hall" },
+    ].filter((g) => onGroveDoor(s.x, s.y, g.door.x, g.door.y));
+    if (trio.length) {
+      const hit = trio.reduce((a, b) => (Math.hypot(s.x - a.door.x, s.y - a.door.y) <= Math.hypot(s.x - b.door.x, s.y - b.door.y) ? a : b));
+      return { x: hit.door.x, y: hit.door.y, wing: hit.wing, landX: hit.landX, landY: hit.landY, dir: "s", name: hit.name };
+    }
+    if (onGroveDoor(s.x, s.y, LIBRARY_DOOR.x, LIBRARY_DOOR.y)) {
+      const libD = Math.hypot(s.x - LIBRARY_DOOR.x, s.y - LIBRARY_DOOR.y);
+      const fightD = Math.hypot(s.x - COMBAT_DOOR.x, s.y - COMBAT_DOOR.y);
+      if (libD <= fightD) {
+        return { x: LIBRARY_DOOR.x, y: LIBRARY_DOOR.y, wing: 16, landX: LIBRARY_ARRIVE.x, landY: LIBRARY_ARRIVE.y, dir: "s", name: "the library" };
+      }
     }
     if (ring && !skill && !fight) {
       return { x: RING_DOOR.x, y: RING_DOOR.y, wing: 4, landX: RING_ARRIVE.x, landY: RING_ARRIVE.y, dir: "s", name: "the combat ring" };
@@ -912,7 +956,11 @@ export function examineAt(s: GameState, px: number, py: number): string {
     if (plot) return `${plot.name}. A place to train ${SKILL_NAME[plot.skill]}.`;
     return craftBlurb(s.wing ?? 0);
   }
-  if ((s.wing ?? 0) === 12) return "Floor 1 of 333. The stair goes down. The next floor is still sealed.";
+  if ((s.wing ?? 0) === 12) return "Floor 332 of 333. The ship's triangle. Space is outside the wall. The ladder hole leads back.";
+  if ((s.wing ?? 0) === 13) return "The technological marketplace. Magic worked into machines. The blue ladder leads back.";
+  if ((s.wing ?? 0) === 14) return "The medical hall. Cots and salves. The red ladder leads back.";
+  if ((s.wing ?? 0) === 15) return "The biology hall. Study of the farmer and the plants. The green ladder leads back.";
+  if ((s.wing ?? 0) === 16) return "The library. Shelves and a reading table. The indigo ladder leads back.";
   if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
   if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
   const used = assetUseAt(px, py);

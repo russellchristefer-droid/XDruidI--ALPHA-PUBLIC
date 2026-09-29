@@ -1,4 +1,4 @@
-import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, DESCENT_DOOR, DESCENT_RETURN, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, STAIR_COUNT, STAIR_LAND, STAIR_PITCH, STAIR_SEAL, STAIR_WELL, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, DESCENT_DOOR, DESCENT_RETURN, TECH_DOOR, TECH_RETURN, TECH_SOLIDS, MEDIC_DOOR, MEDIC_RETURN, MEDIC_SOLIDS, BIO_DOOR, BIO_RETURN, BIO_SOLIDS, LIBRARY_DOOR, LIBRARY_RETURN, LIBRARY_SOLIDS, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, FLOOR_H, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, floorEdge, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
@@ -4660,10 +4660,20 @@ function ensureSmith(sheets: Sheets, kind: "armour" | "weapon" | "quarry" | "san
   return canvas;
 }
 
-function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number): void {
+function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number, hue: "gold" | "blue" | "red" | "green" | "indigo" = "gold"): void {
   const rx = 12;
   const ry = 6;
   const spin = clock * 1.5;
+  const tone =
+    hue === "blue"
+      ? { deep: "#061018", mid: "#0c2434", well: "#16344a", shade: "#0a1c2a", rung: "#3a88c0", back: "#1a587c", spine: "#eef8ff", front: "#7ec8f8", lip: "#d6f4ff", rim: "#8ec8f0", dark: "#102838", brass: "#3a78a8" }
+      : hue === "red"
+        ? { deep: "#140608", mid: "#3a1014", well: "#5a1820", shade: "#24080c", rung: "#c04048", back: "#802028", spine: "#ffe8ea", front: "#ff7080", lip: "#ffd0d4", rim: "#e06068", dark: "#3a1014", brass: "#a03038" }
+        : hue === "green"
+          ? { deep: "#061208", mid: "#123018", well: "#1c4824", shade: "#0c2014", rung: "#48a050", back: "#206030", spine: "#e8ffe8", front: "#78e080", lip: "#d8ffd0", rim: "#68c070", dark: "#143818", brass: "#308040" }
+          : hue === "indigo"
+            ? { deep: "#100818", mid: "#241438", well: "#3a2060", shade: "#180c28", rung: "#7860d0", back: "#403080", spine: "#f0e8ff", front: "#b0a0f0", lip: "#e4dcff", rim: "#9080d8", dark: "#281848", brass: "#5848a0" }
+            : { deep: "#0e0a06", mid: "#26180e", well: "#4a3218", shade: "#1c140c", rung: "#9a6424", back: "#7a4e18", spine: "#fff6d2", front: "#ffd060", lip: "#fff6d0", rim: "#f0d078", dark: "#4a2c10", brass: "#c8963c" };
   for (let y = -ry; y <= ry; y++) {
     const ny = y / ry;
     const twist = spin + (y + ry) * 0.72;
@@ -4676,80 +4686,331 @@ function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clo
       const d = (x / rx) * (x / rx) + ny * ny;
       if (d > 1) continue;
       const depth = (ny + 1) * 0.5;
-      let color = depth < 0.3 ? "#4a3218" : depth < 0.65 ? "#26180e" : "#0e0a06";
-      if (d > 0.58 && d <= 0.8) color = "#1c140c";
+      let color = depth < 0.3 ? tone.well : depth < 0.65 ? tone.mid : tone.deep;
+      if (d > 0.58 && d <= 0.8) color = tone.shade;
       const onA = Math.abs(x - ax) < 1.05;
       const onB = Math.abs(x - bx) < 1.05;
       const lo = Math.min(ax, bx);
       const hi = Math.max(ax, bx);
-      if (rung && x > lo + 0.6 && x < hi - 0.6 && d < 0.78) color = "#9a6424";
-      if ((frontA ? onB : onA) && d < 0.84) color = "#7a4e18";
+      if (rung && x > lo + 0.6 && x < hi - 0.6 && d < 0.78) color = tone.rung;
+      if ((frontA ? onB : onA) && d < 0.84) color = tone.back;
       if ((frontA ? onA : onB) && d < 0.84) {
         const spine = Math.abs(x - (frontA ? ax : bx)) < 0.45;
-        color = spine ? "#fff6d2" : "#ffd060";
+        color = spine ? tone.spine : tone.front;
       }
-      if (d > 0.8) color = y < -1 ? (d > 0.92 ? "#fff6d0" : "#f0d078") : d > 0.92 ? "#4a2c10" : "#c8963c";
+      if (d > 0.8) color = y < -1 ? (d > 0.92 ? tone.lip : tone.rim) : d > 0.92 ? tone.dark : tone.brass;
       ctx.fillStyle = color;
       ctx.fillRect(cx + x, cy + y, 1, 1);
     }
   }
 }
 
+let floorSky: HTMLCanvasElement | null = null;
 let descentPlate: HTMLCanvasElement | null = null;
+
+function ensureFloorSky(): HTMLCanvasElement | null {
+  if (floorSky) return floorSky;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = FLOOR_H;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  const img = g.createImageData(WORLD_W, FLOOR_H);
+  const d = img.data;
+  for (let y = 0; y < FLOOR_H; y++) {
+    for (let x = 0; x < WORLD_W; x++) {
+      const n = noise(x, y);
+      const band = Math.floor((y / FLOOR_H) * 3);
+      let r = band === 0 ? 8 : band === 1 ? 10 : 7;
+      let gv = band === 1 ? 6 : 8;
+      let b = band === 0 ? 18 : 14;
+      const neb = noise(x >> 3, y >> 3);
+      if (neb > 210 && (x + y) % 2 === 0) {
+        r += 28;
+        b += 36;
+      } else if (neb < 30 && (x & 1) === 0) {
+        r += 22;
+        gv += 6;
+      }
+      if ((n & 31) === 0) {
+        r = 230;
+        gv = 226;
+        b = 190;
+      } else if ((n & 63) === 1) {
+        r = 150;
+        gv = 176;
+        b = 230;
+      }
+      const i = (y * WORLD_W + x) * 4;
+      d[i] = r;
+      d[i + 1] = gv;
+      d[i + 2] = b;
+      d[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  floorSky = canvas;
+  return canvas;
+}
 
 function ensureDescent(): HTMLCanvasElement | null {
   if (descentPlate) return descentPlate;
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
   canvas.width = WORLD_W;
-  canvas.height = WORLD_H;
+  canvas.height = FLOOR_H;
   const g = canvas.getContext("2d");
   if (!g) return null;
   g.imageSmoothingEnabled = false;
-  g.fillStyle = "#100e0c";
-  g.fillRect(0, 0, WORLD_W, WORLD_H);
-  const x0 = STAIR_WELL.x - 10;
-  const x1 = STAIR_WELL.x + STAIR_WELL.w + 10;
-  g.fillStyle = "#4e3824";
-  g.fillRect(x0, 32, 10, STAIR_SEAL + 28);
-  g.fillRect(x1 - 10, 32, 10, STAIR_SEAL + 28);
-  g.fillStyle = "#ead8b4";
-  g.fillRect(x0, 32, 2, STAIR_SEAL + 28);
-  g.fillRect(x1 - 2, 32, 2, STAIR_SEAL + 28);
-  const paintTiles = (y0: number, y1: number, shade: number) => {
-    for (let y = y0; y < y1; y++) {
-      for (let x = STAIR_WELL.x; x < STAIR_WELL.x + STAIR_WELL.w; x++) {
-        const tx = Math.floor(x / 8);
-        const ty = Math.floor(y / 4);
-        let color = (tx + ty) % 2 === 0 ? "#d6c4a0" : "#c4ae86";
-        color = ink(color, shade);
-        const lx = x % 8;
-        const ly = y % 4;
-        if (ly === 0 && lx > 0 && lx < 3) color = ink("#ead8b4", shade);
-        if (ly === 3 && lx >= 5) color = ink("#6e5438", Math.max(0, shade - 8));
-        if (lx === 0 && ly === 0) color = "#302418";
-        g.fillStyle = color;
-        g.fillRect(x, y, 1, 1);
+  const mid = (WORLD_W - 1) / 2;
+  for (let y = 0; y < FLOOR_H; y++) {
+    const edge = floorEdge(y);
+    if (edge < 4) continue;
+    const left = Math.ceil(mid - edge);
+    const right = Math.floor(mid + edge);
+    for (let x = left; x <= right; x++) {
+      const fromEdge = Math.min(x - left, right - x);
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      const lx = ((x % 8) + 8) % 8;
+      const ly = ((y % 4) + 4) % 4;
+      const n = noise(x, y);
+      let color = (tx + ty) % 2 === 0 ? "#d6c4a0" : "#c4ae86";
+      if (ly === 0 && lx > 0 && lx < 3) color = "#fff4d2";
+      else if (ly === 0) color = "#ead8b4";
+      if (ly === 3 && lx >= 5) color = "#5a3c24";
+      else if (ly === 2 && lx === 5) color = "#6e5438";
+      if (lx === 0 && ly === 0) color = "#302418";
+      if ((n & 15) === 0) color = "#b89878";
+      if ((n & 31) === 3) color = "#e2b657";
+      if (fromEdge >= 11 && fromEdge <= 13) color = ly === 0 ? "#fff4d2" : "#4e3824";
+      if (fromEdge < 11) {
+        const course = Math.floor(y / 4) % 2 === 0;
+        if (fromEdge >= 7) color = course ? "#c4ae86" : "#a89070";
+        else if (fromEdge >= 4) color = ly === 0 ? "#8a6844" : "#5a3c24";
+        else if (fromEdge >= 2) color = "#3a2818";
+        else color = fromEdge === 0 ? "#1a100c" : "#2a1c12";
+        if (fromEdge === 10 && ly === 0) color = "#fff8e8";
+      }
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  descentPlate = canvas;
+  return canvas;
+}
+
+function paintFloorSky(ctx: CanvasRenderingContext2D, clock: number): void {
+  const sky = ensureFloorSky();
+  if (sky) ctx.drawImage(sky, 0, 0);
+  const mid = (WORLD_W - 1) / 2;
+  for (let i = 0; i < 64; i++) {
+    const speed = 6 + (i % 5) * 3;
+    const x = (i * 47 + 5 + Math.floor(clock * (i % 3))) % WORLD_W;
+    const y = Math.floor(i * 97 + clock * speed) % FLOOR_H;
+    if (Math.abs(x - mid) <= floorEdge(y) + 1) continue;
+    const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(clock * (1.4 + (i % 6) * 0.25) + i));
+    ctx.globalAlpha = tw;
+    ctx.fillStyle = i % 6 === 0 ? "#fff6d0" : i % 4 === 0 ? "#f0c8ff" : "#b8d0ff";
+    ctx.fillRect(x, y, 1, 1);
+    if (i % 9 === 0) {
+      ctx.fillRect(x - 1, y, 1, 1);
+      ctx.fillRect(x + 1, y, 1, 1);
+      ctx.fillRect(x, y - 1, 1, 1);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+let techPlate: HTMLCanvasElement | null = null;
+
+function ensureTech(): HTMLCanvasElement | null {
+  if (techPlate) return techPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#070c14";
+  g.fillRect(0, 0, WORLD_W, 528);
+  for (let y = 36; y < 504; y++) {
+    for (let x = 16; x < 332; x++) {
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      const lx = x % 8;
+      const ly = y % 4;
+      const n = noise(x, y);
+      let color = (tx + ty) % 2 === 0 ? "#243044" : "#1a2636";
+      if (ly === 0 && lx > 0 && lx < 3) color = "#3a4c64";
+      if (ly === 3 && lx >= 5) color = "#101820";
+      if (lx === 0 && ly === 0) color = "#0c1218";
+      if ((n & 17) === 0) color = "#2e4a62";
+      if (Math.abs(x - 174) < 18) color = ly === 0 ? "#3a5870" : "#1c3044";
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  for (const stall of TECH_SOLIDS) {
+    g.fillStyle = "#142030";
+    g.fillRect(stall.x, stall.y, stall.w, stall.h);
+    g.fillStyle = "#8ec8f0";
+    g.fillRect(stall.x, stall.y, stall.w, 1);
+    g.fillStyle = "#3a5870";
+    g.fillRect(stall.x, stall.y + stall.h - 2, stall.w, 2);
+    for (let i = 6; i < stall.w - 6; i += 8) {
+      g.fillStyle = i % 16 === 6 ? "#7ec8f8" : "#e2b657";
+      g.fillRect(stall.x + i, stall.y - 3, 3, 3);
+      g.fillStyle = "#eef8ff";
+      g.fillRect(stall.x + i, stall.y - 3, 1, 1);
+    }
+  }
+  techPlate = canvas;
+  return canvas;
+}
+
+let medicPlate: HTMLCanvasElement | null = null;
+
+function ensureMedic(): HTMLCanvasElement | null {
+  if (medicPlate) return medicPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#14080c";
+  g.fillRect(0, 0, WORLD_W, 528);
+  for (let y = 36; y < 504; y++) {
+    for (let x = 16; x < 332; x++) {
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      const lx = x % 8;
+      const ly = y % 4;
+      const n = noise(x, y);
+      let color = (tx + ty) % 2 === 0 ? "#3a2428" : "#2a1a1c";
+      if (ly === 0 && lx > 0 && lx < 3) color = "#5a3438";
+      if (ly === 3 && lx >= 5) color = "#1a1012";
+      if (lx === 0 && ly === 0) color = "#140c0e";
+      if ((n & 17) === 0) color = "#4a3034";
+      if (Math.abs(x - 174) < 18) color = ly === 0 ? "#6a4044" : "#3a2428";
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  for (const cot of MEDIC_SOLIDS) {
+    g.fillStyle = "#f4ece4";
+    g.fillRect(cot.x, cot.y, cot.w, cot.h);
+    g.fillStyle = "#c04048";
+    g.fillRect(cot.x, cot.y, cot.w, 2);
+    g.fillStyle = "#802028";
+    g.fillRect(cot.x, cot.y + cot.h - 2, cot.w, 2);
+    g.fillStyle = "#ffd0d4";
+    g.fillRect(cot.x + 4, cot.y + 6, 8, 6);
+  }
+  medicPlate = canvas;
+  return canvas;
+}
+
+let bioPlate: HTMLCanvasElement | null = null;
+
+function ensureBio(): HTMLCanvasElement | null {
+  if (bioPlate) return bioPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#0c140c";
+  g.fillRect(0, 0, WORLD_W, 528);
+  for (let y = 36; y < 504; y++) {
+    for (let x = 16; x < 332; x++) {
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      const lx = x % 8;
+      const ly = y % 4;
+      const n = noise(x, y);
+      let color = (tx + ty) % 2 === 0 ? "#2a3a28" : "#1e2c1c";
+      if (ly === 0 && lx > 0 && lx < 3) color = "#4a6244";
+      if (ly === 3 && lx >= 5) color = "#121c12";
+      if (lx === 0 && ly === 0) color = "#101810";
+      if ((n & 17) === 0) color = "#3a5034";
+      if (Math.abs(x - 174) < 18) color = ly === 0 ? "#5a7848" : "#2a4028";
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  for (const bed of BIO_SOLIDS) {
+    g.fillStyle = "#3a2818";
+    g.fillRect(bed.x, bed.y, bed.w, bed.h);
+    g.fillStyle = "#68c070";
+    g.fillRect(bed.x + 2, bed.y + 2, bed.w - 4, bed.h - 4);
+    for (let i = 6; i < bed.w - 6; i += 10) {
+      g.fillStyle = "#206030";
+      g.fillRect(bed.x + i, bed.y + 6, 2, bed.h - 10);
+      g.fillStyle = "#d8ffd0";
+      g.fillRect(bed.x + i - 2, bed.y + 4, 6, 3);
+      g.fillStyle = "#e2b657";
+      g.fillRect(bed.x + i, bed.y + 5, 2, 1);
+    }
+  }
+  bioPlate = canvas;
+  return canvas;
+}
+
+let libraryPlate: HTMLCanvasElement | null = null;
+
+function ensureLibrary(): HTMLCanvasElement | null {
+  if (libraryPlate) return libraryPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#120e16";
+  g.fillRect(0, 0, WORLD_W, 528);
+  for (let y = 36; y < 504; y++) {
+    for (let x = 16; x < 332; x++) {
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      const lx = x % 8;
+      const ly = y % 4;
+      const n = noise(x, y);
+      let color = (tx + ty) % 2 === 0 ? "#3a2c24" : "#2c221c";
+      if (ly === 0 && lx > 0 && lx < 3) color = "#5a4638";
+      if (ly === 3 && lx >= 5) color = "#1a1410";
+      if (lx === 0 && ly === 0) color = "#140e0c";
+      if ((n & 17) === 0) color = "#4a382c";
+      if (Math.abs(x - 174) < 18) color = ly === 0 ? "#6a5440" : "#3a2c24";
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  const spines = ["#c04048", "#3a78a8", "#48a050", "#e2b657", "#7860d0", "#c08040"];
+  for (const shelf of LIBRARY_SOLIDS) {
+    const book = shelf.w < 40;
+    g.fillStyle = book ? "#3a2818" : "#4a3828";
+    g.fillRect(shelf.x, shelf.y, shelf.w, shelf.h);
+    g.fillStyle = "#e8dcc8";
+    g.fillRect(shelf.x, shelf.y, shelf.w, 1);
+    if (book) {
+      for (let i = 2; i < shelf.h - 2; i += 4) {
+        g.fillStyle = spines[(i / 4) % spines.length]!;
+        g.fillRect(shelf.x + 2, shelf.y + i, shelf.w - 4, 3);
+        g.fillStyle = "#fff6e8";
+        g.fillRect(shelf.x + 2, shelf.y + i, 1, 3);
       }
     }
-  };
-  paintTiles(40, STAIR_LAND, 0);
-  for (let i = 0; i < STAIR_COUNT; i++) {
-    const y = STAIR_LAND + i * STAIR_PITCH;
-    const shade = Math.min(70, Math.floor((i / STAIR_COUNT) * 56));
-    paintTiles(y, y + STAIR_PITCH - 4, shade);
-    g.fillStyle = ink("#4e3824", Math.max(0, shade - 10));
-    g.fillRect(STAIR_WELL.x, y + STAIR_PITCH - 4, STAIR_WELL.w, 3);
-    g.fillStyle = ink("#2a1c12", Math.max(0, shade - 16));
-    g.fillRect(STAIR_WELL.x, y + STAIR_PITCH - 1, STAIR_WELL.w, 1);
   }
-  g.fillStyle = "#1a140f";
-  g.fillRect(STAIR_WELL.x, STAIR_SEAL, STAIR_WELL.w, 36);
-  g.fillStyle = "#6e5438";
-  g.fillRect(STAIR_WELL.x, STAIR_SEAL, STAIR_WELL.w, 2);
-  g.fillStyle = "#302418";
-  g.fillRect(STAIR_WELL.x + 70, STAIR_SEAL + 12, STAIR_WELL.w - 140, 10);
-  descentPlate = canvas;
+  libraryPlate = canvas;
   return canvas;
 }
 
@@ -4859,9 +5120,10 @@ export function drawWorld(
     return;
   }
   if (wing === 12) {
+    paintFloorSky(ctx, s.clock);
     const well = ensureDescent();
     if (well) ctx.drawImage(well, 0, 0);
-    paintFlatPortal(ctx, DESCENT_RETURN.x, DESCENT_RETURN.y, s.clock, "home");
+    paintDnaHole(ctx, DESCENT_RETURN.x, DESCENT_RETURN.y, s.clock);
     if (sheets.idle) {
       drawCastRite(ctx, sheets, s);
       paintPlayer(ctx, sheets, s);
@@ -4871,7 +5133,75 @@ export function drawWorld(
       const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
       const a = u < 0.5 ? u * 2 : (1 - u) * 2;
       ctx.fillStyle = `rgba(90, 140, 170, ${0.1 + a * 0.45})`;
-      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+      ctx.fillRect(0, 0, WORLD_W, FLOOR_H);
+    }
+    return;
+  }
+  if (wing === 13) {
+    const hall = ensureTech();
+    if (hall) ctx.drawImage(hall, 0, 0);
+    paintDnaHole(ctx, TECH_RETURN.x, TECH_RETURN.y, s.clock, "blue");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(80, 160, 210, ${0.1 + a * 0.45})`;
+      ctx.fillRect(0, 0, WORLD_W, 528);
+    }
+    return;
+  }
+  if (wing === 14) {
+    const hall = ensureMedic();
+    if (hall) ctx.drawImage(hall, 0, 0);
+    paintDnaHole(ctx, MEDIC_RETURN.x, MEDIC_RETURN.y, s.clock, "red");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(180, 60, 70, ${0.1 + a * 0.45})`;
+      ctx.fillRect(0, 0, WORLD_W, 528);
+    }
+    return;
+  }
+  if (wing === 15) {
+    const hall = ensureBio();
+    if (hall) ctx.drawImage(hall, 0, 0);
+    paintDnaHole(ctx, BIO_RETURN.x, BIO_RETURN.y, s.clock, "green");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(70, 160, 80, ${0.1 + a * 0.45})`;
+      ctx.fillRect(0, 0, WORLD_W, 528);
+    }
+    return;
+  }
+  if (wing === 16) {
+    const hall = ensureLibrary();
+    if (hall) ctx.drawImage(hall, 0, 0);
+    paintDnaHole(ctx, LIBRARY_RETURN.x, LIBRARY_RETURN.y, s.clock, "indigo");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(120, 100, 180, ${0.1 + a * 0.45})`;
+      ctx.fillRect(0, 0, WORLD_W, 528);
     }
     return;
   }
@@ -4911,6 +5241,10 @@ export function drawWorld(
   else if (yard && yard.naturalWidth > 0) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   drawMosaicFloors(ctx, s.clock, s.wet, yard, sheets.svarga, sheets.naraka);
   paintDnaHole(ctx, DESCENT_DOOR.x, DESCENT_DOOR.y, s.clock);
+  paintDnaHole(ctx, TECH_DOOR.x, TECH_DOOR.y, s.clock, "blue");
+  paintDnaHole(ctx, MEDIC_DOOR.x, MEDIC_DOOR.y, s.clock, "red");
+  paintDnaHole(ctx, BIO_DOOR.x, BIO_DOOR.y, s.clock, "green");
+  paintDnaHole(ctx, LIBRARY_DOOR.x, LIBRARY_DOOR.y, s.clock, "indigo");
   paintFlatPortal(ctx, ENCHANT_DOOR.x, ENCHANT_DOOR.y, s.clock, "enchant");
   paintFlatPortal(ctx, WILDS_DOOR.x, WILDS_DOOR.y, s.clock, "wilds");
   paintFlatPortal(ctx, QUARRY_DOOR.x, QUARRY_DOOR.y, s.clock, "quarry");

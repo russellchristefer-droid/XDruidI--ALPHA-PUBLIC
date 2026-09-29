@@ -5,6 +5,7 @@ import {
   SAVE_KEY,
   WORLD_H,
   WORLD_W,
+  FLOOR_H,
   VIEW_H,
   VIEW_W,
   MEADOW,
@@ -140,7 +141,11 @@ function placeName(s: GameState): string {
   if (wing === 9) return "Market";
   if (wing === 10) return "Enchanting";
   if (wing === 11) return "Wilds";
-  if (wing === 12) return "Floor 1";
+  if (wing === 12) return "Floor 332";
+  if (wing === 13) return "Tech market";
+  if (wing === 14) return "Medical";
+  if (wing === 15) return "Biology";
+  if (wing === 16) return "Library";
   if (Math.abs(s.x - 40) < 36 && s.y > 150 && s.y < 236) return "Naraka gate";
   if (Math.abs(s.x - 308) < 36 && s.y > 150 && s.y < 236) return "Svarga gate";
   if (s.x >= 240 && s.x <= 296 && s.y >= 76 && s.y <= 108) return "Goat pen";
@@ -616,11 +621,12 @@ export function AssayGame() {
         let skyW: number;
         let skyH: number;
         let scale: number;
+        const worldH = s.wing === 12 ? FLOOR_H : WORLD_H;
         if (zoom < 1) {
-          const viewH = Math.min(WORLD_H, VIEW_H / zoom);
+          const viewH = Math.min(worldH, VIEW_H / zoom);
           const viewW = WORLD_W;
           scale = Math.min(w / viewW, h / viewH);
-          const camY = Math.max(0, Math.min(Math.max(0, WORLD_H - viewH), s.y - viewH / 2 + brace));
+          const camY = Math.max(0, Math.min(Math.max(0, worldH - viewH), s.y - viewH / 2 + brace));
           ox = Math.floor((w - viewW * scale) / 2);
           oy = Math.floor((h - viewH * scale) / 2 - camY * scale);
           skyW = viewW * scale;
@@ -629,7 +635,7 @@ export function AssayGame() {
           scale = Math.max(base, Math.round(base * zoom));
           if (zoom <= 1) {
             const follow = Math.round(s.y - VIEW_H / 2);
-            const camY = Math.max(0, Math.min(WORLD_H - VIEW_H, follow + brace));
+            const camY = Math.max(0, Math.min(worldH - VIEW_H, follow + brace));
             ox = Math.floor((w - VIEW_W * scale) / 2);
             oy = Math.floor((h - VIEW_H * scale) / 2) - camY * scale;
             skyW = VIEW_W * scale;
@@ -639,11 +645,11 @@ export function AssayGame() {
             const viewH = h / scale;
             const pad = 24;
             const camX = Math.max(-pad, Math.min(WORLD_W - viewW + pad, s.x - viewW / 2));
-            const camY = Math.max(-pad, Math.min(WORLD_H - viewH + pad, s.y - viewH / 2 + brace));
+            const camY = Math.max(-pad, Math.min(worldH - viewH + pad, s.y - viewH / 2 + brace));
             ox = Math.round(w / 2 - (camX + viewW / 2) * scale);
             oy = Math.round(h / 2 - (camY + viewH / 2) * scale);
             skyW = WORLD_W * scale;
-            skyH = WORLD_H * scale;
+            skyH = worldH * scale;
           }
         }
         camRef.current = { scale, ox, oy };
@@ -1376,7 +1382,7 @@ export function AssayGame() {
                 />
               </div>
               <div className="panel hud-crest">
-                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 1" : "Homestead"}</b>
+                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 332" : s.wing === 13 ? "Tech market" : s.wing === 14 ? "Medical" : s.wing === 15 ? "Biology" : s.wing === 16 ? "Library" : "Homestead"}</b>
                 <span>{placeName(s)}</span>
                 <span>
                   {clockLabel(s.time)} · {skyLabel(s)}
@@ -2002,7 +2008,7 @@ export function AssayGame() {
       {screen === "play" && s && panel === "map" && (
         <div className="overlay" onClick={() => { panelRef.current = null; setPanel(null); }}>
           <div className="panel sheet map-sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 1" : "Homestead"}</h2>
+            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 332" : s.wing === 13 ? "Tech market" : s.wing === 14 ? "Medical" : s.wing === 15 ? "Biology" : s.wing === 16 ? "Library" : "Homestead"}</h2>
             <p className="map-now">You are at {placeName(s)}.</p>
             <div
               className="live-map"
@@ -2011,7 +2017,7 @@ export function AssayGame() {
               {s.wing ? (
                 <img
                   src={s.wing === 1 ? `/game/land/svarga.png?v=${ART}` : s.wing != null && s.wing >= 2 ? `/game/land/grove.png?v=${ART}` : `/game/land/naraka.png?v=${ART}`}
-                  alt={s.wing === 1 ? "Svarga" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 1" : "Naraka"}
+                  alt={s.wing === 1 ? "Svarga" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 332" : s.wing === 13 ? "Tech market" : s.wing === 14 ? "Medical" : s.wing === 15 ? "Biology" : s.wing === 16 ? "Library" : "Naraka"}
                 />
               ) : (
                 <>
