@@ -932,7 +932,7 @@ export function liturgyOf(spell: SpellId): Liturgy {
 }
 
 /** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
-export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): string {
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): string {
   if (wing === 0 || wing >= 2) return SPELL_NAME[spell];
   const east = wing === 1;
   switch (spell) {
@@ -1100,11 +1100,11 @@ export type GameState = {
   rune: number;
   cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy, 2 the skill grove. */
-  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
   /** A portal crossing. The land changes halfway through the fade. */
   cross: {
     t: number;
-    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11;
+    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
     x: number;
     y: number;
     dir: Dir;
@@ -1536,10 +1536,10 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
-let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 = 0;
+let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 = 0;
 
 /** Farm collision stays on the homestead. Each other land has its own ground. */
-export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
+export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): void {
   realmWing = wing;
 }
 
@@ -1554,6 +1554,7 @@ function realmFeet(x: number, y: number): boolean {
   if (realmWing === 9) return marketFeet(x, y);
   if (realmWing === 10) return enchantFeet(x, y);
   if (realmWing === 11) return wildsFeet(x, y);
+  if (realmWing === 12) return stairFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
@@ -2016,6 +2017,26 @@ function wildsFeet(x: number, y: number): boolean {
   return yardFeet(WILDS_SOLIDS, x, y);
 }
 
+/** Golden ladder-hole, portal-sized, high in the top-left of the courtyard. */
+export const DESCENT_DOOR = { x: 100, y: 248 } as const;
+export const DESCENT_ARRIVE = { x: 174, y: 100 } as const;
+export const DESCENT_RETURN = { x: 174, y: 78 } as const;
+
+/** Floor 1 only. The well is longer than a training yard. Floors 2–333 are not cut yet. */
+export const STAIR_WELL = { x: 80, y: 48, w: 188, h: 812 } as const;
+export const STAIR_LAND = 140;
+export const STAIR_PITCH = 16;
+export const STAIR_COUNT = 45;
+export const STAIR_SEAL = STAIR_LAND + STAIR_COUNT * STAIR_PITCH;
+
+function stairFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y < STAIR_WELL.y) return true;
+  if (box.y + box.h > STAIR_SEAL - 4) return true;
+  if (box.x < STAIR_WELL.x || box.x + box.w > STAIR_WELL.x + STAIR_WELL.w) return true;
+  return false;
+}
+
 export function ensureAuto(s: GameState): void {
   if (typeof s.auto !== "boolean") s.auto = true;
 }
@@ -2033,7 +2054,7 @@ export function onPortal(x: number, y: number): boolean {
 }
 
 export function ensureWing(s: GameState): void {
-  if (s.wing !== -1 && (s.wing < 0 || s.wing > 11)) s.wing = 0;
+  if (s.wing !== -1 && (s.wing < 0 || s.wing > 12)) s.wing = 0;
   if (!s.cross || typeof s.cross.t !== "number") s.cross = null;
 }
 

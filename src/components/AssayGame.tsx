@@ -140,6 +140,7 @@ function placeName(s: GameState): string {
   if (wing === 9) return "Market";
   if (wing === 10) return "Enchanting";
   if (wing === 11) return "Wilds";
+  if (wing === 12) return "Floor 1";
   if (Math.abs(s.x - 40) < 36 && s.y > 150 && s.y < 236) return "Naraka gate";
   if (Math.abs(s.x - 308) < 36 && s.y > 150 && s.y < 236) return "Svarga gate";
   if (s.x >= 240 && s.x <= 296 && s.y >= 76 && s.y <= 108) return "Goat pen";
@@ -1375,7 +1376,7 @@ export function AssayGame() {
                 />
               </div>
               <div className="panel hud-crest">
-                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : "Homestead"}</b>
+                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 1" : "Homestead"}</b>
                 <span>{placeName(s)}</span>
                 <span>
                   {clockLabel(s.time)} · {skyLabel(s)}
@@ -2001,7 +2002,7 @@ export function AssayGame() {
       {screen === "play" && s && panel === "map" && (
         <div className="overlay" onClick={() => { panelRef.current = null; setPanel(null); }}>
           <div className="panel sheet map-sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : "Homestead"}</h2>
+            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 1" : "Homestead"}</h2>
             <p className="map-now">You are at {placeName(s)}.</p>
             <div
               className="live-map"
@@ -2010,7 +2011,7 @@ export function AssayGame() {
               {s.wing ? (
                 <img
                   src={s.wing === 1 ? `/game/land/svarga.png?v=${ART}` : s.wing != null && s.wing >= 2 ? `/game/land/grove.png?v=${ART}` : `/game/land/naraka.png?v=${ART}`}
-                  alt={s.wing === 1 ? "Svarga" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : "Naraka"}
+                  alt={s.wing === 1 ? "Svarga" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 1" : "Naraka"}
                 />
               ) : (
                 <>

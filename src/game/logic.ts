@@ -77,6 +77,9 @@ import {
   WILDS_RETURN,
   WILDS_PLOTS,
   wildsPlotAt,
+  DESCENT_DOOR,
+  DESCENT_ARRIVE,
+  DESCENT_RETURN,
   onGroveDoor,
   DAY_LEN,
   HAND_HOME,
@@ -235,7 +238,7 @@ function craftBlurb(wing: number): string {
   return wing === 5 ? "The armour yard. The stand, the mail, and the plot." : "The weapon yard. The bench, the blade, and the plot.";
 }
 
-type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
 
 const GATE_REACH = 46;
 
@@ -290,6 +293,10 @@ export function sideGate(s: GameState): SideGate | null {
     if (Math.hypot(s.x - WILDS_RETURN.x, s.y - WILDS_RETURN.y) > 28) return null;
     return { x: WILDS_RETURN.x, y: WILDS_RETURN.y, wing: 0, landX: WILDS_DOOR.x, landY: WILDS_DOOR.y + 16, dir: "s", name: "the courtyard" };
   }
+  if (wing === 12) {
+    if (Math.hypot(s.x - DESCENT_RETURN.x, s.y - DESCENT_RETURN.y) > 28) return null;
+    return { x: DESCENT_RETURN.x, y: DESCENT_RETURN.y, wing: 0, landX: DESCENT_DOOR.x, landY: DESCENT_DOOR.y + 16, dir: "s", name: "the courtyard" };
+  }
   if (wing === 0) {
     const skill = onGroveDoor(s.x, s.y, GROVE_DOOR.x, GROVE_DOOR.y);
     const fight = onGroveDoor(s.x, s.y, COMBAT_DOOR.x, COMBAT_DOOR.y);
@@ -316,6 +323,9 @@ export function sideGate(s: GameState): SideGate | null {
     }
     if (onGroveDoor(s.x, s.y, WILDS_DOOR.x, WILDS_DOOR.y)) {
       return { x: WILDS_DOOR.x, y: WILDS_DOOR.y, wing: 11, landX: WILDS_ARRIVE.x, landY: WILDS_ARRIVE.y, dir: "s", name: "the wilds" };
+    }
+    if (onGroveDoor(s.x, s.y, DESCENT_DOOR.x, DESCENT_DOOR.y)) {
+      return { x: DESCENT_DOOR.x, y: DESCENT_DOOR.y, wing: 12, landX: DESCENT_ARRIVE.x, landY: DESCENT_ARRIVE.y, dir: "s", name: "floor 1" };
     }
     if (ring && !skill && !fight) {
       return { x: RING_DOOR.x, y: RING_DOOR.y, wing: 4, landX: RING_ARRIVE.x, landY: RING_ARRIVE.y, dir: "s", name: "the combat ring" };
@@ -902,6 +912,7 @@ export function examineAt(s: GameState, px: number, py: number): string {
     if (plot) return `${plot.name}. A place to train ${SKILL_NAME[plot.skill]}.`;
     return craftBlurb(s.wing ?? 0);
   }
+  if ((s.wing ?? 0) === 12) return "Floor 1 of 333. The stair goes down. The next floor is still sealed.";
   if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
   if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
   const used = assetUseAt(px, py);

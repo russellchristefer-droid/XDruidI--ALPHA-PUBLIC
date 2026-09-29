@@ -1,4 +1,4 @@
-import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, DESCENT_DOOR, DESCENT_RETURN, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, STAIR_COUNT, STAIR_LAND, STAIR_PITCH, STAIR_SEAL, STAIR_WELL, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
@@ -4660,6 +4660,89 @@ function ensureSmith(sheets: Sheets, kind: "armour" | "weapon" | "quarry" | "san
   return canvas;
 }
 
+function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number): void {
+  const rx = 12;
+  const ry = 6;
+  const spin = clock * 2.4;
+  for (let y = -ry; y <= ry; y++) {
+    const ny = y / ry;
+    const twist = spin + ny * Math.PI * 2.2;
+    const span = Math.cos(ny * 0.6) * rx * 0.62;
+    const a = Math.sin(twist) * span;
+    const b = -a;
+    const rung = Math.abs(Math.sin(twist)) < 0.38;
+    for (let x = -rx; x <= rx; x++) {
+      const d = (x / rx) * (x / rx) + ny * ny;
+      if (d > 1) continue;
+      const depth = (y + ry) / (ry * 2);
+      let color = depth > 0.72 ? "#120c08" : depth > 0.35 ? "#24180e" : "#3a2814";
+      if (rung && x > Math.min(a, b) && x < Math.max(a, b)) color = depth > 0.6 ? "#785018" : "#e2b657";
+      if (Math.abs(x - a) <= 0.8 || Math.abs(x - b) <= 0.8) color = Math.sin(twist) > 0 && Math.abs(x - a) <= 0.8 ? "#ffecaa" : "#b08034";
+      if (d > 0.78) color = y < 0 ? (d > 0.9 ? "#ffecaa" : "#e2b657") : d > 0.9 ? "#3a2410" : "#785018";
+      ctx.fillStyle = color;
+      ctx.fillRect(cx + x, cy + y, 1, 1);
+    }
+  }
+}
+
+let descentPlate: HTMLCanvasElement | null = null;
+
+function ensureDescent(): HTMLCanvasElement | null {
+  if (descentPlate) return descentPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = WORLD_H;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#100e0c";
+  g.fillRect(0, 0, WORLD_W, WORLD_H);
+  const x0 = STAIR_WELL.x - 10;
+  const x1 = STAIR_WELL.x + STAIR_WELL.w + 10;
+  g.fillStyle = "#4e3824";
+  g.fillRect(x0, 32, 10, STAIR_SEAL + 28);
+  g.fillRect(x1 - 10, 32, 10, STAIR_SEAL + 28);
+  g.fillStyle = "#ead8b4";
+  g.fillRect(x0, 32, 2, STAIR_SEAL + 28);
+  g.fillRect(x1 - 2, 32, 2, STAIR_SEAL + 28);
+  const paintTiles = (y0: number, y1: number, shade: number) => {
+    for (let y = y0; y < y1; y++) {
+      for (let x = STAIR_WELL.x; x < STAIR_WELL.x + STAIR_WELL.w; x++) {
+        const tx = Math.floor(x / 8);
+        const ty = Math.floor(y / 4);
+        let color = (tx + ty) % 2 === 0 ? "#d6c4a0" : "#c4ae86";
+        color = ink(color, shade);
+        const lx = x % 8;
+        const ly = y % 4;
+        if (ly === 0 && lx > 0 && lx < 3) color = ink("#ead8b4", shade);
+        if (ly === 3 && lx >= 5) color = ink("#6e5438", Math.max(0, shade - 8));
+        if (lx === 0 && ly === 0) color = "#302418";
+        g.fillStyle = color;
+        g.fillRect(x, y, 1, 1);
+      }
+    }
+  };
+  paintTiles(40, STAIR_LAND, 0);
+  for (let i = 0; i < STAIR_COUNT; i++) {
+    const y = STAIR_LAND + i * STAIR_PITCH;
+    const shade = Math.min(70, Math.floor((i / STAIR_COUNT) * 56));
+    paintTiles(y, y + STAIR_PITCH - 4, shade);
+    g.fillStyle = ink("#4e3824", Math.max(0, shade - 10));
+    g.fillRect(STAIR_WELL.x, y + STAIR_PITCH - 4, STAIR_WELL.w, 3);
+    g.fillStyle = ink("#2a1c12", Math.max(0, shade - 16));
+    g.fillRect(STAIR_WELL.x, y + STAIR_PITCH - 1, STAIR_WELL.w, 1);
+  }
+  g.fillStyle = "#1a140f";
+  g.fillRect(STAIR_WELL.x, STAIR_SEAL, STAIR_WELL.w, 36);
+  g.fillStyle = "#6e5438";
+  g.fillRect(STAIR_WELL.x, STAIR_SEAL, STAIR_WELL.w, 2);
+  g.fillStyle = "#302418";
+  g.fillRect(STAIR_WELL.x + 70, STAIR_SEAL + 12, STAIR_WELL.w - 140, 10);
+  descentPlate = canvas;
+  return canvas;
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   s: GameState,
@@ -4765,6 +4848,23 @@ export function drawWorld(
     }
     return;
   }
+  if (wing === 12) {
+    const well = ensureDescent();
+    if (well) ctx.drawImage(well, 0, 0);
+    paintFlatPortal(ctx, DESCENT_RETURN.x, DESCENT_RETURN.y, s.clock, "home");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(90, 140, 170, ${0.1 + a * 0.45})`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+    return;
+  }
   if (wing !== 0) {
     if (wing === 1) {
       drawSvarga(ctx, s.clock, sheets.svarga);
@@ -4800,6 +4900,7 @@ export function drawWorld(
   if (plate) ctx.drawImage(plate, 0, 0);
   else if (yard && yard.naturalWidth > 0) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   drawMosaicFloors(ctx, s.clock, s.wet, yard, sheets.svarga, sheets.naraka);
+  paintDnaHole(ctx, DESCENT_DOOR.x, DESCENT_DOOR.y, s.clock);
   paintFlatPortal(ctx, ENCHANT_DOOR.x, ENCHANT_DOOR.y, s.clock, "enchant");
   paintFlatPortal(ctx, WILDS_DOOR.x, WILDS_DOOR.y, s.clock, "wilds");
   paintFlatPortal(ctx, QUARRY_DOOR.x, QUARRY_DOOR.y, s.clock, "quarry");
