@@ -932,7 +932,7 @@ export function liturgyOf(spell: SpellId): Liturgy {
 }
 
 /** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
-export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16): string {
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18): string {
   if (wing === 0 || wing >= 2) return SPELL_NAME[spell];
   const east = wing === 1;
   switch (spell) {
@@ -1100,11 +1100,11 @@ export type GameState = {
   rune: number;
   cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy, 2 the skill grove. */
-  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
+  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
   /** A portal crossing. The land changes halfway through the fade. */
   cross: {
     t: number;
-    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
+    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
     x: number;
     y: number;
     dir: Dir;
@@ -1536,10 +1536,10 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
-let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 = 0;
+let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 = 0;
 
 /** Farm collision stays on the homestead. Each other land has its own ground. */
-export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16): void {
+export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18): void {
   realmWing = wing;
 }
 
@@ -1559,6 +1559,8 @@ function realmFeet(x: number, y: number): boolean {
   if (realmWing === 14) return medicFeet(x, y);
   if (realmWing === 15) return bioFeet(x, y);
   if (realmWing === 16) return libraryFeet(x, y);
+  if (realmWing === 17) return jyotishFeet(x, y);
+  if (realmWing === 18) return mantraFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
@@ -2098,6 +2100,38 @@ function libraryFeet(x: number, y: number): boolean {
   return false;
 }
 
+/** Star-silver ladder-hole, just above the quarry portal. */
+export const JYOTISH_DOOR = { x: 36, y: 358 } as const;
+export const JYOTISH_ARRIVE = { x: 174, y: 118 } as const;
+export const JYOTISH_RETURN = { x: 174, y: 86 } as const;
+export const JYOTISH_SOLIDS: Rect[] = [
+  { x: 40, y: 168, w: 40, h: 22 },
+  { x: 268, y: 168, w: 40, h: 22 },
+  { x: 132, y: 244, w: 84, h: 18 },
+];
+
+function jyotishFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y < 40 || box.y + box.h > 500) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of JYOTISH_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
+/** Lotus ladder-hole on the Svarga tile, under the pond. */
+export const MANTRA_DOOR = { x: 178, y: 340 } as const;
+export const MANTRA_ARRIVE = { x: 174, y: 118 } as const;
+export const MANTRA_RETURN = { x: 174, y: 86 } as const;
+export const MANTRA_SOLIDS: Rect[] = [{ x: 160, y: 210, w: 28, h: 18 }];
+
+function mantraFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y < 40 || box.y + box.h > 500) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of MANTRA_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
 /** Floor 332. A triangle the shape of the cube's ship, point above a band of space. */
 export const FLOOR_H = 1560;
 const FLOOR_TIP = 22;
@@ -2136,7 +2170,7 @@ export function onPortal(x: number, y: number): boolean {
 }
 
 export function ensureWing(s: GameState): void {
-  if (s.wing !== -1 && (s.wing < 0 || s.wing > 16)) s.wing = 0;
+  if (s.wing !== -1 && (s.wing < 0 || s.wing > 18)) s.wing = 0;
   if (!s.cross || typeof s.cross.t !== "number") s.cross = null;
 }
 

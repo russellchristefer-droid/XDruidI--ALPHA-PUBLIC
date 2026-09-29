@@ -92,6 +92,12 @@ import {
   LIBRARY_DOOR,
   LIBRARY_ARRIVE,
   LIBRARY_RETURN,
+  JYOTISH_DOOR,
+  JYOTISH_ARRIVE,
+  JYOTISH_RETURN,
+  MANTRA_DOOR,
+  MANTRA_ARRIVE,
+  MANTRA_RETURN,
   onGroveDoor,
   DAY_LEN,
   HAND_HOME,
@@ -250,7 +256,7 @@ function craftBlurb(wing: number): string {
   return wing === 5 ? "The armour yard. The stand, the mail, and the plot." : "The weapon yard. The bench, the blade, and the plot.";
 }
 
-type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
 
 const GATE_REACH = 46;
 
@@ -258,6 +264,9 @@ const GATE_REACH = 46;
 export function sideGate(s: GameState): SideGate | null {
   const wing = s.wing ?? 0;
   if (wing === 1) {
+    if (onGroveDoor(s.x, s.y, MANTRA_DOOR.x, MANTRA_DOOR.y)) {
+      return { x: MANTRA_DOOR.x, y: MANTRA_DOOR.y, wing: 18, landX: MANTRA_ARRIVE.x, landY: MANTRA_ARRIVE.y, dir: "s", name: "the mantra hall" };
+    }
     const near =
       Math.hypot(s.x - HEAVEN_GATE.x, s.y - HEAVEN_GATE.y) <= GATE_REACH &&
       s.y > HEAVEN_GATE.y - 50 &&
@@ -325,6 +334,14 @@ export function sideGate(s: GameState): SideGate | null {
     if (Math.hypot(s.x - LIBRARY_RETURN.x, s.y - LIBRARY_RETURN.y) > 28) return null;
     return { x: LIBRARY_RETURN.x, y: LIBRARY_RETURN.y, wing: 0, landX: LIBRARY_DOOR.x, landY: LIBRARY_DOOR.y - 18, dir: "n", name: "the courtyard" };
   }
+  if (wing === 17) {
+    if (Math.hypot(s.x - JYOTISH_RETURN.x, s.y - JYOTISH_RETURN.y) > 28) return null;
+    return { x: JYOTISH_RETURN.x, y: JYOTISH_RETURN.y, wing: 0, landX: JYOTISH_DOOR.x, landY: JYOTISH_DOOR.y - 18, dir: "n", name: "the courtyard" };
+  }
+  if (wing === 18) {
+    if (Math.hypot(s.x - MANTRA_RETURN.x, s.y - MANTRA_RETURN.y) > 28) return null;
+    return { x: MANTRA_RETURN.x, y: MANTRA_RETURN.y, wing: 1, landX: MANTRA_DOOR.x, landY: MANTRA_DOOR.y + 16, dir: "s", name: "Svarga" };
+  }
   if (wing === 0) {
     const skill = onGroveDoor(s.x, s.y, GROVE_DOOR.x, GROVE_DOOR.y);
     const fight = onGroveDoor(s.x, s.y, COMBAT_DOOR.x, COMBAT_DOOR.y);
@@ -338,7 +355,14 @@ export function sideGate(s: GameState): SideGate | null {
       return { x: WEAPON_DOOR.x, y: WEAPON_DOOR.y, wing: 6, landX: WEAPON_ARRIVE.x, landY: WEAPON_ARRIVE.y, dir: "s", name: "the weapon yard" };
     }
     if (onGroveDoor(s.x, s.y, QUARRY_DOOR.x, QUARRY_DOOR.y)) {
-      return { x: QUARRY_DOOR.x, y: QUARRY_DOOR.y, wing: 7, landX: QUARRY_ARRIVE.x, landY: QUARRY_ARRIVE.y, dir: "s", name: "the quarry" };
+      const quarryD = Math.hypot(s.x - QUARRY_DOOR.x, s.y - QUARRY_DOOR.y);
+      const skyD = Math.hypot(s.x - JYOTISH_DOOR.x, s.y - JYOTISH_DOOR.y);
+      if (quarryD <= skyD) {
+        return { x: QUARRY_DOOR.x, y: QUARRY_DOOR.y, wing: 7, landX: QUARRY_ARRIVE.x, landY: QUARRY_ARRIVE.y, dir: "s", name: "the quarry" };
+      }
+    }
+    if (onGroveDoor(s.x, s.y, JYOTISH_DOOR.x, JYOTISH_DOOR.y)) {
+      return { x: JYOTISH_DOOR.x, y: JYOTISH_DOOR.y, wing: 17, landX: JYOTISH_ARRIVE.x, landY: JYOTISH_ARRIVE.y, dir: "s", name: "the jyotisha hall" };
     }
     if (onGroveDoor(s.x, s.y, SANCTUM_DOOR.x, SANCTUM_DOOR.y)) {
       return { x: SANCTUM_DOOR.x, y: SANCTUM_DOOR.y, wing: 8, landX: SANCTUM_ARRIVE.x, landY: SANCTUM_ARRIVE.y, dir: "s", name: "the sanctum" };
@@ -961,6 +985,8 @@ export function examineAt(s: GameState, px: number, py: number): string {
   if ((s.wing ?? 0) === 14) return "The medical hall. Cots and salves. The red ladder leads back.";
   if ((s.wing ?? 0) === 15) return "The biology hall. Study of the farmer and the plants. The green ladder leads back.";
   if ((s.wing ?? 0) === 16) return "The library. Shelves and a reading table. The indigo ladder leads back.";
+  if ((s.wing ?? 0) === 17) return "The jyotisha hall. A place to read the night, the vimana, and the living space. The silver ladder leads back.";
+  if ((s.wing ?? 0) === 18) return "The mantra hall. Song, bell, and breath. The lotus ladder leads back to Svarga.";
   if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
   if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
   const used = assetUseAt(px, py);

@@ -1,4 +1,4 @@
-import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, DESCENT_DOOR, DESCENT_RETURN, TECH_DOOR, TECH_RETURN, TECH_SOLIDS, MEDIC_DOOR, MEDIC_RETURN, MEDIC_SOLIDS, BIO_DOOR, BIO_RETURN, BIO_SOLIDS, LIBRARY_DOOR, LIBRARY_RETURN, LIBRARY_SOLIDS, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, FLOOR_H, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, floorEdge, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, DESCENT_DOOR, DESCENT_RETURN, TECH_DOOR, TECH_RETURN, TECH_SOLIDS, MEDIC_DOOR, MEDIC_RETURN, MEDIC_SOLIDS, BIO_DOOR, BIO_RETURN, BIO_SOLIDS, LIBRARY_DOOR, LIBRARY_RETURN, LIBRARY_SOLIDS, JYOTISH_DOOR, JYOTISH_RETURN, JYOTISH_SOLIDS, MANTRA_DOOR, MANTRA_RETURN, MANTRA_SOLIDS, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, FLOOR_H, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, floorEdge, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
@@ -4660,7 +4660,7 @@ function ensureSmith(sheets: Sheets, kind: "armour" | "weapon" | "quarry" | "san
   return canvas;
 }
 
-function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number, hue: "gold" | "blue" | "red" | "green" | "indigo" = "gold"): void {
+function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number, hue: "gold" | "blue" | "red" | "green" | "indigo" | "silver" | "lotus" = "gold"): void {
   const rx = 12;
   const ry = 6;
   const spin = clock * 1.5;
@@ -4673,7 +4673,11 @@ function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clo
           ? { deep: "#061208", mid: "#123018", well: "#1c4824", shade: "#0c2014", rung: "#48a050", back: "#206030", spine: "#e8ffe8", front: "#78e080", lip: "#d8ffd0", rim: "#68c070", dark: "#143818", brass: "#308040" }
           : hue === "indigo"
             ? { deep: "#100818", mid: "#241438", well: "#3a2060", shade: "#180c28", rung: "#7860d0", back: "#403080", spine: "#f0e8ff", front: "#b0a0f0", lip: "#e4dcff", rim: "#9080d8", dark: "#281848", brass: "#5848a0" }
-            : { deep: "#0e0a06", mid: "#26180e", well: "#4a3218", shade: "#1c140c", rung: "#9a6424", back: "#7a4e18", spine: "#fff6d2", front: "#ffd060", lip: "#fff6d0", rim: "#f0d078", dark: "#4a2c10", brass: "#c8963c" };
+            : hue === "silver"
+              ? { deep: "#0c1018", mid: "#1a2434", well: "#2c3c50", shade: "#121820", rung: "#d0d8e8", back: "#708098", spine: "#ffffff", front: "#e8eef8", lip: "#f6f8ff", rim: "#b8c4d8", dark: "#1a2430", brass: "#8898b0" }
+              : hue === "lotus"
+                ? { deep: "#2a1018", mid: "#4a2030", well: "#6a3044", shade: "#3a1824", rung: "#e888a8", back: "#a05068", spine: "#fff0f4", front: "#ffb0c8", lip: "#ffe0ea", rim: "#f0a0b8", dark: "#401828", brass: "#c06080" }
+                : { deep: "#0e0a06", mid: "#26180e", well: "#4a3218", shade: "#1c140c", rung: "#9a6424", back: "#7a4e18", spine: "#fff6d2", front: "#ffd060", lip: "#fff6d0", rim: "#f0d078", dark: "#4a2c10", brass: "#c8963c" };
   for (let y = -ry; y <= ry; y++) {
     const ny = y / ry;
     const twist = spin + (y + ry) * 0.72;
@@ -5014,6 +5018,87 @@ function ensureLibrary(): HTMLCanvasElement | null {
   return canvas;
 }
 
+let jyotishPlate: HTMLCanvasElement | null = null;
+
+function ensureJyotish(): HTMLCanvasElement | null {
+  if (jyotishPlate) return jyotishPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#070a12";
+  g.fillRect(0, 0, WORLD_W, 528);
+  for (let y = 36; y < 504; y++) {
+    for (let x = 16; x < 332; x++) {
+      const n = noise(x, y);
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      const lx = x % 8;
+      const ly = y % 4;
+      let color = (tx + ty) % 2 === 0 ? "#1a2434" : "#121a28";
+      if (ly === 0 && lx > 0 && lx < 3) color = "#2c3c50";
+      if (ly === 3 && lx >= 5) color = "#0c1018";
+      if ((n & 31) === 0) color = "#e8eef8";
+      else if ((n & 47) === 1) color = "#8898b0";
+      if (Math.abs(x - 174) < 16) color = ly === 0 ? "#3a4c64" : "#1a2838";
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  for (const pad of JYOTISH_SOLIDS) {
+    g.fillStyle = "#2a3848";
+    g.fillRect(pad.x, pad.y, pad.w, pad.h);
+    g.fillStyle = "#f6f8ff";
+    g.fillRect(pad.x + pad.w / 2 - 2, pad.y + 4, 4, 4);
+    g.fillStyle = "#b8c4d8";
+    g.fillRect(pad.x + 4, pad.y + pad.h - 3, pad.w - 8, 1);
+  }
+  jyotishPlate = canvas;
+  return canvas;
+}
+
+let mantraPlate: HTMLCanvasElement | null = null;
+
+function ensureMantra(): HTMLCanvasElement | null {
+  if (mantraPlate) return mantraPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#1c1014";
+  g.fillRect(0, 0, WORLD_W, 528);
+  for (let y = 36; y < 504; y++) {
+    for (let x = 16; x < 332; x++) {
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      const lx = x % 8;
+      const ly = y % 4;
+      let color = (tx + ty) % 2 === 0 ? "#3a2830" : "#2a1c24";
+      if (ly === 0 && lx > 0 && lx < 3) color = "#5a3844";
+      if (ly === 3 && lx >= 5) color = "#1a1014";
+      if (Math.abs(x - 174) < 22 && Math.abs(y - 220) < 10) color = ly === 0 ? "#f0a0b8" : "#c06080";
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  for (const bell of MANTRA_SOLIDS) {
+    g.fillStyle = "#6a4030";
+    g.fillRect(bell.x, bell.y + 8, bell.w, bell.h - 8);
+    g.fillStyle = "#e2b657";
+    g.fillRect(bell.x + bell.w / 2 - 3, bell.y, 6, 10);
+    g.fillStyle = "#fff6d0";
+    g.fillRect(bell.x + bell.w / 2 - 1, bell.y, 2, 4);
+  }
+  mantraPlate = canvas;
+  return canvas;
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   s: GameState,
@@ -5205,9 +5290,44 @@ export function drawWorld(
     }
     return;
   }
+  if (wing === 17) {
+    const hall = ensureJyotish();
+    if (hall) ctx.drawImage(hall, 0, 0);
+    paintDnaHole(ctx, JYOTISH_RETURN.x, JYOTISH_RETURN.y, s.clock, "silver");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(180, 196, 220, ${0.1 + a * 0.4})`;
+      ctx.fillRect(0, 0, WORLD_W, 528);
+    }
+    return;
+  }
+  if (wing === 18) {
+    const hall = ensureMantra();
+    if (hall) ctx.drawImage(hall, 0, 0);
+    paintDnaHole(ctx, MANTRA_RETURN.x, MANTRA_RETURN.y, s.clock, "lotus");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(220, 140, 170, ${0.1 + a * 0.4})`;
+      ctx.fillRect(0, 0, WORLD_W, 528);
+    }
+    return;
+  }
   if (wing !== 0) {
     if (wing === 1) {
       drawSvarga(ctx, s.clock, sheets.svarga);
+      paintDnaHole(ctx, MANTRA_DOOR.x, MANTRA_DOOR.y, s.clock, "lotus");
       const angels = svargaAngels(s.clock).sort((a, b) => a.y - b.y);
       for (const a of angels) if (a.y <= s.y) paintAngel(ctx, sheets, a);
       if (sheets.idle) drawCastRite(ctx, sheets, s);
@@ -5245,6 +5365,7 @@ export function drawWorld(
   paintDnaHole(ctx, MEDIC_DOOR.x, MEDIC_DOOR.y, s.clock, "red");
   paintDnaHole(ctx, BIO_DOOR.x, BIO_DOOR.y, s.clock, "green");
   paintDnaHole(ctx, LIBRARY_DOOR.x, LIBRARY_DOOR.y, s.clock, "indigo");
+  paintDnaHole(ctx, JYOTISH_DOOR.x, JYOTISH_DOOR.y, s.clock, "silver");
   paintFlatPortal(ctx, ENCHANT_DOOR.x, ENCHANT_DOOR.y, s.clock, "enchant");
   paintFlatPortal(ctx, WILDS_DOOR.x, WILDS_DOOR.y, s.clock, "wilds");
   paintFlatPortal(ctx, QUARRY_DOOR.x, QUARRY_DOOR.y, s.clock, "quarry");
