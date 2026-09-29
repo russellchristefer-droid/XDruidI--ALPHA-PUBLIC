@@ -150,11 +150,11 @@ function roundel(ctx: CanvasRenderingContext2D, cx: number, cy: number): void {
 
 function courtMotif(tx: number, ty: number): Motif {
   const dx = Math.abs(tx - 21);
-  const dy = Math.abs(ty - 18);
+  const dy = Math.abs(ty - 37) / 2;
   if (dx <= 1 && dy <= 1) return "medallion";
   if (dx === 0 || dy === 0) return "cross";
-  if (dx === dy && dx >= 8 && dx <= 14) return "diamond";
-  if (dx > 15 && dy > 15 && (dx + dy) % 4 === 0) return "cross";
+  if (Math.abs(dx - dy) < 0.5 && dx >= 8 && dx <= 14) return "diamond";
+  if (dx > 15 && dy > 15 && (dx + Math.floor(dy)) % 4 === 0) return "cross";
   return "plain";
 }
 
@@ -260,38 +260,35 @@ function bake(ctx: CanvasRenderingContext2D): void {
   for (const dx of [-154, -118, 118, 154]) roundel(ctx, 172 + dx, walk);
 
   const courtTop = SIDE_H;
-  for (let ty = 0; ty < 37; ty++) {
+  const tileW = 8;
+  const tileH = 4;
+  for (let ty = 0; ty < 74; ty++) {
     for (let tx = 0; tx < 43; tx++) {
-      const x0 = tx * 8;
-      const y0 = courtTop + ty * 8;
-      const rim = tx === 0 || tx === 42 || ty === 0 || ty === 36;
-      const dist = Math.hypot(tx - 21, ty - 18);
+      const x0 = tx * tileW;
+      const y0 = courtTop + ty * tileH;
+      const rim = tx === 0 || tx === 42 || ty === 0 || ty === 73;
+      const dist = Math.hypot(tx - 21, (ty - 37) / 2);
       let tone = rim ? CURB : (tx + ty) % 2 === 0 ? IVORY : IVORY_B;
       if (!rim && dist > 9 && dist < 11) tone = (tx + ty) % 2 === 0 ? LAPIS : LAPIS_D;
       else if (!rim && dist > 13 && dist < 14.6) tone = (tx + ty) % 2 === 0 ? "#8a6230" : GOLD_D;
       ctx.fillStyle = tone;
-      ctx.fillRect(x0, y0, 8, 8);
+      ctx.fillRect(x0, y0, tileW, tileH);
       if (rim) continue;
-      px(ctx, x0, y0, LIGHT);
       px(ctx, x0 + 1, y0, LIGHT);
-      px(ctx, x0, y0 + 1, LIGHT);
-      px(ctx, x0 + 7, y0 + 7, SHADE);
-      px(ctx, x0 + 6, y0 + 7, SHADE);
-      px(ctx, x0 + 7, y0 + 6, SHADE);
-      px(ctx, x0 + 2, y0 + 2, (tx + ty) % 2 === 0 ? WHITE : IVORY);
-      px(ctx, x0 + 5, y0 + 5, SHADE);
+      px(ctx, x0 + 2, y0, LIGHT);
+      px(ctx, x0 + 7, y0 + 3, SHADE);
+      px(ctx, x0 + 6, y0 + 3, SHADE);
+      px(ctx, x0 + 5, y0 + 2, SHADE);
       const mx = x0 + 3;
-      const my = y0 + 4;
+      const my = y0 + 1;
       const motif = courtMotif(tx, ty);
       if (motif === "cross") {
         px(ctx, mx, my, GOLD_H);
         px(ctx, mx - 1, my, GOLD);
         px(ctx, mx + 1, my, GOLD);
-        px(ctx, mx, my - 1, GOLD);
         px(ctx, mx, my + 1, GOLD_D);
       } else if (motif === "diamond") {
         px(ctx, mx, my, SUN);
-        px(ctx, mx, my - 1, GOLD_H);
         px(ctx, mx - 1, my, GOLD);
         px(ctx, mx + 1, my, GOLD);
         px(ctx, mx, my + 1, GOLD_D);
@@ -639,6 +636,88 @@ function paintTileSparkle(ctx: CanvasRenderingContext2D, clock: number): void {
   ctx.globalAlpha = 1;
 }
 
+function arcBolt(t: number): string {
+  const stops: Array<[number, number, number]> = [
+    [255, 70, 190],
+    [255, 230, 70],
+    [70, 255, 150],
+    [70, 220, 255],
+    [180, 90, 255],
+  ];
+  const h = ((t % 1) + 1) % 1;
+  const f = h * stops.length;
+  const i = Math.floor(f) % stops.length;
+  const j = (i + 1) % stops.length;
+  const u = f - Math.floor(f);
+  const a = stops[i]!;
+  const b = stops[j]!;
+  return `${Math.round(a[0] + (b[0] - a[0]) * u)}, ${Math.round(a[1] + (b[1] - a[1]) * u)}, ${Math.round(a[2] + (b[2] - a[2]) * u)}`;
+}
+
+function paintCourtSheen(ctx: CanvasRenderingContext2D, clock: number): void {
+  const top = COURT_Y;
+  const rows = 74;
+  const left = 16;
+  const right = 331;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, right - left, rows * 4);
+  ctx.clip();
+  for (const feed of [52, 100, 148, 172, 204, 252, 300]) {
+    const x0 = Math.floor(feed / 8) * 8;
+    const y0 = top + 73 * 4;
+    for (let ly = 0; ly < 4; ly++) {
+      const y = y0 + ly;
+      const lip = ly === 0;
+      ctx.fillStyle = "#302418";
+      ctx.fillRect(x0, y, 1, 1);
+      ctx.fillStyle = lip ? "#f4ecff" : "#b9a8d4";
+      ctx.fillRect(x0 + 1, y, 1, 1);
+      ctx.fillRect(x0 + 7, y, 1, 1);
+      ctx.fillStyle = lip ? "#ecd080" : "#8a5a28";
+      ctx.fillRect(x0 + 2, y, 1, 1);
+      ctx.fillRect(x0 + 6, y, 1, 1);
+      ctx.fillStyle = "#243048";
+      ctx.fillRect(x0 + 3, y, 1, 1);
+      ctx.fillRect(x0 + 5, y, 1, 1);
+      ctx.fillStyle = ly === 1 ? "#d6f0ff" : "#6c9cb8";
+      ctx.fillRect(x0 + 4, y, 1, 1);
+    }
+  }
+  ctx.globalCompositeOperation = "lighter";
+  const sweep = (clock * 16) % (W + 36) - 18;
+  for (let x = left; x <= right; x++) {
+    const dx = Math.abs(x - sweep);
+    if (dx > 16) continue;
+    const a = (1 - dx / 16) * 0.28;
+    ctx.fillStyle = `rgba(${arcBolt(x / W + clock * 0.2)}, ${a})`;
+    for (let ty = 0; ty < rows; ty++) ctx.fillRect(x, top + ty * 4, 1, 1);
+  }
+  const phase = clock * 0.65;
+  const span = right - left;
+  for (let x = left; x <= right; x++) {
+    const along = (x - left) / span;
+    const wave = 0.5 + 0.5 * Math.sin(along * Math.PI * 2 - phase);
+    if (wave < 0.78) continue;
+    const a = ((wave - 0.78) / 0.22) * 0.4;
+    ctx.fillStyle = `rgba(${arcBolt(along + clock * 0.2)}, ${a})`;
+    ctx.fillRect(x, top, 1, 1);
+    ctx.fillRect(x, top + rows * 4 - 2, 1, 1);
+  }
+  const climb = (clock * 0.32) % 1;
+  if (climb > 0.72) {
+    const arrive = (climb - 0.72) / 0.28;
+    ctx.fillStyle = `rgba(${arcBolt(climb + 0.15)}, ${0.4 * arrive})`;
+    for (const feed of [52, 100, 148, 172, 204, 252, 300]) {
+      const y0 = top + 73 * 4;
+      ctx.globalAlpha = 0.25 + arrive * 0.55;
+      ctx.fillRect(feed, y0 + 1, 1, 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
 /** Draw the sidewalk and courtyard as one solid floor. Grass cannot show through. */
 export function drawMosaicFloors(
   ctx: CanvasRenderingContext2D,
@@ -655,15 +734,16 @@ export function drawMosaicFloors(
     ctx.fillRect(0, SIDE_Y, W, FLOOR_H);
   }
   if (yard) ctx.drawImage(yard, 0, 148, W, 44, 0, 148, W, 44);
+  paintCourtSheen(ctx, clock);
   paintTileSparkle(ctx, clock);
 
   const glint = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(clock * 2.2));
   ctx.fillStyle = `rgba(255, 244, 214, ${0.2 + glint * 0.45})`;
-  for (let ty = 0; ty < 37; ty++) {
+  for (let ty = 0; ty < 74; ty++) {
     for (let tx = 0; tx < 43; tx++) {
       if (courtMotif(tx, ty) === "plain") continue;
       if ((tx * 13 + ty * 7 + Math.floor(clock * 2)) % 17 !== 0) continue;
-      ctx.fillRect(tx * 8 + 3, COURT_Y + ty * 8 + 3, 1, 1);
+      ctx.fillRect(tx * 8 + 3, COURT_Y + ty * 4 + 1, 1, 1);
     }
   }
   const slide = Math.floor(clock * 22) % 344;

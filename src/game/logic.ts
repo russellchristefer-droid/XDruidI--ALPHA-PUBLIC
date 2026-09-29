@@ -34,14 +34,35 @@ import {
   GROVE_RETURN,
   GROVE_PLOTS,
   grovePlotAt,
+  COMBAT_DOOR,
+  COMBAT_ARRIVE,
+  COMBAT_RETURN,
+  COMBAT_PLOTS,
+  combatPlotAt,
+  RING_DOOR,
+  RING_ARRIVE,
+  RING_RETURN,
+  ARMOUR_DOOR,
+  ARMOUR_ARRIVE,
+  ARMOUR_RETURN,
+  ARMOUR_PLOTS,
+  armourPlotAt,
+  WEAPON_DOOR,
+  WEAPON_ARRIVE,
+  WEAPON_RETURN,
+  WEAPON_PLOTS,
+  weaponPlotAt,
+  onGroveDoor,
   DAY_LEN,
   HAND_HOME,
+  MAID_HOME,
   STABLE_HOME,
   ensureSkills,
   ensureHealth,
   skillLevel,
   SKILL_NAME,
   footBlocked,
+  groveBlocked,
   onBed,
   bedInset,
   FENCE,
@@ -109,7 +130,67 @@ export const TOOL_ANIM: Record<string, { sheet: string; frames: number; hit: num
   sharpen: { sheet: "hammer", frames: 6, hit: 4 },
 };
 
-type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
+export type RingFoe = { x: number; y: number; hp: number; hurt: number; wait: number };
+
+const ringFoeList: RingFoe[] = [
+  { x: 150, y: 220, hp: 3, hurt: 0, wait: 0 },
+  { x: 198, y: 236, hp: 3, hurt: 0, wait: 0 },
+  { x: 162, y: 270, hp: 3, hurt: 0, wait: 0 },
+];
+
+export function ringFoes(): RingFoe[] {
+  return ringFoeList;
+}
+
+function foeAt(x: number, y: number): RingFoe | null {
+  let best: RingFoe | null = null;
+  let bestD = 16;
+  for (const f of ringFoeList) {
+    if (f.hp <= 0) continue;
+    const d = Math.hypot(x - f.x, y - f.y);
+    if (d < bestD) {
+      best = f;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+function stepRing(s: GameState, dt: number): void {
+  let biting = false;
+  const left = s.y > 312;
+  for (let i = 0; i < ringFoeList.length; i++) {
+    const f = ringFoeList[i]!;
+    if (f.hurt > 0) f.hurt -= dt;
+    if (f.hp <= 0) {
+      f.wait -= dt;
+      if (f.wait <= 0) {
+        f.hp = 3;
+        f.x = 150 + i * 22;
+        f.y = 220;
+      }
+      continue;
+    }
+    const homeX = 150 + i * 22;
+    const homeY = 230;
+    const tx = left ? homeX : s.x;
+    const ty = left ? homeY : s.y;
+    const dx = tx - f.x;
+    const dy = ty - f.y;
+    const dist = Math.hypot(s.x - f.x, s.y - f.y) || 1;
+    if (!left && dist < 16) biting = true;
+    const goal = Math.hypot(dx, dy) || 1;
+    if (goal > 12) {
+      const nx = f.x + (dx / goal) * 22 * dt;
+      const ny = f.y + (dy / goal) * 22 * dt;
+      if (!footBlocked(nx, f.y)) f.x = nx;
+      if (!footBlocked(f.x, ny)) f.y = ny;
+    }
+  }
+  if (biting) s.health = Math.max(20, s.health - dt * 6);
+}
+
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
 
 const GATE_REACH = 46;
 
@@ -128,8 +209,45 @@ export function sideGate(s: GameState): SideGate | null {
     if (Math.hypot(s.x - GROVE_RETURN.x, s.y - GROVE_RETURN.y) > 36) return null;
     return { x: GROVE_RETURN.x, y: GROVE_RETURN.y, wing: 0, landX: GROVE_DOOR.x, landY: GROVE_DOOR.y - 16, dir: "n", name: "the courtyard" };
   }
-  if (wing === 0 && Math.hypot(s.x - GROVE_DOOR.x, s.y - GROVE_DOOR.y) <= 36) {
-    return { x: GROVE_DOOR.x, y: GROVE_DOOR.y, wing: 2, landX: GROVE_ARRIVE.x, landY: GROVE_ARRIVE.y, dir: "n", name: "the skill grove" };
+  if (wing === 3) {
+    if (Math.hypot(s.x - COMBAT_RETURN.x, s.y - COMBAT_RETURN.y) > 36) return null;
+    return { x: COMBAT_RETURN.x, y: COMBAT_RETURN.y, wing: 0, landX: COMBAT_DOOR.x, landY: COMBAT_DOOR.y - 16, dir: "n", name: "the courtyard" };
+  }
+  if (wing === 4) {
+    if (!onGroveDoor(s.x, s.y, RING_RETURN.x, RING_RETURN.y) && Math.hypot(s.x - RING_RETURN.x, s.y - RING_RETURN.y) > 28) return null;
+    return { x: RING_RETURN.x, y: RING_RETURN.y, wing: 0, landX: RING_DOOR.x, landY: RING_DOOR.y - 18, dir: "n", name: "the courtyard" };
+  }
+  if (wing === 5) {
+    if (Math.hypot(s.x - ARMOUR_RETURN.x, s.y - ARMOUR_RETURN.y) > 28) return null;
+    return { x: ARMOUR_RETURN.x, y: ARMOUR_RETURN.y, wing: 0, landX: ARMOUR_DOOR.x, landY: ARMOUR_DOOR.y + 18, dir: "s", name: "the courtyard" };
+  }
+  if (wing === 6) {
+    if (Math.hypot(s.x - WEAPON_RETURN.x, s.y - WEAPON_RETURN.y) > 28) return null;
+    return { x: WEAPON_RETURN.x, y: WEAPON_RETURN.y, wing: 0, landX: WEAPON_DOOR.x, landY: WEAPON_DOOR.y + 18, dir: "s", name: "the courtyard" };
+  }
+  if (wing === 0) {
+    const skill = onGroveDoor(s.x, s.y, GROVE_DOOR.x, GROVE_DOOR.y);
+    const fight = onGroveDoor(s.x, s.y, COMBAT_DOOR.x, COMBAT_DOOR.y);
+    const ring = onGroveDoor(s.x, s.y, RING_DOOR.x, RING_DOOR.y);
+    const armour = onGroveDoor(s.x, s.y, ARMOUR_DOOR.x, ARMOUR_DOOR.y);
+    const weapon = onGroveDoor(s.x, s.y, WEAPON_DOOR.x, WEAPON_DOOR.y);
+    if (armour) {
+      return { x: ARMOUR_DOOR.x, y: ARMOUR_DOOR.y, wing: 5, landX: ARMOUR_ARRIVE.x, landY: ARMOUR_ARRIVE.y, dir: "s", name: "the armour yard" };
+    }
+    if (weapon) {
+      return { x: WEAPON_DOOR.x, y: WEAPON_DOOR.y, wing: 6, landX: WEAPON_ARRIVE.x, landY: WEAPON_ARRIVE.y, dir: "s", name: "the weapon yard" };
+    }
+    if (ring && !skill && !fight) {
+      return { x: RING_DOOR.x, y: RING_DOOR.y, wing: 4, landX: RING_ARRIVE.x, landY: RING_ARRIVE.y, dir: "s", name: "the combat ring" };
+    }
+    if (skill || fight) {
+      const skillD = Math.hypot(s.x - GROVE_DOOR.x, s.y - GROVE_DOOR.y);
+      const fightD = Math.hypot(s.x - COMBAT_DOOR.x, s.y - COMBAT_DOOR.y);
+      if (fight && (!skill || fightD < skillD)) {
+        return { x: COMBAT_DOOR.x, y: COMBAT_DOOR.y, wing: 3, landX: COMBAT_ARRIVE.x, landY: COMBAT_ARRIVE.y, dir: "n", name: "the combat yard" };
+      }
+      return { x: GROVE_DOOR.x, y: GROVE_DOOR.y, wing: 2, landX: GROVE_ARRIVE.x, landY: GROVE_ARRIVE.y, dir: "n", name: "the skill grove" };
+    }
   }
   const by = (cx: number) => s.y > 170 && s.y < 260 && Math.hypot(s.x - cx, s.y - 202) <= GATE_REACH;
   if (wing === 0 && s.x < 130 && by(40)) {
@@ -165,7 +283,7 @@ function unitRand(s: GameState): number {
 
 function aimPoint(s: GameState, kind: string, target: string): { x: number; y: number } | null {
   if (kind === "drill") {
-    const plot = GROVE_PLOTS.find((p) => p.id === target);
+    const plot = GROVE_PLOTS.find((p) => p.id === target) ?? COMBAT_PLOTS.find((p) => p.id === target) ?? ARMOUR_PLOTS.find((p) => p.id === target) ?? WEAPON_PLOTS.find((p) => p.id === target);
     if (!plot) return null;
     return {
       x: Math.max(plot.x, Math.min(plot.x + plot.w, s.x)),
@@ -489,6 +607,7 @@ export function targets(s: GameState): Target[] {
     list.push({ id: b.id, name: "Fallen branch", kind: "branch", x: b.x - 8, y: b.y - 8, w: 16, h: 14 });
   }
   for (const a of s.animals) {
+    if (a.kind === "cow" && (s.wing ?? 0) !== 2) continue;
     list.push({ id: a.id, name: a.name, kind: "animal", x: a.x - 10, y: a.y - 12, w: 20, h: 16 });
   }
   list.push({ id: "cat", name: "Cat", kind: "cat", x: s.cat.x - 8, y: s.cat.y - 8, w: 16, h: 12 });
@@ -498,7 +617,7 @@ export function targets(s: GameState): Target[] {
   if ((s.wing ?? 0) === 0 && s.xiang64) {
     list.push({ id: "xiang64", name: "Xiang Su", kind: "xiang64", x: s.xiang64.x - 8, y: s.xiang64.y - 22, w: 16, h: 26 });
   }
-  if ((s.wing ?? 0) === 0 && s.maid) {
+  if ((s.wing ?? 0) === 2 && s.maid) {
     list.push({ id: "maid", name: "Milkmaid", kind: "maid", x: s.maid.x - 8, y: s.maid.y - 22, w: 16, h: 26 });
   }
   for (const g of s.ground) {
@@ -636,10 +755,28 @@ export function promptAt(s: GameState, px: number, py: number): string {
   }
   if ((s.wing ?? 0) === 2) {
     if (!inReach(s, px, py)) return "";
-    if (onStable(s, px, py)) return "Greet the stable hand  [E]";
+    const cow = s.animals.find((a) => a.kind === "cow");
+    if (cow && Math.hypot(px - cow.x, py - cow.y) < 18) return cow.ready ? "Collect milk  [E]" : "Feed the cow  [E]";
+    if (s.maid && Math.hypot(px - s.maid.x, py - s.maid.y) < 16) return "Greet the milkmaid  [E]";
     const plot = grovePlotAt(px, py);
     if (!plot) return "";
     if (plot.skill === "magic") return "Magic stays on the courtyard seal.  [E]";
+    return `Train ${SKILL_NAME[plot.skill]}  [E]`;
+  }
+  if ((s.wing ?? 0) === 3) {
+    if (!inReach(s, px, py)) return "";
+    const plot = combatPlotAt(px, py);
+    if (!plot) return "";
+    return `Train ${SKILL_NAME[plot.skill]}  [E]`;
+  }
+  if ((s.wing ?? 0) === 4) {
+    if (!inReach(s, px, py)) return "";
+    return foeAt(px, py) ? "Strike the shade  [E]" : "";
+  }
+  if ((s.wing ?? 0) === 5 || (s.wing ?? 0) === 6) {
+    if (!inReach(s, px, py)) return "";
+    const plot = (s.wing ?? 0) === 5 ? armourPlotAt(px, py) : weaponPlotAt(px, py);
+    if (!plot) return "";
     return `Train ${SKILL_NAME[plot.skill]}  [E]`;
   }
   if ((s.wing ?? 0) !== 0) return "";
@@ -653,11 +790,28 @@ export function examineAt(s: GameState, px: number, py: number): string {
   const gate = sideGate(s);
   if (gate && Math.hypot(px - gate.x, py - gate.y) <= 40) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
   if ((s.wing ?? 0) === 2) {
-    if (onStable(s, px, py)) return "The stable hand. He walks the lanes between the training plots.";
+    const cow = s.animals.find((a) => a.kind === "cow");
+    if (cow && Math.hypot(px - cow.x, py - cow.y) < 18) return "The cow. She grazes the skill lanes. Feed her, then take the milk.";
+    if (s.maid && Math.hypot(px - s.maid.x, py - s.maid.y) < 16) return "The milkmaid. She keeps the cow on the training land.";
     const plot = grovePlotAt(px, py);
     if (plot?.skill === "magic") return "A marker only. Elemental magic is trained on the courtyard seal.";
     if (plot) return `${plot.name}. A place to train ${SKILL_NAME[plot.skill]}.`;
     return "The skill grove. Every trade has a plot. Magic does not. That stays on the seal.";
+  }
+  if ((s.wing ?? 0) === 3) {
+    const plot = combatPlotAt(px, py);
+    if (plot) return `${plot.name}. A place to train combat.`;
+    return "The combat yard. The ring, the dummy, and the range.";
+  }
+  if ((s.wing ?? 0) === 4) {
+    const foe = foeAt(px, py);
+    if (foe) return "A shade in the combat ring. Strike it.";
+    return "The combat ring. Shades come here to be fought.";
+  }
+  if ((s.wing ?? 0) === 5 || (s.wing ?? 0) === 6) {
+    const plot = (s.wing ?? 0) === 5 ? armourPlotAt(px, py) : weaponPlotAt(px, py);
+    if (plot) return `${plot.name}. A place to train ${SKILL_NAME[plot.skill]}.`;
+    return (s.wing ?? 0) === 5 ? "The armour yard. The stand, the mail, and the plot." : "The weapon yard. The bench, the blade, and the plot.";
   }
   if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
   if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
@@ -724,6 +878,15 @@ function startAct(s: GameState, kind: string, target: string, fallback = 0.6): I
 }
 
 export function interact(s: GameState, px: number, py: number): InteractResult {
+  const crossed = crossSide(s, px, py);
+  if (crossed) {
+    if ((s.wing ?? 0) === 4) {
+      s.downed = false;
+      if (s.health < 28) s.health = 28;
+      if (s.stamina < 40) s.stamina = 40;
+    }
+    return crossed;
+  }
   if (s.downed) {
     const tub = targets(s).find((t) => t.kind === "tub");
     if (tub && (contains(tub, px, py) || Math.hypot(s.x - tub.x, s.y - tub.y) < 28)) {
@@ -733,14 +896,38 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
     }
     return { msg: "Downed. Crawl to the bathtub." };
   }
-  const crossed = crossSide(s, px, py);
-  if (crossed) return crossed;
   if ((s.wing ?? 0) === 2) {
     if (!inReach(s, px, py)) return { msg: "Too far." };
-    if (onStable(s, px, py)) return greetStable(s);
+    const cow = s.animals.find((a) => a.kind === "cow");
+    if (cow && Math.hypot(px - cow.x, py - cow.y) < 18) return useAnimal(s, cow.id);
+    if (s.maid && Math.hypot(px - s.maid.x, py - s.maid.y) < 16) return greetMaid(s);
     const plot = grovePlotAt(px, py);
     if (!plot) return { msg: "Open grass. The plots are the work." };
     if (plot.skill === "magic") return { msg: "Magic is trained on the courtyard seal, not here." };
+    return startAct(s, "drill", plot.id, 0.8);
+  }
+  if ((s.wing ?? 0) === 3) {
+    if (!inReach(s, px, py)) return { msg: "Too far." };
+    const plot = combatPlotAt(px, py);
+    if (!plot) return { msg: "Open ground. The combat plot is the work." };
+    return startAct(s, "drill", plot.id, 0.8);
+  }
+  if ((s.wing ?? 0) === 4) {
+    if (!inReach(s, px, py)) return { msg: "Too far." };
+    const foe = foeAt(px, py);
+    if (!foe) return { msg: "Nothing in reach." };
+    foe.hp -= 1;
+    foe.hurt = 0.18;
+    if (foe.hp <= 0) {
+      foe.wait = 8;
+      return { msg: `The shade breaks.${grant(s, "combat", 12)}` };
+    }
+    return { msg: `You strike the shade.${grant(s, "combat", 4)}` };
+  }
+  if ((s.wing ?? 0) === 5 || (s.wing ?? 0) === 6) {
+    if (!inReach(s, px, py)) return { msg: "Too far." };
+    const plot = (s.wing ?? 0) === 5 ? armourPlotAt(px, py) : weaponPlotAt(px, py);
+    if (!plot) return { msg: "Open ground. The plot is the work." };
     return startAct(s, "drill", plot.id, 0.8);
   }
   if ((s.wing ?? 0) !== 0) {
@@ -1040,7 +1227,7 @@ export function resolveAction(s: GameState): string {
   const act = s.action;
   if (!act) return s.message;
   if (act.kind === "drill") {
-    const plot = GROVE_PLOTS.find((p) => p.id === act.target);
+    const plot = GROVE_PLOTS.find((p) => p.id === act.target) ?? COMBAT_PLOTS.find((p) => p.id === act.target) ?? ARMOUR_PLOTS.find((p) => p.id === act.target) ?? WEAPON_PLOTS.find((p) => p.id === act.target);
     if (!plot || plot.skill === "magic") return "Magic is trained on the courtyard seal.";
     s.stamina = Math.max(0, s.stamina - 2);
     return `He works the ${plot.name.toLowerCase()}.${grant(s, plot.skill, 8)}`;
@@ -1483,6 +1670,11 @@ export function step(s: GameState, dt: number, input: Input) {
       s.cross.moved = true;
       s.life.route = [];
       s.life.errand = null;
+      if (s.wing === 4) {
+        s.downed = false;
+        if (s.health < 28) s.health = 28;
+        if (s.stamina < 40) s.stamina = 40;
+      }
     }
     if (s.cross.t >= 0.85) {
       const learned = grant(s, "exploration", 16) + grant(s, "tracking", 8);
@@ -1533,7 +1725,7 @@ export function step(s: GameState, dt: number, input: Input) {
     const mass = totalMass(s);
     const crawl = s.downed || mass >= MASS_CAP - 0.05;
     const jogging = jog;
-    const onCourt = s.y >= 232 && s.y < 528 && s.x >= 8 && s.x < 344;
+    const onCourt = (s.wing ?? 0) === 0 && s.y >= 232 && s.y < 528 && s.x >= 8 && s.x < 344;
     const wetDrag = onCourt && s.wet > 0.12 ? 1 - Math.min(0.22, s.wet * 0.22) : 1;
     const speed = (s.downed ? 22 : jogging ? 112 : crawl ? 36 : 64) * wetDrag;
     if (mag > 0.08) {
@@ -1550,6 +1742,7 @@ export function step(s: GameState, dt: number, input: Input) {
     }
     if (s.stamina <= 0) down(s);
   }
+  if ((s.wing ?? 0) === 4 && !s.cross) stepRing(s, stepDt);
   s.time = Math.min(0.999, s.time + stepDt / DAY_LEN);
   stepWeather(s, stepDt);
   if (!swinging) tendSelf(s, stepDt, input);
@@ -3050,7 +3243,7 @@ function groveSlide(body: { x: number; y: number; dir?: "n" | "e" | "s" | "w" },
   const dx = tx - body.x;
   const dy = ty - body.y;
   if (Math.abs(dx) < 1.4 && Math.abs(dy) < 1.4) {
-    if (!footBlocked(tx, ty)) {
+    if (!groveBlocked(tx, ty)) {
       body.x = tx;
       body.y = ty;
     }
@@ -3058,7 +3251,7 @@ function groveSlide(body: { x: number; y: number; dir?: "n" | "e" | "s" | "w" },
   }
   const step = Math.min(3.2, speed * dt, Math.max(Math.abs(dx), Math.abs(dy)));
   const go = (nx: number, ny: number) => {
-    if (footBlocked(nx, ny)) return false;
+    if (groveBlocked(nx, ny)) return false;
     faceDelta(body, nx - body.x, ny - body.y);
     body.x = nx;
     body.y = ny;
@@ -3074,57 +3267,71 @@ function groveSlide(body: { x: number; y: number; dir?: "n" | "e" | "s" | "w" },
   return "stuck";
 }
 
-function stepStable(s: GameState, dt: number) {
-  ensureStable(s);
-  const n = s.stable;
-  if (!n || (s.wing ?? 0) !== 2) return;
-  n.poseT += dt;
-  if (n.pause > 0) {
-    n.pause -= dt;
+function stepStable(_s: GameState, _dt: number) {}
+
+const GROVE_HERD: { x: number; y: number }[] = [
+  { x: 174, y: 110 },
+  { x: 174, y: 170 },
+  { x: 174, y: 230 },
+  { x: 174, y: 300 },
+  { x: 174, y: 360 },
+  { x: 174, y: 430 },
+  { x: 120, y: 78 },
+  { x: 230, y: 164 },
+  { x: 240, y: 224 },
+];
+
+function stepGroveCow(s: GameState, a: Animal, dt: number) {
+  if (!a.route) a.route = [];
+  if (a.pause > 0) {
+    a.pause -= dt;
     return;
   }
-  if (n.route.length >= 2) {
-    const moved = groveSlide(n, n.route[0]!, n.route[1]!, 22, dt);
-    if (moved === "walk") return;
-    n.route = n.route.slice(2);
-    if (n.route.length < 2) n.pause = 0.7 + unitRand(s) * 1.1;
+  if (groveBlocked(a.x, a.y)) {
+    a.x = HERD_HOME.cow.x;
+    a.y = HERD_HOME.cow.y;
+    a.route = [];
+    a.pause = 0.4;
     return;
   }
-  if (footBlocked(n.x, n.y)) {
-    n.x = STABLE_HOME.x;
-    n.y = STABLE_HOME.y;
-    n.dir = "s";
-    n.pause = 0.2;
-    return;
+  if (a.route.length < 2) {
+    const goal = pickSpot(s, GROVE_HERD);
+    a.intent = "graze";
+    const elbow = Math.abs(goal.x - a.x) > 6 && Math.abs(goal.y - a.y) > 6;
+    a.route = elbow ? [goal.x, a.y, goal.x, goal.y] : [goal.x, goal.y];
   }
-  const goal = pickSpot(s, STABLE_SPOTS);
-  const spot = nearestOpen(goal.x, goal.y);
-  if (!spot || (Math.abs(spot.x - n.x) < 8 && Math.abs(spot.y - n.y) < 8)) {
-    n.pause = 0.4;
-    return;
-  }
-  const elbow = Math.abs(spot.x - n.x) > 6 && Math.abs(spot.y - n.y) > 6;
-  n.route = elbow ? [spot.x, n.y, spot.x, spot.y] : [spot.x, spot.y];
+  const moved = groveSlide(a, a.route[0]!, a.route[1]!, 8, dt);
+  if (moved === "walk") return;
+  a.route = a.route.slice(2);
+  if (a.route.length < 2) a.pause = 1.6 + unitRand(s) * 1.4;
 }
 
 function stepMaid(s: GameState, dt: number) {
   ensureMaid(s);
   const m = s.maid;
-  if (!m || (s.wing ?? 0) !== 0) return;
+  if (!m) return;
   m.poseT += dt;
   if (m.pause > 0) {
     m.pause -= dt;
     return;
   }
   if (m.route.length >= 2) {
-    const moved = followRoute(m, 16, dt, true);
-    if (moved !== "walk") {
-      m.route = [];
-      m.pause = 1.2 + unitRand(s) * 1.6;
-    }
+    const moved = groveSlide(m, m.route[0]!, m.route[1]!, 16, dt);
+    if (moved === "walk") return;
+    m.route = m.route.slice(2);
+    if (m.route.length < 2) m.pause = 1.2 + unitRand(s) * 1.6;
     return;
   }
-  m.route = gateRoute(m, pickSpot(s, MAID_SPOTS), true);
+  if (groveBlocked(m.x, m.y)) {
+    m.x = MAID_HOME.x;
+    m.y = MAID_HOME.y;
+    m.route = [];
+    m.pause = 0.4;
+    return;
+  }
+  const goal = pickSpot(s, GROVE_HERD);
+  const elbow = Math.abs(goal.x - m.x) > 6 && Math.abs(goal.y - m.y) > 6;
+  m.route = elbow ? [goal.x + 10, m.y, goal.x + 10, goal.y] : [goal.x + 10, goal.y];
 }
 
 function stepXiang64(s: GameState, dt: number) {
@@ -3198,6 +3405,10 @@ function stepCritters(s: GameState, dt: number) {
   stepStable(s, dt);
   stepXiang64(s, dt);
   for (const a of s.animals) {
+    if (a.kind === "cow") {
+      stepGroveCow(s, a, dt);
+      continue;
+    }
     if (!a.route) a.route = [];
     if (a.pause > 0) {
       a.pause -= dt;
@@ -3238,9 +3449,8 @@ function stepCritters(s: GameState, dt: number) {
       a.pause = 0.7;
       continue;
     }
-    if (a.intent === "graze") a.pause = a.kind === "cow" ? 3.4 + unitRand(s) * 1.6 : a.kind === "goat" ? 1.5 + unitRand(s) : 0.55 + unitRand(s) * 0.4;
+    if (a.intent === "graze") a.pause = a.kind === "goat" ? 1.5 + unitRand(s) : 0.55 + unitRand(s) * 0.4;
     else if (a.intent === "drink") a.pause = 2.2 + unitRand(s) * 0.8;
-    else if (a.kind === "cow") a.pause = 1.6 + unitRand(s) * 1.4;
     else if (a.kind === "goat") a.pause = 0.4 + unitRand(s) * 0.7;
     else a.pause = 0.2 + unitRand(s) * 0.35;
     if (a.intent === "graze") a.dir = "s";

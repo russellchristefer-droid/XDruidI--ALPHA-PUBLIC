@@ -1,8 +1,8 @@
-import { CHAR_FOOT_Y, CHAR_H, CHAR_W, DEFS, FISH_WATER, GOAT_PEN, GROVE_DOOR, GROVE_RETURN, HEAVEN_GATE, MEADOW, REAPER_FRAMES, SEAM_ROCKS, TILE, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, FISH_WATER, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MEADOW, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WORLD_H, WORLD_W, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
-import { TOOL_ANIM, findItem } from "./logic.ts";
+import { TOOL_ANIM, findItem, ringFoes } from "./logic.ts";
 import { drawEastGate } from "./paint/eastGate.ts";
 import { drawWestGate } from "./paint/westGate.ts";
 import { drawMosaicFloors } from "./paint/mosaicFloor.ts";
@@ -1703,7 +1703,7 @@ function paintXiang64(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameStat
 }
 
 function paintMaid(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
-  if ((s.wing ?? 0) !== 0) return;
+  if ((s.wing ?? 0) !== 2) return;
   const m = s.maid;
   if (!m) return;
   const east = m.dir === "e";
@@ -1717,7 +1717,68 @@ function paintMaid(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState):
 }
 
 const STABLE_ROW: Record<"s" | "w" | "e" | "n", number> = { s: 0, w: 1, e: 2, n: 3 };
-const STABLE_SCALE = 0.2;
+const STABLE_SCALE = 0.18;
+const STABLE_CELLS = 14;
+const stablePlain = new Map<string, HTMLCanvasElement>();
+
+function stableBlock(img: HTMLImageElement, col: number, row: number): HTMLCanvasElement | null {
+  const key = `${img.width}:${col}:${row}`;
+  const cached = stablePlain.get(key);
+  if (cached) return cached;
+  if (typeof document === "undefined") return null;
+  const src = document.createElement("canvas");
+  src.width = 144;
+  src.height = 144;
+  const sg = src.getContext("2d", { willReadFrequently: true });
+  if (!sg) return null;
+  sg.imageSmoothingEnabled = false;
+  sg.drawImage(img, col * 144, row * 144, 144, 144, 0, 0, 144, 144);
+  const data = sg.getImageData(0, 0, 144, 144).data;
+  const out = document.createElement("canvas");
+  out.width = STABLE_CELLS;
+  out.height = STABLE_CELLS;
+  const cg = out.getContext("2d");
+  if (!cg) return null;
+  const pixels = cg.createImageData(STABLE_CELLS, STABLE_CELLS);
+  const step = 144 / STABLE_CELLS;
+  for (let cy = 0; cy < STABLE_CELLS; cy++) {
+    for (let cx = 0; cx < STABLE_CELLS; cx++) {
+      const counts = new Map<number, number>();
+      let bestKey = -1;
+      let bestN = 0;
+      let bestAt = 0;
+      const x0 = Math.floor(cx * step);
+      const y0 = Math.floor(cy * step);
+      const x1 = Math.floor((cx + 1) * step);
+      const y1 = Math.floor((cy + 1) * step);
+      for (let y = y0; y < y1; y += 2) {
+        for (let x = x0; x < x1; x += 2) {
+          const i = (y * 144 + x) * 4;
+          if ((data[i + 3] ?? 0) < 128) continue;
+          const bucket = ((data[i] ?? 0) >> 4) * 256 + ((data[i + 1] ?? 0) >> 4) * 16 + ((data[i + 2] ?? 0) >> 4);
+          const n = (counts.get(bucket) ?? 0) + 1;
+          counts.set(bucket, n);
+          if (n > bestN) {
+            bestN = n;
+            bestKey = bucket;
+            bestAt = i;
+          }
+        }
+      }
+      const o = (cy * STABLE_CELLS + cx) * 4;
+      if (bestKey < 0) pixels.data[o + 3] = 0;
+      else {
+        pixels.data[o] = data[bestAt] ?? 0;
+        pixels.data[o + 1] = data[bestAt + 1] ?? 0;
+        pixels.data[o + 2] = data[bestAt + 2] ?? 0;
+        pixels.data[o + 3] = 255;
+      }
+    }
+  }
+  cg.putImageData(pixels, 0, 0);
+  stablePlain.set(key, out);
+  return out;
+}
 
 function paintStable(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState): void {
   if ((s.wing ?? 0) !== 2) return;
@@ -1729,7 +1790,10 @@ function paintStable(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState
   const row = STABLE_ROW[n.dir] ?? 0;
   const frames = moving ? Math.max(1, Math.floor(img.width / 144)) : 1;
   const col = moving ? Math.floor(n.poseT * 8) % frames : 0;
-  blit(ctx, img, col * 144, row * 144, 144, 144, n.x, n.y, STABLE_SCALE, false, 72, 139);
+  const block = stableBlock(img, col, row);
+  if (!block) return;
+  const show = Math.round(144 * STABLE_SCALE);
+  blit(ctx, block, 0, 0, STABLE_CELLS, STABLE_CELLS, n.x, n.y, show / STABLE_CELLS, false, (72 / 144) * STABLE_CELLS, (139 / 144) * STABLE_CELLS);
 }
 
 const PLATE = 192;
@@ -2515,6 +2579,23 @@ function vimanaSeat(x: number): { top: number; bottom: number } | null {
   return { top, bottom: top + 22 };
 }
 
+const CONDUITS = [52, 100, 148, 172, 204, 252, 300];
+
+function vimanaSpan(x: number): number {
+  const t = x / (WORLD_W - 1);
+  return Math.max(0, 1 - Math.abs(t - 0.5) * 2);
+}
+
+function vimanaBot(x: number): number {
+  return 6 + Math.round(vimanaSpan(x) * 76);
+}
+
+function conduitX(feed: number, drop: number): number {
+  const mid = (WORLD_W - 1) * 0.5;
+  const lean = (feed - mid) / mid;
+  return feed - lean * drop * drop * 18;
+}
+
 function ensureRock(): HTMLCanvasElement | null {
   if (rockPlate) return rockPlate;
   if (typeof document === "undefined") return null;
@@ -2526,14 +2607,10 @@ function ensureRock(): HTMLCanvasElement | null {
   if (!g) return null;
   const img = g.createImageData(WORLD_W, h);
   const d = img.data;
-  const belly = (x: number) => {
-    const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
-    return 8 + Math.round(Math.sqrt(dome) * 74);
-  };
   for (let x = 0; x < WORLD_W; x++) {
     const t = x / (WORLD_W - 1);
-    const dome = Math.sin(t * Math.PI);
-    const bot = Math.min(h - 1, belly(x));
+    const dome = vimanaSpan(x);
+    const bot = Math.min(h - 1, vimanaBot(x));
     const keel = 1 - Math.abs(t - 0.5) * 2;
     for (let y = 0; y < bot; y++) {
       const u = y / Math.max(1, bot - 1);
@@ -2541,10 +2618,20 @@ function ensureRock(): HTMLCanvasElement | null {
       const spec = (n & 5) - 2;
       const lx = x & 7;
       const ly = y & 3;
-      const light = ((x >> 3) + (y >> 2)) & 1;
+      const light = ((x >> 3) + (y >> 2)) % 2 === 0;
       let rgb: readonly [number, number, number];
-      if (y === 0) rgb = [232, 196, 110];
-      else if (u < 0.5) {
+      if (y === 0) {
+        rgb = [232, 196, 110];
+        for (const feed of [52, 100, 148, 172, 204, 252, 300]) {
+          const dx = x - feed;
+          if (Math.abs(dx) > 3) continue;
+          if (dx === 0) rgb = [214, 240, 255];
+          else if (Math.abs(dx) === 1) rgb = [36, 48, 72];
+          else if (Math.abs(dx) === 2) rgb = [236, 196, 96];
+          else rgb = [236, 228, 250];
+          break;
+        }
+      } else if (u < 0.5) {
         const drop = u / 0.5;
         const sun = 1 - drop * drop * 0.62;
         const cool = drop * 16;
@@ -2554,23 +2641,91 @@ function ensureRock(): HTMLCanvasElement | null {
         else if (light) {
           rgb = tile(ly === 1 ? [255, 238, 204] : ly === 3 ? [132, 96, 58] : [224, 190, 132]);
           if (lx === 3 && ly === 2 && drop < 0.5) rgb = tile([255, 214, 120]);
-        } else rgb = tile(ly === 1 ? [58, 52, 74] : ly === 3 ? [8, 6, 12] : [26, 22, 34]);
+        } else {
+          rgb = tile(ly === 1 ? [58, 52, 74] : ly === 3 ? [8, 6, 12] : [26, 22, 34]);
+          if (lx === 4 && ly === 2 && n % 3 === 0) rgb = tile([72, 96, 150]);
+        }
+        for (const feed of CONDUITS) {
+          const dx = Math.round(x - conduitX(feed, drop));
+          if (Math.abs(dx) > 3) continue;
+          if (dx === 0) rgb = tile(ly === 1 ? [214, 240, 255] : [108, 156, 186]);
+          else if (Math.abs(dx) === 1) rgb = tile([36, 48, 72]);
+          else if (Math.abs(dx) === 2) rgb = tile(ly === 1 ? [236, 196, 96] : [132, 88, 36]);
+          else rgb = tile(ly === 1 ? [236, 228, 250] : [168, 156, 198]);
+          break;
+        }
       } else {
         const depth = (u - 0.5) / 0.5;
-        const far = 0.4 + depth * 0.12;
-        const onRib = ly === 0;
-        const onPost = lx === 0;
-        rgb = [(34 + spec) * far, (22 + spec) * far, (52 + spec) * far + 10];
-        if (onRib || onPost) rgb = [120 * far, 86 * far, 36 * far];
-        if (keel > 0.88 && Math.abs(x - (WORLD_W >> 1)) < 2) rgb = [200 * far, 160 * far, 78 * far];
-        if (n % 29 === 0 && depth > 0.12 && depth < 0.82 && !onRib && !onPost) {
-          const gem = n % 3;
-          rgb = gem === 0 ? [170 * far, 32 * far, 56 * far] : gem === 1 ? [32 * far, 84 * far, 170 * far] : [24 * far, 136 * far, 78 * far];
+        const round = 0.58 + dome * 0.42;
+        const row = y >> 2;
+        const seam = lx === 0 || ly === 0;
+        const gem = lx >= 3 && lx <= 4 && ly >= 1 && ly <= 2 && ((x >> 3) + row) % 5 === 2;
+        const kind = ((x >> 3) + row) % 3;
+        let r: number;
+        let gch: number;
+        let b: number;
+        if (depth < 0.06) {
+          r = 14;
+          gch = 10;
+          b = 20;
+        } else if (gem) {
+          if (kind === 0) {
+            r = 196;
+            gch = 42;
+            b = 72;
+          } else if (kind === 1) {
+            r = 46;
+            gch = 112;
+            b = 204;
+          } else {
+            r = 36;
+            gch = 176;
+            b = 104;
+          }
+          if (lx === 3 && ly === 1) {
+            r = 255;
+            gch = 244;
+            b = 220;
+          }
+        } else if (seam) {
+          r = ly === 0 ? 112 : 176;
+          gch = ly === 0 ? 78 : 132;
+          b = ly === 0 ? 34 : 58;
+        } else if (ly === 1) {
+          r = 72;
+          gch = 56;
+          b = 96;
+        } else if (ly === 3) {
+          r = 18;
+          gch = 14;
+          b = 32;
+        } else {
+          r = 40 + spec;
+          gch = 30 + spec;
+          b = 64;
+          if (lx === 6 && ly === 2) {
+            r = 210;
+            gch = 168;
+            b = 78;
+          }
         }
-        if (depth < 0.08) rgb = [16, 12, 22];
+        if (keel > 0.92 && Math.abs(x - (WORLD_W >> 1)) <= 1 && !gem) {
+          r = ly === 1 ? 248 : 188;
+          gch = ly === 1 ? 220 : 146;
+          b = 92;
+        }
+        const plane = t < 0.5 ? 1.14 : 0.72;
+        const lift = (0.78 + depth * 0.16) * round * plane;
+        rgb = [r * lift, gch * lift, b * lift];
       }
+      if (y === 6) rgb = [rgb[0] * 0.42, rgb[1] * 0.38, rgb[2] * 0.5];
+      if (dome > 0.94 && y > bot - 5 && y < bot - 1) rgb = t < 0.5 ? [228, 190, 104] : [132, 92, 42];
       if (y === bot - 1) rgb = [4, 4, 10];
-      else if (y === bot - 2 && dome > 0.16) rgb = keel > 0.45 ? [220, 176, 86] : [150, 186, 220];
+      else if (y === bot - 2 && dome > 0.04) rgb = t < 0.5 ? [220, 176, 86] : [86, 60, 30];
+      if (y > 0 && y < 6) {
+        const shade = 0.68 + (y / 6) * 0.32;
+        rgb = [rgb[0] * shade, rgb[1] * shade, rgb[2] * shade];
+      }
       putPix(d, WORLD_W, x, y, rgb);
     }
   }
@@ -2793,41 +2948,125 @@ function drawGoatSlash(ctx: CanvasRenderingContext2D, s: GameState): void {
   }
 }
 
-function drawVimanaTone(ctx: CanvasRenderingContext2D, time: number): void {
+function skyWash(time: number): { tone: string; alpha: number } | null {
   const hour = 6 + time * 16;
-  let tone = "212, 164, 72";
-  let a = 0.08;
-  if (hour < 8) {
-    tone = "228, 176, 78";
-    a = 0.1 + ((8 - hour) / 2) * 0.22;
-  } else if (hour >= 17 && hour < 20) {
-    tone = "92, 28, 36";
-    a = 0.08 + ((hour - 17) / 3) * 0.28;
-  } else if (hour >= 20) {
-    tone = "12, 14, 28";
-    a = Math.min(0.5, 0.16 + ((hour - 20) / 2) * 0.28);
-  }
+  if (hour < 8) return { tone: "255, 168, 80", alpha: ((8 - hour) / 2) * 0.22 };
+  if (hour >= 17 && hour < 20) return { tone: "92, 54, 92", alpha: ((hour - 17) / 3) * 0.28 };
+  if (hour >= 20) return { tone: "8, 14, 36", alpha: Math.min(0.62, 0.28 + ((hour - 20) / 2) * 0.34) };
+  return null;
+}
+
+function drawVimanaTone(ctx: CanvasRenderingContext2D, time: number): void {
+  const wash = skyWash(time);
+  if (!wash) return;
   const top = FARM_H;
-  const h = 96;
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(0, top);
   for (let x = 0; x <= WORLD_W; x += 4) {
-    const dome = Math.sin((x / (WORLD_W - 1)) * Math.PI);
-    ctx.lineTo(x, top + 8 + Math.sqrt(dome) * 74);
+    ctx.lineTo(x, top + vimanaBot(x));
   }
   ctx.lineTo(WORLD_W, top);
   ctx.closePath();
   ctx.clip();
-  const bands = 7;
-  for (let i = 0; i < bands; i++) {
-    const fall = 1 - i / (bands - 1);
-    const alpha = a * fall * fall;
-    if (alpha < 0.02) continue;
-    const y0 = top + Math.floor((i * h) / bands);
-    const y1 = top + Math.floor(((i + 1) * h) / bands);
-    ctx.fillStyle = `rgba(${tone}, ${alpha})`;
-    ctx.fillRect(0, y0, WORLD_W, y1 - y0);
+  ctx.fillStyle = `rgba(${wash.tone}, ${wash.alpha})`;
+  ctx.fillRect(0, top, WORLD_W, 96);
+  ctx.restore();
+}
+
+function clipVimana(ctx: CanvasRenderingContext2D): void {
+  const top = FARM_H;
+  ctx.beginPath();
+  ctx.moveTo(0, top);
+  for (let x = 0; x <= WORLD_W; x += 4) {
+    ctx.lineTo(x, top + vimanaBot(x));
+  }
+  ctx.lineTo(WORLD_W, top);
+  ctx.closePath();
+  ctx.clip();
+}
+
+function arcBolt(t: number): string {
+  const stops: Array<[number, number, number]> = [
+    [255, 70, 190],
+    [255, 230, 70],
+    [70, 255, 150],
+    [70, 220, 255],
+    [180, 90, 255],
+  ];
+  const h = ((t % 1) + 1) % 1;
+  const f = h * stops.length;
+  const i = Math.floor(f) % stops.length;
+  const j = (i + 1) % stops.length;
+  const u = f - Math.floor(f);
+  const a = stops[i]!;
+  const b = stops[j]!;
+  return `${Math.round(a[0] + (b[0] - a[0]) * u)}, ${Math.round(a[1] + (b[1] - a[1]) * u)}, ${Math.round(a[2] + (b[2] - a[2]) * u)}`;
+}
+
+function oilSheen(t: number): string {
+  const stops: Array<[number, number, number]> = [
+    [255, 176, 214],
+    [255, 228, 168],
+    [150, 228, 206],
+    [168, 206, 255],
+    [214, 176, 255],
+  ];
+  const h = ((t % 1) + 1) % 1;
+  const f = h * stops.length;
+  const i = Math.floor(f) % stops.length;
+  const j = (i + 1) % stops.length;
+  const u = f - Math.floor(f);
+  const a = stops[i]!;
+  const b = stops[j]!;
+  return `${Math.round(a[0] + (b[0] - a[0]) * u)}, ${Math.round(a[1] + (b[1] - a[1]) * u)}, ${Math.round(a[2] + (b[2] - a[2]) * u)}`;
+}
+
+function drawVimanaLight(ctx: CanvasRenderingContext2D, clock: number): void {
+  const top = FARM_H;
+  ctx.save();
+  clipVimana(ctx);
+  ctx.globalCompositeOperation = "lighter";
+  const filmShift = clock * 0.02;
+  for (let x = 0; x < WORLD_W; x += 8) {
+    const dome = vimanaSpan(x);
+    const bot = vimanaBot(x);
+    const face = Math.floor(bot * 0.5);
+    const h = bot - face - 2;
+    if (h < 2) continue;
+    const film = 0.5 + 0.5 * Math.sin(x * 0.02 + clock * 0.25);
+    ctx.fillStyle = `rgba(${oilSheen(film + filmShift)}, ${(0.03 + dome * 0.04) * (0.7 + 0.3 * film)})`;
+    ctx.fillRect(x, top + face + 1, 8, h);
+  }
+  const climb = (clock * 0.32) % 1;
+  ctx.fillStyle = `rgba(${arcBolt(climb + 0.15)}, 0.4)`;
+  for (const feed of CONDUITS) {
+    const face = Math.floor(vimanaBot(feed) * 0.5);
+    const head = face * (1 - climb);
+    const y0 = Math.max(2, Math.floor(head));
+    const y1 = Math.min(face, y0 + Math.floor(face * 0.42));
+    for (let y = y0; y < y1; y += 3) {
+      const x = Math.round(conduitX(feed, y / Math.max(1, face)));
+      const trail = (y - head) / Math.max(8, face * 0.42);
+      ctx.globalAlpha = Math.max(0, 1 - trail) * 0.42;
+      ctx.fillRect(x, top + y, 1, 1);
+    }
+  }
+  ctx.globalAlpha = 1;
+  const breathe = 0.75 + 0.25 * Math.sin(clock * 0.7);
+  const hue = clock * 0.04;
+  for (let x = 0; x < WORLD_W; x += 2) {
+    const dome = vimanaSpan(x);
+    const bot = vimanaBot(x);
+    const face = Math.max(1, Math.floor(bot * 0.5));
+    const deep = 0.45 + dome * 0.2;
+    const along = x / (WORLD_W - 1);
+    ctx.fillStyle = `rgba(${arcBolt(along + hue)}, ${0.08 * breathe * deep})`;
+    ctx.fillRect(x, top + face + 1, 2, Math.max(1, bot - face - 3));
+    ctx.fillStyle = `rgba(${arcBolt(along + hue)}, ${0.32 * breathe * deep})`;
+    ctx.fillRect(x, top + bot - 1, 2, 1);
+    ctx.fillStyle = `rgba(${arcBolt(along + hue + 0.2)}, ${0.18 * breathe * deep})`;
+    ctx.fillRect(x, top + face, 2, 1);
   }
   ctx.restore();
 }
@@ -2835,11 +3074,6 @@ function drawVimanaTone(ctx: CanvasRenderingContext2D, time: number): void {
 function drawUnderside(ctx: CanvasRenderingContext2D, _vimana?: HTMLImageElement): void {
   const rock = ensureRock();
   if (!rock) return;
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  fillOval(ctx, WORLD_W * 0.5, FARM_H + 84, 22, 5, "rgba(186, 148, 64, 0.22)");
-  fillOval(ctx, WORLD_W * 0.5 - 46, FARM_H + 36, 18, 4, "rgba(120, 150, 190, 0.08)");
-  ctx.restore();
   ctx.drawImage(rock, 0, FARM_H);
 }
 
@@ -3818,41 +4052,433 @@ function drawRealmFringe(ctx: CanvasRenderingContext2D, s: GameState): void {
   }
 }
 
-function paintFlatPortal(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number): void {
+function paintFlatPortal(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  clock: number,
+  kind: "skill" | "combat" | "home" | "ring" | "armour" | "weapon",
+): void {
   const rx = 12;
   const ry = 7;
-  const beat = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(clock * 2.4));
-  for (let y = -ry - 2; y <= ry + 2; y++) {
-    for (let x = -rx - 2; x <= rx + 2; x++) {
-      const dx = x / rx;
-      const dy = y / ry;
-      const d = dx * dx + dy * dy;
-      const px = cx + x;
-      const py = cy + y;
-      if (d <= 0.42) {
-        ctx.fillStyle = (x + y + Math.floor(clock * 3)) % 5 === 0 ? "#6a4a98" : "#2a1848";
-        ctx.fillRect(px, py, 1, 1);
-      } else if (d <= 0.72) {
-        ctx.fillStyle = beat > 0.7 && (x * 3 + y) % 4 === 0 ? "#fff1c0" : "#c49adf";
-        ctx.fillRect(px, py, 1, 1);
-      } else if (d <= 1) {
-        ctx.fillStyle = "#e2b657";
-        ctx.fillRect(px, py, 1, 1);
-      } else if (d <= 1.18) {
-        ctx.fillStyle = "#3a2a18";
-        ctx.fillRect(px, py, 1, 1);
+  const drift = clock * 1.2;
+  const tone =
+    kind === "combat"
+      ? { mist: ["#f6d6e4", "#e8c8f2", "#f8e0d0", "#d8c8f4"], deep: "#c4a0b8", heart: "#fff0f6", glow: "244, 210, 230" }
+      : kind === "skill"
+        ? { mist: ["#d8f6ea", "#c8e8f6", "#e6d8f8", "#d0f0dc"], deep: "#9cc8c8", heart: "#f4fffb", glow: "200, 236, 228" }
+        : kind === "ring"
+          ? { mist: ["#f6c0b4", "#f8d0a8", "#e8a8a4", "#f4d4c0"], deep: "#c07870", heart: "#fff2ea", glow: "236, 168, 140" }
+          : kind === "armour"
+            ? { mist: ["#c8f4b4", "#d8f8c8", "#b8e8a8", "#e4f8d4"], deep: "#7aaa72", heart: "#f4fff0", glow: "188, 228, 168" }
+            : kind === "weapon"
+              ? { mist: ["#fff0b4", "#ffe6a4", "#fff6cc", "#f8e49a"], deep: "#c8b070", heart: "#fffce8", glow: "240, 220, 150" }
+              : { mist: ["#efe6d4", "#d8dcf0", "#e8e0d0", "#dce6f4"], deep: "#c0b8a8", heart: "#fffaf0", glow: "232, 226, 210" };
+  const breathe = 0.1 + 0.05 * Math.sin(clock * 1.6);
+  for (let y = -ry - 3; y <= ry + 3; y++) {
+    for (let x = -rx - 3; x <= rx + 3; x++) {
+      const d = (x / rx) * (x / rx) + (y / ry) * (y / ry);
+      if (d <= 1.02 || d > 1.32) continue;
+      if (((x + y) & 1) !== 0) continue;
+      ctx.fillStyle = `rgba(${tone.glow}, ${((1.32 - d) / 0.3 * breathe).toFixed(3)})`;
+      ctx.fillRect(cx + x, cy + y, 1, 1);
+    }
+  }
+  for (let y = -ry - 1; y <= ry + 1; y++) {
+    for (let x = -rx - 1; x <= rx + 1; x++) {
+      const nx = x / rx;
+      const ny = y / ry;
+      const d = nx * nx + ny * ny;
+      if (d > 1.05) continue;
+      const wx = cx + x;
+      const wy = cy + y;
+      if (d > 0.9) {
+        ctx.fillStyle = y > 1 ? "#5c4836" : "#c8b48e";
+        ctx.fillRect(wx, wy, 1, 1);
+        continue;
+      }
+      const wave = 0.5 + 0.5 * Math.sin(Math.atan2(ny, nx) * 3 + drift + d * 5);
+      ctx.fillStyle = d < 0.22 ? tone.heart : d > 0.74 ? tone.deep : tone.mist[Math.min(tone.mist.length - 1, Math.floor(wave * tone.mist.length))]!;
+      ctx.fillRect(wx, wy, 1, 1);
+    }
+  }
+}
+
+let grovePlate: HTMLCanvasElement | null = null;
+
+function fitStamp(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement | undefined,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  sx = 0,
+  sy = 0,
+  sw = 0,
+  sh = 0,
+): void {
+  if (!img || img.width < 2) return;
+  const srcW = sw > 0 ? sw : img.width;
+  const srcH = sh > 0 ? sh : img.height;
+  const dw = Math.max(1, Math.round(w));
+  const dh = Math.max(1, Math.round(h));
+  ctx.drawImage(img, sx, sy, srcW, srcH, x, y, dw, dh);
+}
+
+function tileFill(ctx: CanvasRenderingContext2D, img: HTMLImageElement | undefined, x: number, y: number, w: number, h: number): void {
+  if (!img || img.width < 2) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  for (let yy = y; yy < y + h; yy += img.height) {
+    for (let xx = x; xx < x + w; xx += img.width) ctx.drawImage(img, xx, yy);
+  }
+  ctx.restore();
+}
+
+const YARD_GROUT = "#302418";
+const YARD_GOLD = "#e2b657";
+const YARD_GOLD_H = "#ffecaa";
+const YARD_GOLD_D = "#785018";
+const YARD_IVORY = "#d6c4a0";
+const YARD_LIGHT = "#ead8b4";
+const YARD_SHADE = "#6e5438";
+const YARD_LAPIS = "#3a5280";
+const YARD_LAPIS_D = "#20304a";
+const YARD_SUN = "#fff4d2";
+const YARD_CURB = "#4e3824";
+
+function yardLip(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  g.fillStyle = YARD_GROUT;
+  g.fillRect(x, y, w, 1);
+  g.fillRect(x, y + h - 1, w, 1);
+  g.fillRect(x, y, 1, h);
+  g.fillRect(x + w - 1, y, 1, h);
+  g.fillStyle = YARD_GOLD_H;
+  g.fillRect(x + 1, y + 1, Math.max(1, w - 2), 1);
+  g.fillStyle = YARD_SHADE;
+  g.fillRect(x + 1, y + h - 2, Math.max(1, w - 2), 1);
+}
+
+function sitSprite(
+  g: CanvasRenderingContext2D,
+  img: HTMLImageElement | undefined,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  sx = 0,
+  sy = 0,
+  sw = 0,
+  sh = 0,
+): void {
+  if (!img || img.width < 2) return;
+  const srcW = sw > 0 ? sw : img.width;
+  const srcH = sh > 0 ? sh : img.height;
+  const scale = Math.min(1, (w - 4) / srcW, (h - 2) / srcH);
+  const dw = Math.max(1, Math.round(srcW * scale));
+  const dh = Math.max(1, Math.round(srcH * scale));
+  g.drawImage(img, sx, sy, srcW, srcH, x + Math.round((w - dw) / 2), y + h - dh - 1, dw, dh);
+}
+
+function paintGrovePlots(g: CanvasRenderingContext2D, sheets: Sheets): void {
+  const bed = (x: number, y: number, w: number, h: number, img?: HTMLImageElement) => {
+    tileFill(g, img, x + 1, y + 1, w - 2, h - 2);
+    yardLip(g, x, y, w, h);
+  };
+  const pool = (x: number, y: number, w: number, h: number) => {
+    bed(x, y, w, h, sheets.landWater);
+    g.fillStyle = YARD_SUN;
+    g.fillRect(x + 4, y + 3, Math.max(2, Math.floor(w / 3)), 1);
+    g.fillStyle = YARD_LAPIS_D;
+    g.fillRect(x + 3, y + h - 4, Math.max(2, w - 6), 1);
+  };
+  for (const plot of GROVE_PLOTS) {
+    const { id, x, y, w, h } = plot;
+    if (id === "g-farm") {
+      bed(x, y, w, h, sheets.landTilled);
+      g.fillStyle = YARD_SHADE;
+      for (let row = y + 6; row < y + h - 3; row += 5) g.fillRect(x + 3, row, w - 6, 1);
+      g.fillStyle = YARD_LIGHT;
+      for (let row = y + 5; row < y + h - 3; row += 5) g.fillRect(x + 3, row, w - 6, 1);
+      sitSprite(g, sheets.greens, x + 4, y, 24, h, 0, 0, 16, 16);
+      sitSprite(g, sheets.tomato, x + 32, y, 24, h, 0, 0, 16, 16);
+      sitSprite(g, sheets.cabbage, x + 58, y, 24, h, 0, 0, 16, 16);
+    } else if (id === "g-herb") {
+      bed(x, y, w, h, sheets.landSoil);
+      for (let i = 0; i < 6; i++) sitSprite(g, sheets.flowers, x + (i % 3) * 26, y + Math.floor(i / 3) * 14, 26, 16, (i % 3) * 16, Math.floor(i / 3) * 16, 16, 16);
+    } else if (id === "g-herd" || id === "g-fish" || id === "g-heal") {
+      pool(x, y, w, h);
+      if (id === "g-herd") {
+        g.fillStyle = YARD_GOLD_D;
+        g.fillRect(x, y, w, 2);
+        g.fillStyle = YARD_GOLD_H;
+        g.fillRect(x, y, w, 1);
+      }
+    } else if (id === "g-build" || id === "g-track") {
+      sitSprite(g, sheets.rocks, x, y, w, h, id === "g-track" ? 48 : 0, 0, 48, 48);
+      yardLip(g, x, y, w, h);
+    } else if (id === "g-explore") {
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x + 2, y + 2, w - 4, h - 3);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = YARD_GOLD;
+      g.fillRect(x + 6, y + 8, 4, 1);
+      g.fillRect(x + 7, y + 6, 2, 5);
+    } else if (id === "g-forage") {
+      sitSprite(g, sheets.treePine, x, y, w, h);
+    } else if (id === "g-wood") {
+      sitSprite(g, sheets.treeStump, x, y, w, h);
+    } else if (id === "g-cook") {
+      sitSprite(g, sheets.campfire, x, y, w, h, 0, 56, 48, 40);
+    } else if (id === "g-live") {
+      g.fillStyle = YARD_GOLD_D;
+      g.fillRect(x, y + 4, 2, h - 4);
+      g.fillRect(x + w - 2, y + 4, 2, h - 4);
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x, y, w, 5);
+      g.fillStyle = YARD_GOLD_H;
+      g.fillRect(x, y, w, 1);
+      g.fillStyle = YARD_GROUT;
+      g.fillRect(x, y + 4, w, 1);
+      g.fillStyle = YARD_LAPIS_D;
+      g.fillRect(x + 4, y + 7, w - 8, h - 9);
+    } else if (id === "g-rite") {
+      yardLip(g, x, y, w, h);
+      g.fillStyle = YARD_IVORY;
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        g.fillRect(Math.round(x + w / 2 + Math.cos(a) * (w / 2 - 5)), Math.round(y + h / 2 + Math.sin(a) * (h / 2 - 5)), 2, 2);
+      }
+      g.fillStyle = YARD_GOLD;
+      g.fillRect(x + Math.floor(w / 2) - 1, y + Math.floor(h / 2) - 1, 2, 2);
+    } else if (id === "g-magic") {
+      yardLip(g, x, y, w, h);
+      for (let ty = 0; ty < 4; ty++) {
+        for (let tx = 0; tx < 2; tx++) {
+          g.fillStyle = (tx + ty) % 2 === 0 ? YARD_IVORY : YARD_LAPIS;
+          g.fillRect(x + 2 + tx * 5, y + 3 + ty * 4, 4, 3);
+        }
       }
     }
   }
 }
 
-function drawGrove(ctx: CanvasRenderingContext2D, sheet?: HTMLImageElement): void {
-  ctx.imageSmoothingEnabled = false;
-  if (sheet && sheet.width > 0) ctx.drawImage(sheet, 0, 0);
-  else {
-    ctx.fillStyle = "#5a7a34";
-    ctx.fillRect(0, 0, WORLD_W, 528);
+function paintPlotSigns(g: CanvasRenderingContext2D, plots: Array<{ name: string; x: number; y: number; w: number; h: number }>): void {
+  g.save();
+  g.imageSmoothingEnabled = false;
+  g.font = "8px 'Courier New', monospace";
+  g.textBaseline = "top";
+  for (const plot of plots) {
+    const tw = Math.ceil(g.measureText(plot.name).width);
+    const w = tw + 4;
+    const h = 9;
+    let x = Math.round(plot.x + plot.w / 2 - w / 2);
+    let y = plot.y + plot.h + 2;
+    if (x < 12) x = 12;
+    if (x + w > WORLD_W - 12) x = WORLD_W - 12 - w;
+    if (y + h > 516) y = plot.y - h - 2;
+    g.fillStyle = YARD_IVORY;
+    g.fillRect(x, y, w, h);
+    g.fillStyle = YARD_GROUT;
+    g.fillRect(x, y, w, 1);
+    g.fillRect(x, y + h - 1, w, 1);
+    g.fillRect(x, y, 1, h);
+    g.fillRect(x + w - 1, y, 1, h);
+    g.fillStyle = YARD_GOLD_H;
+    g.fillRect(x + 1, y + 1, Math.max(1, w - 2), 1);
+    g.fillStyle = YARD_GROUT;
+    g.fillText(plot.name, x + 2, y + 1);
   }
+  g.restore();
+}
+
+function ensureGrove(sheets: Sheets): HTMLCanvasElement | null {
+  if (grovePlate) return grovePlate;
+  if (typeof document === "undefined") return null;
+  const grass = sheets.landGrass;
+  if (!grass || grass.width < 2) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  for (let y = 0; y < 528; y += grass.height) {
+    for (let x = 0; x < WORLD_W; x += grass.width) g.drawImage(grass, x, y);
+  }
+  g.fillStyle = YARD_CURB;
+  g.fillRect(0, 0, WORLD_W, 8);
+  g.fillRect(0, 520, WORLD_W, 8);
+  g.fillRect(0, 0, 10, 528);
+  g.fillRect(WORLD_W - 10, 0, 10, 528);
+  g.fillStyle = YARD_GOLD_H;
+  g.fillRect(0, 0, WORLD_W, 1);
+  g.fillRect(0, 0, 1, 528);
+  g.fillStyle = YARD_GROUT;
+  g.fillRect(0, 7, WORLD_W, 1);
+  g.fillRect(0, 527, WORLD_W, 1);
+  g.fillRect(9, 0, 1, 528);
+  g.fillRect(WORLD_W - 1, 0, 1, 528);
+  for (let i = 0; i < 8; i++) {
+    const py = 36 + i * 58;
+    fitStamp(g, sheets.treePine, i % 2 === 0 ? 16 : WORLD_W - 48, py, 32, 48);
+  }
+  paintGrovePlots(g, sheets);
+  paintPlotSigns(g, GROVE_PLOTS);
+  grovePlate = canvas;
+  return canvas;
+}
+
+let combatPlate: HTMLCanvasElement | null = null;
+
+function paintCombatPlots(g: CanvasRenderingContext2D): void {
+  for (const plot of COMBAT_PLOTS) {
+    const { id, x, y, w, h } = plot;
+    if (id === "c-plot") {
+      g.fillStyle = "#4a1c22";
+      g.fillRect(x + 4, y + 4, w - 8, h - 8);
+      g.fillStyle = "#8a3038";
+      g.fillRect(x + 10, y + 10, w - 20, h - 20);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = YARD_IVORY;
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        g.fillRect(Math.round(x + w / 2 + Math.cos(a) * (w / 2 - 8)), Math.round(y + h / 2 + Math.sin(a) * (h / 2 - 8)), 2, 2);
+      }
+      g.fillStyle = "#e07070";
+      g.fillRect(x + w / 2 - 2, y + h / 2 - 1, 4, 2);
+    } else if (id === "c-dummy") {
+      g.fillStyle = YARD_GOLD_D;
+      g.fillRect(x + 12, y + 16, 4, h - 16);
+      g.fillStyle = "#c4a06a";
+      g.fillRect(x + 6, y + 8, 16, 16);
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x + 10, y + 2, 8, 8);
+      g.fillStyle = "#3a2414";
+      g.fillRect(x + 12, y + 5, 2, 2);
+      g.fillRect(x + 16, y + 5, 2, 2);
+    } else if (id === "c-arch") {
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x + 6, y + 4, w - 12, h - 8);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = "#8a3038";
+      g.fillRect(x + 12, y + 8, w - 24, h - 16);
+      g.fillStyle = YARD_GOLD_H;
+      g.fillRect(x + w / 2 - 2, y + h / 2 - 2, 4, 4);
+    } else if (id === "c-blade") {
+      g.fillStyle = YARD_GOLD_D;
+      g.fillRect(x + 8, y + 8, 6, h - 8);
+      g.fillStyle = "#d8dce4";
+      g.fillRect(x + 6, y + 2, 4, 16);
+      g.fillStyle = YARD_GOLD_H;
+      g.fillRect(x + 6, y + 2, 1, 16);
+    } else if (id === "c-shield") {
+      g.fillStyle = "#8a3038";
+      g.fillRect(x + 4, y + 4, 16, 18);
+      g.fillStyle = YARD_LAPIS;
+      g.fillRect(x + 26, y + 4, 16, 18);
+      g.fillStyle = YARD_GOLD_H;
+      g.fillRect(x + 10, y + 10, 4, 4);
+      g.fillRect(x + 32, y + 10, 4, 4);
+      g.fillStyle = YARD_GROUT;
+      g.fillRect(x, y + h - 4, w, 4);
+    }
+  }
+}
+
+function ensureCombat(sheets: Sheets): HTMLCanvasElement | null {
+  if (combatPlate) return combatPlate;
+  if (typeof document === "undefined") return null;
+  const grass = sheets.landGrass;
+  if (!grass || grass.width < 2) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  for (let y = 0; y < 528; y += grass.height) {
+    for (let x = 0; x < WORLD_W; x += grass.width) g.drawImage(grass, x, y);
+  }
+  g.fillStyle = YARD_CURB;
+  g.fillRect(0, 0, WORLD_W, 8);
+  g.fillRect(0, 520, WORLD_W, 8);
+  g.fillRect(0, 0, 10, 528);
+  g.fillRect(WORLD_W - 10, 0, 10, 528);
+  g.fillStyle = "#e07070";
+  g.fillRect(0, 0, WORLD_W, 1);
+  g.fillRect(0, 0, 1, 528);
+  g.fillStyle = YARD_GROUT;
+  g.fillRect(0, 7, WORLD_W, 1);
+  g.fillRect(0, 527, WORLD_W, 1);
+  g.fillRect(9, 0, 1, 528);
+  g.fillRect(WORLD_W - 1, 0, 1, 528);
+  for (let i = 0; i < 8; i++) {
+    const py = 36 + i * 58;
+    fitStamp(g, sheets.treePine, i % 2 === 0 ? 16 : WORLD_W - 48, py, 32, 48);
+  }
+  paintCombatPlots(g);
+  paintPlotSigns(g, COMBAT_PLOTS);
+  combatPlate = canvas;
+  return canvas;
+}
+
+let ringPlate: HTMLCanvasElement | null = null;
+
+function ensureRing(sheets: Sheets): HTMLCanvasElement | null {
+  if (ringPlate) return ringPlate;
+  if (typeof document === "undefined") return null;
+  const grass = sheets.landGrass;
+  if (!grass || grass.width < 2) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  for (let y = 0; y < 528; y += grass.height) {
+    for (let x = 0; x < WORLD_W; x += grass.width) g.drawImage(grass, x, y);
+  }
+  g.fillStyle = "#d4d8ee";
+  for (let y = 200; y < 300; y++) {
+    for (let x = 90; x < 260; x++) {
+      const dx = (x - 174) / 78;
+      const dy = (y - 246) / 46;
+      if (dx * dx + dy * dy <= 1) g.fillRect(x, y, 1, 1);
+    }
+  }
+  g.fillStyle = YARD_IVORY;
+  for (const stone of RING_STONES) g.fillRect(stone.x, stone.y, stone.w, stone.h);
+  g.fillStyle = YARD_GROUT;
+  for (const stone of RING_STONES) g.fillRect(stone.x, stone.y, stone.w, 1);
+  g.fillStyle = YARD_CURB;
+  g.fillRect(0, 0, WORLD_W, 8);
+  g.fillRect(0, 520, WORLD_W, 8);
+  g.fillRect(0, 0, 10, 528);
+  g.fillRect(WORLD_W - 10, 0, 10, 528);
+  paintPlotSigns(g, [{ name: "Combat ring", x: 130, y: 308, w: 88, h: 8 }]);
+  ringPlate = canvas;
+  return canvas;
+}
+
+function paintShade(ctx: CanvasRenderingContext2D, x: number, y: number, hurt: number): void {
+  const flash = hurt > 0;
+  ctx.fillStyle = flash ? "#f4f6ff" : "#3a3458";
+  ctx.fillRect(x - 3, y - 12, 6, 8);
+  ctx.fillStyle = flash ? "#fff" : "#dce6ff";
+  ctx.fillRect(x - 1, y - 10, 2, 2);
+  ctx.fillStyle = "#2a243c";
+  ctx.fillRect(x - 2, y - 4, 4, 4);
+}
+
+function drawGrove(ctx: CanvasRenderingContext2D, sheets: Sheets): void {
+  ctx.imageSmoothingEnabled = false;
+  const plate = ensureGrove(sheets);
+  if (plate) ctx.drawImage(plate, 0, 0);
+  else if (sheets.grove && sheets.grove.width > 0) ctx.drawImage(sheets.grove, 0, 0);
 }
 
 function drawRealmGate(ctx: CanvasRenderingContext2D, s: GameState, sheets: Sheets): void {
@@ -3864,6 +4490,88 @@ function drawRealmGate(ctx: CanvasRenderingContext2D, s: GameState, sheets: Shee
   for (const cx of gateXs(wing)) drawPortal(ctx, sheets, cx, 202, portalIsEast(wing, cx), s.clock, true);
 }
 
+const smithPlates = new Map<string, HTMLCanvasElement>();
+
+function paintSmithPlots(g: CanvasRenderingContext2D, kind: "armour" | "weapon"): void {
+  const plots = kind === "armour" ? ARMOUR_PLOTS : WEAPON_PLOTS;
+  const cloth = kind === "armour" ? "#7aaa72" : "#c8b070";
+  const pale = kind === "armour" ? "#d8f4c8" : "#fff0b4";
+  for (const plot of plots) {
+    const { id, x, y, w, h } = plot;
+    if (id.endsWith("plot")) {
+      g.fillStyle = pale;
+      g.fillRect(x + 4, y + 4, w - 8, h - 8);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = cloth;
+      g.fillRect(x + w / 2 - 2, y + h / 2 - 1, 4, 2);
+    } else if (id === "a-stand" || id === "w-haft") {
+      g.fillStyle = YARD_GOLD_D;
+      g.fillRect(x + 10, y + 8, 4, h - 8);
+      g.fillStyle = pale;
+      g.fillRect(x + 4, y + 4, 16, 12);
+      g.fillStyle = cloth;
+      g.fillRect(x + 6, y + 6, 12, 8);
+    } else if (id === "a-helm") {
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x + 6, y + 6, 18, 12);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = cloth;
+      g.fillRect(x + 12, y + 8, 6, 4);
+    } else if (id === "a-mail" || id === "w-bench") {
+      g.fillStyle = YARD_GOLD_D;
+      g.fillRect(x, y + 6, w, h - 6);
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x, y, w, 6);
+      g.fillStyle = YARD_GOLD_H;
+      g.fillRect(x, y, w, 1);
+      g.fillStyle = cloth;
+      g.fillRect(x + 6, y + 8, w - 12, 4);
+    } else if (id === "a-fit" || id === "w-blade") {
+      g.fillStyle = YARD_IVORY;
+      g.fillRect(x + 4, y + 4, w - 8, h - 6);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = "#d8dce4";
+      g.fillRect(x + 8, y + 6, 3, h - 12);
+    } else if (id === "w-forge") {
+      g.fillStyle = "#5c3828";
+      g.fillRect(x + 4, y + 8, w - 8, h - 10);
+      yardLip(g, x, y, w, h);
+      g.fillStyle = "#e07040";
+      g.fillRect(x + 10, y + 12, 8, 4);
+    }
+  }
+}
+
+function ensureSmith(sheets: Sheets, kind: "armour" | "weapon"): HTMLCanvasElement | null {
+  const hit = smithPlates.get(kind);
+  if (hit) return hit;
+  if (typeof document === "undefined") return null;
+  const grass = sheets.landGrass;
+  if (!grass || grass.width < 2) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  for (let y = 0; y < 528; y += grass.height) {
+    for (let x = 0; x < WORLD_W; x += grass.width) g.drawImage(grass, x, y);
+  }
+  g.fillStyle = YARD_CURB;
+  g.fillRect(0, 0, WORLD_W, 8);
+  g.fillRect(0, 520, WORLD_W, 8);
+  g.fillRect(0, 0, 10, 528);
+  g.fillRect(WORLD_W - 10, 0, 10, 528);
+  for (let i = 0; i < 6; i++) {
+    const py = 48 + i * 70;
+    fitStamp(g, sheets.treePine, i % 2 === 0 ? 16 : WORLD_W - 48, py, 32, 48);
+  }
+  paintSmithPlots(g, kind);
+  paintPlotSigns(g, kind === "armour" ? ARMOUR_PLOTS : WEAPON_PLOTS);
+  smithPlates.set(kind, canvas);
+  return canvas;
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   s: GameState,
@@ -3873,10 +4581,17 @@ export function drawWorld(
 ) {
   const wing = s.wing ?? 0;
   if (wing === 2) {
-    drawGrove(ctx, sheets.grove);
-    paintFlatPortal(ctx, GROVE_RETURN.x, GROVE_RETURN.y, s.clock);
+    drawGrove(ctx, sheets);
+    paintFlatPortal(ctx, GROVE_RETURN.x, GROVE_RETURN.y, s.clock, "home");
     const grovePaint: Array<{ y: number; paint: () => void }> = [];
-    if (s.stable) grovePaint.push({ y: s.stable.y, paint: () => paintStable(ctx, sheets, s) });
+    const cow = s.animals.find((a) => a.kind === "cow");
+    if (cow) {
+      grovePaint.push({
+        y: cow.y,
+        paint: () => drawAnimal(ctx, sheets.cowIdle, sheets.cowWalk, s, cow.x, cow.y, cow.dir, cow.pause <= 0, 0.5, 69, 4),
+      });
+    }
+    if (s.maid) grovePaint.push({ y: s.maid.y, paint: () => paintMaid(ctx, sheets, s) });
     if (sheets.idle) {
       grovePaint.push({
         y: s.y,
@@ -3893,6 +4608,69 @@ export function drawWorld(
       const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
       const a = u < 0.5 ? u * 2 : (1 - u) * 2;
       ctx.fillStyle = `rgba(226, 210, 140, ${0.12 + a * 0.7})`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+    return;
+  }
+  if (wing === 3) {
+    const yard = ensureCombat(sheets);
+    if (yard) ctx.drawImage(yard, 0, 0);
+    paintFlatPortal(ctx, COMBAT_RETURN.x, COMBAT_RETURN.y, s.clock, "home");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(160, 48, 56, ${0.1 + a * 0.55})`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+    return;
+  }
+  if (wing === 4) {
+    const yard = ensureRing(sheets);
+    if (yard) ctx.drawImage(yard, 0, 0);
+    paintFlatPortal(ctx, RING_RETURN.x, RING_RETURN.y, s.clock, "home");
+    const bits: Array<{ y: number; paint: () => void }> = [];
+    for (const foe of ringFoes()) {
+      if (foe.hp <= 0) continue;
+      bits.push({ y: foe.y, paint: () => paintShade(ctx, foe.x, foe.y, foe.hurt) });
+    }
+    if (sheets.idle) {
+      bits.push({
+        y: s.y,
+        paint: () => {
+          drawCastRite(ctx, sheets, s);
+          paintPlayer(ctx, sheets, s);
+          drawSpell(ctx, sheets, s);
+        },
+      });
+    }
+    bits.sort((a, b) => a.y - b.y);
+    for (const bit of bits) bit.paint();
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(220, 120, 100, ${0.1 + a * 0.45})`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+    return;
+  }
+  if (wing === 5 || wing === 6) {
+    const yard = ensureSmith(sheets, wing === 5 ? "armour" : "weapon");
+    if (yard) ctx.drawImage(yard, 0, 0);
+    paintFlatPortal(ctx, wing === 5 ? ARMOUR_RETURN.x : WEAPON_RETURN.x, wing === 5 ? ARMOUR_RETURN.y : WEAPON_RETURN.y, s.clock, "home");
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = wing === 5 ? `rgba(180, 220, 160, ${0.1 + a * 0.45})` : `rgba(230, 200, 120, ${0.1 + a * 0.45})`;
       ctx.fillRect(0, 0, WORLD_W, WORLD_H);
     }
     return;
@@ -3932,7 +4710,11 @@ export function drawWorld(
   if (plate) ctx.drawImage(plate, 0, 0);
   else if (yard && yard.naturalWidth > 0) ctx.drawImage(yard, 0, 0, WORLD_W, PLATE, 0, 0, WORLD_W, PLATE);
   drawMosaicFloors(ctx, s.clock, s.wet, yard, sheets.svarga, sheets.naraka);
-  paintFlatPortal(ctx, GROVE_DOOR.x, GROVE_DOOR.y, s.clock);
+  paintFlatPortal(ctx, ARMOUR_DOOR.x, ARMOUR_DOOR.y, s.clock, "armour");
+  paintFlatPortal(ctx, WEAPON_DOOR.x, WEAPON_DOOR.y, s.clock, "weapon");
+  paintFlatPortal(ctx, RING_DOOR.x, RING_DOOR.y, s.clock, "ring");
+  paintFlatPortal(ctx, COMBAT_DOOR.x, COMBAT_DOOR.y, s.clock, "combat");
+  paintFlatPortal(ctx, GROVE_DOOR.x, GROVE_DOOR.y, s.clock, "skill");
 
   ctx.save();
   ctx.beginPath();
@@ -4020,12 +4802,13 @@ export function drawWorld(
     if (onFarmFrame(y)) over.push(d);
   };
   for (const a of s.animals) {
+    if (a.kind === "cow") continue;
     const moving = a.pause <= 0;
-    const scale = a.kind === "cow" ? 0.5 : a.kind === "goat" ? 0.46 : 0.56;
-    const idle = sheets[a.kind === "cow" ? "cowIdle" : a.kind === "goat" ? "goatIdle" : "roosterIdle"];
-    const walk = sheets[a.kind === "cow" ? "cowWalk" : a.kind === "goat" ? "goatWalk" : "roosterWalk"];
-    const footY = a.kind === "cow" ? 69 : 66;
-    const rate = a.kind === "cow" ? 4 : 8;
+    const scale = a.kind === "goat" ? 0.46 : 0.56;
+    const idle = sheets[a.kind === "goat" ? "goatIdle" : "roosterIdle"];
+    const walk = sheets[a.kind === "goat" ? "goatWalk" : "roosterWalk"];
+    const footY = 66;
+    const rate = 8;
     stage(a.y, () => drawAnimal(ctx, idle, walk, s, a.x, a.y, a.dir, moving, scale, footY, rate), a.x);
   }
   const black = sheets.blackCat;
@@ -4156,21 +4939,9 @@ export function drawWorld(
   if (sheets.idle && (playerInPortal(s) || feetOnPath(sheets, s.x, s.y)) && !onFarmFrame(s.y)) paintPlayer(ctx, sheets, s);
   drawSpell(ctx, sheets, s);
 
-  const hour = 6 + s.time * 16;
-  let sky = "rgba(0,0,0,0)";
-  let skyA = 0;
-  if (hour < 8) {
-    sky = "255, 168, 80";
-    skyA = ((8 - hour) / 2) * 0.22;
-  } else if (hour >= 17 && hour < 20) {
-    sky = "92, 54, 92";
-    skyA = ((hour - 17) / 3) * 0.28;
-  } else if (hour >= 20) {
-    sky = "8, 14, 36";
-    skyA = Math.min(0.62, 0.28 + ((hour - 20) / 2) * 0.34);
-  }
-  if (skyA > 0) {
-    ctx.fillStyle = `rgba(${sky}, ${skyA})`;
+  const wash = skyWash(s.time);
+  if (wash) {
+    ctx.fillStyle = `rgba(${wash.tone}, ${wash.alpha})`;
     ctx.fillRect(0, 0, WORLD_W, FARM_H);
   }
   if (s.wet > 0.04) {
@@ -4262,5 +5033,6 @@ export function drawWorld(
   drawUnderside(ctx, sheets.vimana);
   drawFarmRack(ctx, s);
   drawVimanaTone(ctx, s.time);
+  drawVimanaLight(ctx, s.clock);
   drawGoatSlash(ctx, s);
 }

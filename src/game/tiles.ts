@@ -99,7 +99,7 @@ export function pickRect(kind: "tile" | "cell" | "row" | "column", w: { x: numbe
 export type DevRead = {
   x?: number;
   y?: number;
-  wing?: -1 | 0 | 1 | 2;
+  wing?: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
   weather?: string;
 };
 
@@ -107,6 +107,10 @@ function landName(wing: number | undefined): string {
   if (wing === -1) return "Naraka";
   if (wing === 1) return "Heaven";
   if (wing === 2) return "Skill grove";
+  if (wing === 3) return "Combat yard";
+  if (wing === 4) return "Combat ring";
+  if (wing === 5) return "Armour yard";
+  if (wing === 6) return "Weapon yard";
   return "homestead";
 }
 

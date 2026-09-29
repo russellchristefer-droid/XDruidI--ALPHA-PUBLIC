@@ -21,7 +21,7 @@ export function onMagicPlot(x: number, y: number, wing: number): boolean {
   return x >= MAGIC_PLOT.x && x < MAGIC_PLOT.x + MAGIC_PLOT.w && y >= MAGIC_PLOT.y && y < MAGIC_PLOT.y + MAGIC_PLOT.h;
 }
 export const HERD_HOME = {
-  cow: { x: 56, y: 288 },
+  cow: { x: 174, y: 210 },
   rooster: { x: 112, y: 344 },
   goat: { x: 268, y: 92 },
 } as const;
@@ -787,7 +787,7 @@ export function freshXiang64(): XiangSu {
   return { x: 220, y: 212, dir: "s", pause: 0.5, route: [], poseT: 0 };
 }
 
-export const MAID_HOME = { x: 104, y: 292 } as const;
+export const MAID_HOME = { x: 160, y: 250 } as const;
 
 export function freshMaid(): XiangSu {
   return { x: MAID_HOME.x, y: MAID_HOME.y, dir: "s", pause: 0.8, route: [], poseT: 0 };
@@ -803,7 +803,7 @@ export function ensureMaid(s: GameState): void {
   if (typeof m.pause !== "number") m.pause = 0.6;
   if (typeof m.poseT !== "number") m.poseT = 0;
   if (m.dir !== "n" && m.dir !== "e" && m.dir !== "s" && m.dir !== "w") m.dir = "s";
-  if (m.y < 220 || m.y > 420 || m.x < 28 || m.x > 220) {
+  if (m.y < 56 || m.y > 490 || m.x < 36 || m.x > 310) {
     const home = freshMaid();
     m.x = home.x;
     m.y = home.y;
@@ -932,8 +932,8 @@ export function liturgyOf(spell: SpellId): Liturgy {
 }
 
 /** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
-export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2): string {
-  if (wing === 0 || wing === 2) return SPELL_NAME[spell];
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6): string {
+  if (wing === 0 || wing === 2 || wing === 3 || wing === 4 || wing === 5 || wing === 6) return SPELL_NAME[spell];
   const east = wing === 1;
   switch (spell) {
     case "fireball":
@@ -1100,11 +1100,11 @@ export type GameState = {
   rune: number;
   cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy, 2 the skill grove. */
-  wing: -1 | 0 | 1 | 2;
+  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
   /** A portal crossing. The land changes halfway through the fade. */
   cross: {
     t: number;
-    wing: -1 | 0 | 1 | 2;
+    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6;
     x: number;
     y: number;
     dir: Dir;
@@ -1172,6 +1172,9 @@ export const SKILL_IDS = [
   "ritual",
   "survival",
   "exploration",
+  "combat",
+  "armour",
+  "weapon",
 ] as const;
 
 export type SkillId = (typeof SKILL_IDS)[number];
@@ -1192,6 +1195,9 @@ export const SKILL_NAME: Record<SkillId, string> = {
   ritual: "Ritual",
   survival: "Survival",
   exploration: "Exploration",
+  combat: "Combat",
+  armour: "Armour",
+  weapon: "Weapons",
 };
 
 export const SKILL_NOTE: Record<SkillId, string> = {
@@ -1209,6 +1215,9 @@ export const SKILL_NOTE: Record<SkillId, string> = {
   ritual: "Cast where the loka can answer.",
   survival: "Last the weather, the night, and an empty belly.",
   exploration: "Step off the homestead into another land.",
+  combat: "Drill the combat plot, the dummy, and the range.",
+  armour: "Shape the armour plot, the stand, and the mail.",
+  weapon: "Work the weapon plot, the blade, and the haft.",
 };
 
 export function freshSkills(): SkillBook {
@@ -1403,18 +1412,32 @@ export function ensureGoatPen(s: GameState): void {
   s.goatPen = 1;
 }
 
-/** Cow and rooster live on the courtyard. A save that left them on the farm comes back. */
+/** Cow lives on the skill grove. Rooster stays on the courtyard. A save that left the cow on the farm comes back. */
 export function ensureCourtHerd(s: GameState): void {
   for (const a of s.animals) {
     if (a.kind === "goat") continue;
     const spot = HERD_HOME[a.kind];
-    if (!spot || a.y >= MAGIC_PLOT.y) continue;
+    if (!spot) continue;
+    if (a.kind === "cow") {
+      const lost = a.intent !== "graze" || a.y < 48 || a.y > 510 || a.x < 24 || a.x > 330;
+      if (lost) {
+        a.x = spot.x;
+        a.y = spot.y;
+        a.tx = spot.x;
+        a.ty = spot.y;
+        a.route = [];
+        a.pause = 0.6;
+        a.intent = "graze";
+      }
+      continue;
+    }
+    if (a.y >= MAGIC_PLOT.y) continue;
     a.x = spot.x;
     a.y = spot.y;
     a.tx = spot.x;
     a.ty = spot.y;
     a.route = [];
-    a.pause = a.kind === "cow" ? 1.2 : 0.4;
+    a.pause = 0.4;
     a.intent = "court";
   }
 }
@@ -1504,15 +1527,19 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
-let realmWing: -1 | 0 | 1 | 2 = 0;
+let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0;
 
 /** Farm collision stays on the homestead. Each other land has its own ground. */
-export function setRealm(wing: -1 | 0 | 1 | 2): void {
+export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6): void {
   realmWing = wing;
 }
 
 function realmFeet(x: number, y: number): boolean {
   if (realmWing === 2) return groveFeet(x, y);
+  if (realmWing === 3) return combatFeet(x, y);
+  if (realmWing === 4) return ringFeet(x, y);
+  if (realmWing === 5) return armourFeet(x, y);
+  if (realmWing === 6) return weaponFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
@@ -1639,6 +1666,10 @@ export function grovePlotAt(px: number, py: number): GrovePlot | null {
   return null;
 }
 
+export function groveBlocked(x: number, y: number): boolean {
+  return groveFeet(x, y);
+}
+
 function groveFeet(x: number, y: number): boolean {
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > 512 || box.y < 40) return true;
@@ -1647,10 +1678,168 @@ function groveFeet(x: number, y: number): boolean {
   return false;
 }
 
-export function onGroveDoor(x: number, y: number, cx = GROVE_DOOR.x, cy = GROVE_DOOR.y): boolean {
+export function onGroveDoor(x: number, y: number, cx: number = GROVE_DOOR.x, cy: number = GROVE_DOOR.y): boolean {
   const dx = (x - cx) / 16;
   const dy = (y - cy) / 10;
   return dx * dx + dy * dy <= 1;
+}
+
+/** Flat circle set into the courtyard tiles just above the skill portal. */
+export const COMBAT_DOOR = { x: 308, y: 476 } as const;
+export const COMBAT_ARRIVE = { x: 174, y: 360 } as const;
+export const COMBAT_RETURN = { x: 174, y: 470 } as const;
+
+export type CombatPlot = {
+  id: string;
+  name: string;
+  skill: "combat";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export const COMBAT_PLOTS: CombatPlot[] = [
+  { id: "c-plot", name: "Combat plot", skill: "combat", x: 108, y: 168, w: 120, h: 72 },
+  { id: "c-dummy", name: "Straw dummy", skill: "combat", x: 40, y: 72, w: 28, h: 40 },
+  { id: "c-arch", name: "Archery butt", skill: "combat", x: 248, y: 72, w: 44, h: 36 },
+  { id: "c-blade", name: "Blade post", skill: "combat", x: 44, y: 300, w: 24, h: 36 },
+  { id: "c-shield", name: "Shield rack", skill: "combat", x: 246, y: 300, w: 52, h: 28 },
+];
+
+export const COMBAT_SOLIDS: Rect[] = [
+  { x: 46, y: 84, w: 12, h: 22 },
+  { x: 258, y: 80, w: 24, h: 20 },
+  { x: 50, y: 308, w: 10, h: 22 },
+  { x: 252, y: 306, w: 40, h: 16 },
+];
+
+export function combatPlotAt(px: number, py: number): CombatPlot | null {
+  for (let i = COMBAT_PLOTS.length - 1; i >= 0; i--) {
+    const p = COMBAT_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+function combatFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y + box.h > 512 || box.y < 40) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of COMBAT_SOLIDS) if (overlap(box, s)) return true;
+  return false;
+}
+
+/** Left courtyard tile, level with the gap between the skill and combat portals. */
+export const RING_DOOR = { x: 36, y: 488 } as const;
+export const RING_ARRIVE = { x: 174, y: 246 } as const;
+export const RING_RETURN = { x: 174, y: 336 } as const;
+
+function buildRingStones(): Rect[] {
+  const out: Rect[] = [];
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
+    if (Math.sin(a) > 0.45) continue;
+    out.push({
+      x: Math.round(174 + Math.cos(a) * 86 - 5),
+      y: Math.round(246 + Math.sin(a) * 52 - 4),
+      w: 10,
+      h: 8,
+    });
+  }
+  return out;
+}
+
+export const RING_STONES: Rect[] = buildRingStones();
+
+function ringFeet(x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y + box.h > 512 || box.y < 40) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of RING_STONES) if (overlap(box, s)) return true;
+  return false;
+}
+
+/** Top of the courtyard, under the Svarga flag. Mirror of the right-hand portals. */
+export const ARMOUR_DOOR = { x: 308, y: 272 } as const;
+export const ARMOUR_ARRIVE = { x: 174, y: 200 } as const;
+export const ARMOUR_RETURN = { x: 174, y: 460 } as const;
+
+/** Top of the courtyard, under the Naraka gate. Mirror of the left-hand portal. */
+export const WEAPON_DOOR = { x: 36, y: 272 } as const;
+export const WEAPON_ARRIVE = { x: 174, y: 200 } as const;
+export const WEAPON_RETURN = { x: 174, y: 460 } as const;
+
+export type SmithPlot = {
+  id: string;
+  name: string;
+  skill: "armour" | "weapon";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+export const ARMOUR_PLOTS: SmithPlot[] = [
+  { id: "a-plot", name: "Armour plot", skill: "armour", x: 118, y: 250, w: 110, h: 56 },
+  { id: "a-stand", name: "Armour stand", skill: "armour", x: 44, y: 72, w: 28, h: 40 },
+  { id: "a-helm", name: "Helm form", skill: "armour", x: 46, y: 160, w: 32, h: 28 },
+  { id: "a-mail", name: "Mail bench", skill: "armour", x: 236, y: 80, w: 56, h: 24 },
+  { id: "a-fit", name: "Fitting post", skill: "armour", x: 250, y: 180, w: 22, h: 36 },
+];
+
+export const WEAPON_PLOTS: SmithPlot[] = [
+  { id: "w-plot", name: "Weapon plot", skill: "weapon", x: 118, y: 250, w: 110, h: 56 },
+  { id: "w-bench", name: "Weapon bench", skill: "weapon", x: 40, y: 72, w: 56, h: 24 },
+  { id: "w-blade", name: "Blade stone", skill: "weapon", x: 48, y: 160, w: 36, h: 28 },
+  { id: "w-haft", name: "Haft rack", skill: "weapon", x: 240, y: 72, w: 40, h: 36 },
+  { id: "w-forge", name: "Forge", skill: "weapon", x: 246, y: 176, w: 36, h: 28 },
+];
+
+export const ARMOUR_SOLIDS: Rect[] = [
+  { x: 50, y: 80, w: 14, h: 24 },
+  { x: 50, y: 164, w: 24, h: 16 },
+  { x: 240, y: 84, w: 48, h: 14 },
+  { x: 254, y: 186, w: 12, h: 24 },
+];
+
+export const WEAPON_SOLIDS: Rect[] = [
+  { x: 44, y: 76, w: 48, h: 14 },
+  { x: 52, y: 164, w: 28, h: 16 },
+  { x: 246, y: 78, w: 28, h: 22 },
+  { x: 250, y: 180, w: 28, h: 18 },
+];
+
+export function armourPlotAt(px: number, py: number): SmithPlot | null {
+  for (let i = ARMOUR_PLOTS.length - 1; i >= 0; i--) {
+    const p = ARMOUR_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+export function weaponPlotAt(px: number, py: number): SmithPlot | null {
+  for (let i = WEAPON_PLOTS.length - 1; i >= 0; i--) {
+    const p = WEAPON_PLOTS[i]!;
+    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) return p;
+  }
+  return null;
+}
+
+function yardFeet(solids: Rect[], x: number, y: number): boolean {
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  if (box.y + box.h > 512 || box.y < 40) return true;
+  if (box.x < 20 || box.x + box.w > 328) return true;
+  for (const s of solids) if (overlap(box, s)) return true;
+  return false;
+}
+
+function armourFeet(x: number, y: number): boolean {
+  return yardFeet(ARMOUR_SOLIDS, x, y);
+}
+
+function weaponFeet(x: number, y: number): boolean {
+  return yardFeet(WEAPON_SOLIDS, x, y);
 }
 
 export function ensureAuto(s: GameState): void {
@@ -1658,7 +1847,7 @@ export function ensureAuto(s: GameState): void {
 }
 
 export function onPortal(x: number, y: number): boolean {
-  if (realmWing === 2) return false;
+  if (realmWing === 2 || realmWing === 3 || realmWing === 4 || realmWing === 5 || realmWing === 6) return false;
   // The picture is wider than this. The body stops on the stone. The step in front, on the sidewalk and in the courtyard, stays open.
   const gates: Array<{ x: number; half: number; top: number }> = [];
   if (realmWing !== -1) gates.push({ x: 40, half: 30, top: 124 });
@@ -1670,7 +1859,7 @@ export function onPortal(x: number, y: number): boolean {
 }
 
 export function ensureWing(s: GameState): void {
-  if (s.wing !== -1 && s.wing !== 0 && s.wing !== 1 && s.wing !== 2) s.wing = 0;
+  if (s.wing !== -1 && s.wing !== 0 && s.wing !== 1 && s.wing !== 2 && s.wing !== 3 && s.wing !== 4 && s.wing !== 5 && s.wing !== 6) s.wing = 0;
   if (!s.cross || typeof s.cross.t !== "number") s.cross = null;
 }
 

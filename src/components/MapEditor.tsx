@@ -3,15 +3,8 @@ import type { Rect } from "@/game/content";
 import { GRID, type SelMode } from "@/game/tiles";
 
 const MODES: { id: SelMode; label: string }[] = [
-  { id: "rect", label: "Rect" },
   { id: "tile", label: "Tile" },
-  { id: "cell", label: "Cell" },
-  { id: "row", label: "Row" },
-  { id: "column", label: "Column" },
-  { id: "yard", label: "Yard" },
-  { id: "meadow", label: "Meadow" },
-  { id: "world", label: "World" },
-  { id: "here", label: "Druid" },
+  { id: "rect", label: "Area" },
 ];
 
 export function builderDevAllowed(): boolean {
@@ -70,7 +63,7 @@ export function MapEditor({
       </button>
       {open && (
         <div className="panel map-edit-panel" role="dialog" aria-label="Developer mode">
-          <p className="map-edit-hint">Select tiles, write the change, then copy the work order.</p>
+          <p className="map-edit-hint">Select tile positions, write the enhancement, then copy the prompt.</p>
           <div className="map-edit-modes">
             {MODES.map((m) => (
               <button key={m.id} type="button" className={mode === m.id ? "on" : ""} {...fire(() => setMode(m.id))}>
@@ -86,7 +79,7 @@ export function MapEditor({
           <textarea
             ref={promptRef}
             value={note}
-            placeholder="What should change in the selection."
+            placeholder="What to enhance in the selected tiles."
             aria-label="What you want done"
             onPointerDown={(e) => e.stopPropagation()}
             onChange={(e) => setNote(e.target.value)}
@@ -94,7 +87,7 @@ export function MapEditor({
           />
           {order && <pre className="map-edit-order">{order}</pre>}
           <button type="button" className="send" disabled={!order} {...fire(onCopy)}>
-            Copy
+            Copy prompt
           </button>
           {status && <p className="map-edit-hint">{status}</p>}
         </div>

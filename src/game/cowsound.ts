@@ -32,6 +32,7 @@ export function tickCow(s: GameState): void {
   if ((s.weather ?? "clear") === "storm") return;
   if (hourOf(s.time) >= 20) return;
   if (s.clock < next || !s.animals) return;
+  if ((s.wing ?? 0) !== 2) return;
   const cow = s.animals.find((a) => a.kind === "cow");
   if (!cow) return;
   const near = Math.hypot(s.x - cow.x, s.y - cow.y) < 90;
