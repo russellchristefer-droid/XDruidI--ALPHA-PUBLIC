@@ -546,7 +546,7 @@ def checksum(rom: bytearray) -> None:
 
 
 def header(rom: bytearray) -> None:
-    title = b"XDRUID I"
+    title = b"XDRUID I ALPHA"
     rom[0x7FC0:0x7FD5] = title + bytes(21 - len(title))
     rom[0x7FD5] = 0x20  # LoROM
     rom[0x7FD6] = 0x00

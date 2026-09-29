@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""XDruid I — Python sidecar.
+"""XDruid I — Alpha. Python sidecar.
 
-A windowed homestead. It is not the browser game. WASD or arrows walk.
-The mouse wheel zooms out further, then back in. The goat stays in the
-7 by 3 pen on the upper farm. Xiang Su stands on the sidewalk.
+A windowed homestead. It is not the browser client and not the SNES cartridge.
+WASD or arrows walk. The mouse wheel zooms. The goat stays in the 7 by 3 pen.
+Xiang Su stands on the sidewalk.
 
     python3 python/xdruid.py
 """
@@ -20,7 +20,7 @@ PEN = (240, 80, 56, 24)
 class Yard:
     def __init__(self) -> None:
         self.root = tk.Tk()
-        self.root.title("XDruid I")
+        self.root.title("XDruid I — Alpha")
         self.canvas = tk.Canvas(self.root, width=720, height=480, bg="#070b14", highlightthickness=0)
         self.canvas.pack()
         self.keys: set[str] = set()
