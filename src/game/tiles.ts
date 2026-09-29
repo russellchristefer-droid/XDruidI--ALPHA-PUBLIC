@@ -99,31 +99,32 @@ export function pickRect(kind: "tile" | "cell" | "row" | "column", w: { x: numbe
 export type DevRead = {
   x?: number;
   y?: number;
-  wing?: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
+  wing?: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19;
   weather?: string;
 };
 
 function landName(wing: number | undefined): string {
   if (wing === -1) return "Naraka";
-  if (wing === 1) return "Heaven";
-  if (wing === 2) return "Skill grove";
-  if (wing === 3) return "Combat yard";
-  if (wing === 4) return "Combat ring";
-  if (wing === 5) return "Armour yard";
-  if (wing === 6) return "Weapon yard";
+  if (wing === 1) return "Svarga";
+  if (wing === 2) return "Skill Grove";
+  if (wing === 3) return "Combat Yard";
+  if (wing === 4) return "Combat Ring";
+  if (wing === 5) return "Armour Yard";
+  if (wing === 6) return "Weapon Yard";
   if (wing === 7) return "Quarry";
   if (wing === 8) return "Sanctum";
   if (wing === 9) return "Market";
   if (wing === 10) return "Enchanting";
   if (wing === 11) return "Wilds";
   if (wing === 12) return "Floor 332";
-  if (wing === 13) return "Tech market";
+  if (wing === 13) return "Tech Market";
   if (wing === 14) return "Medical";
   if (wing === 15) return "Biology";
   if (wing === 16) return "Library";
   if (wing === 17) return "Jyotisha";
   if (wing === 18) return "Mantra";
-  return "homestead";
+  if (wing === 19) return "Mansion";
+  return "Homestead";
 }
 
 function improvement(note: string): string {

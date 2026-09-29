@@ -1,4 +1,4 @@
-import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, DESCENT_DOOR, DESCENT_RETURN, TECH_DOOR, TECH_RETURN, TECH_SOLIDS, MEDIC_DOOR, MEDIC_RETURN, MEDIC_SOLIDS, BIO_DOOR, BIO_RETURN, BIO_SOLIDS, LIBRARY_DOOR, LIBRARY_RETURN, LIBRARY_SOLIDS, JYOTISH_DOOR, JYOTISH_RETURN, JYOTISH_SOLIDS, MANTRA_DOOR, MANTRA_RETURN, MANTRA_SOLIDS, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, FLOOR_H, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, TILE, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, floorEdge, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
+import { ARMOUR_DOOR, ARMOUR_PLOTS, ARMOUR_RETURN, CHAR_FOOT_Y, CHAR_H, CHAR_W, COMBAT_DOOR, COMBAT_PLOTS, COMBAT_RETURN, DEFS, DESCENT_DOOR, DESCENT_RETURN, TECH_DOOR, TECH_RETURN, TECH_SOLIDS, MEDIC_DOOR, MEDIC_RETURN, MEDIC_SOLIDS, BIO_DOOR, BIO_RETURN, BIO_SOLIDS, LIBRARY_DOOR, LIBRARY_RETURN, LIBRARY_SOLIDS, JYOTISH_DOOR, JYOTISH_RETURN, JYOTISH_SOLIDS, MANTRA_DOOR, MANTRA_RETURN, MANTRA_SOLIDS, MANSION_DOOR, MANSION_RETURN, ENCHANT_DOOR, ENCHANT_PLOTS, ENCHANT_RETURN, FISH_WATER, FLOOR_H, GOAT_PEN, GROVE_DOOR, GROVE_PLOTS, GROVE_RETURN, HEAVEN_GATE, MARKET_DOOR, MARKET_PLOTS, MARKET_RETURN, MEADOW, QUARRY_DOOR, QUARRY_PLOTS, QUARRY_RETURN, REAPER_FRAMES, RING_DOOR, RING_RETURN, RING_STONES, SANCTUM_DOOR, SANCTUM_PLOTS, SANCTUM_RETURN, SEAM_ROCKS, TILE, VISIT_DOOR, WEAPON_DOOR, WEAPON_PLOTS, WEAPON_RETURN, WILDS_DOOR, WILDS_PLOTS, WILDS_RETURN, WORLD_H, WORLD_W, floorEdge, defOf, type Bird, type Dir, type GameState, type Plot, type ReaperPose, type SpellId } from "./content.ts";
 import { devSpriteLayers } from "./dev-sprites.ts";
 import type { Sheets } from "./assets.ts";
 import { birdGlow } from "./birdsong.ts";
@@ -1317,14 +1317,30 @@ function drawSpell(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState):
   void s;
 }
 
+const FACE_FX: Partial<Record<GameState["life"]["face"], number>> = {
+  happy: 0,
+  sad: 1,
+  tired: 2,
+  need: 3,
+  angry: 4,
+  love: 5,
+  cry: 6,
+  wow: 7,
+  cool: 8,
+};
+
 function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
   const life = s.life;
   let key: keyof Sheets | null = null;
+  const faceRow = life && life.emote > 0 ? FACE_FX[life.face] : undefined;
   if (s.downed || life?.face === "ill") key = "fxDebuff";
   else if (life && life.emote > 0 && life.face === "heart") key = "fxHearts";
-  else if (life && life.emote > 0 && life.face === "happy") key = "fxHeartsPink";
-  else if (life && life.emote > 0 && life.face === "tired") key = "fxTired";
-  else if (life && life.emote > 0 && life.face === "need") key = "fxDebuff";
+  else if (faceRow != null && sheets.fxFaces && sheets.fxFaces.width >= 400) {
+    const frame = Math.floor(s.clock * 8) % 5;
+    blit(ctx, sheets.fxFaces, frame * 80, faceRow * 64, 80, 64, s.x, s.y - 16, 0.4, false, 40, 40);
+    return;
+  } else if (life && life.emote > 0 && life.face === "tired") key = "fxTired";
+  else if (life && life.emote > 0 && (life.face === "need" || life.face === "sad" || life.face === "angry" || life.face === "cry")) key = "fxDebuff";
   else if (s.action) key = life?.errand === "wash" || s.action.kind === "fill" || s.action.kind === "water" ? "fxMagic" : "fxBuff";
   else if (life && life.mood > 70 && Math.floor(s.clock) % 6 === 0) key = "fxStars";
   if (!key) return;
@@ -1433,10 +1449,16 @@ function drawHat(
 const FACES = {
   ok: [2, 2],
   happy: [4, 2],
+  sad: [5, 2],
+  heart: [6, 2],
   tired: [7, 2],
   ill: [8, 2],
   need: [9, 2],
-  heart: [6, 2],
+  angry: [3, 2],
+  love: [10, 2],
+  cry: [11, 2],
+  wow: [12, 2],
+  cool: [13, 2],
 } as const;
 
 const vividFaces = new Map<string, HTMLCanvasElement>();
@@ -4660,7 +4682,121 @@ function ensureSmith(sheets: Sheets, kind: "armour" | "weapon" | "quarry" | "san
   return canvas;
 }
 
-function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number, hue: "gold" | "blue" | "red" | "green" | "indigo" | "silver" | "lotus" = "gold"): void {
+function paintEgyptGate(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number): void {
+  const rx = 12;
+  const ry = 6;
+  const drift = clock * 1.05;
+  for (let y = -ry; y <= ry; y++) {
+    for (let x = -rx; x <= rx; x++) {
+      const nx = x / rx;
+      const ny = y / ry;
+      const d = nx * nx + ny * ny;
+      if (d > 1) continue;
+      let color = ny < -0.2 ? "#16366e" : ny < 0.25 ? "#0c244c" : "#071628";
+      if ((Math.floor(x + drift * 2) + y) % 5 === 0 && d < 0.7) color = "#1d4e86";
+      if (d > 0.62 && d <= 0.78) color = ny < 0.1 ? "#6ed8cc" : "#1a6a60";
+      if (d > 0.78 && d <= 0.9) color = "#140e08";
+      if (d > 0.9) color = y < -1 ? "#fff3b4" : y > 2 ? "#8a6818" : "#e2b84a";
+      if (y === -4 && Math.abs(x) <= 9 && d < 0.94) color = Math.abs(x) % 2 === 0 ? "#ffe57a" : "#c9922a";
+      ctx.fillStyle = color;
+      ctx.fillRect(cx + x, cy + y, 1, 1);
+    }
+  }
+  ctx.fillStyle = "#ffe9a4";
+  ctx.fillRect(cx, cy - 3, 1, 6);
+  ctx.fillRect(cx - 2, cy - 1, 5, 1);
+  ctx.fillRect(cx - 1, cy - 4, 3, 2);
+  ctx.fillStyle = "#7ee0d2";
+  ctx.fillRect(cx, cy - 4, 1, 1);
+  for (let i = 0; i < 4; i++) {
+    const life = (clock * 0.5 + i * 0.31) % 1;
+    if (life < 0.15 || life > 0.92) continue;
+    const x = cx + Math.round(Math.sin(i * 2.2 + clock * 0.6) * 5);
+    const y = cy - 2 - Math.round(life * 10);
+    ctx.fillStyle = i % 2 === 0 ? "#ffe57a" : "#7ee0d2";
+    ctx.fillRect(x, y, 1, 1);
+  }
+}
+
+let mansionPlate: HTMLCanvasElement | null = null;
+
+function ensureMansionLand(): HTMLCanvasElement | null {
+  if (mansionPlate) return mansionPlate;
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = WORLD_W;
+  canvas.height = 528;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.imageSmoothingEnabled = false;
+  for (let y = 0; y < 528; y++) {
+    for (let x = 0; x < WORLD_W; x++) {
+      const n = noise(x, y);
+      const tx = Math.floor(x / 8);
+      const ty = Math.floor(y / 4);
+      let color = (tx + ty) % 2 === 0 ? "#e4c890" : "#d2b278";
+      if ((n & 15) === 0) color = "#c8a468";
+      if (y < 78 && x > 110 && x < 236) color = (x + y) % 3 === 0 ? "#2f6a48" : "#3e7c56";
+      if (y > 48 && y < 78 && (x < 118 || x > 228)) color = "#c9a56a";
+      if (x < 14 || x > WORLD_W - 15 || y < 10 || y > 516) color = "#6a5030";
+      g.fillStyle = color;
+      g.fillRect(x, y, 1, 1);
+    }
+  }
+  const palms = [
+    [48, 120],
+    [294, 120],
+    [56, 304],
+    [290, 304],
+  ];
+  for (const [px, py] of palms) {
+    g.fillStyle = "#6a4424";
+    g.fillRect(px, py - 14, 2, 14);
+    g.fillStyle = "#2a6840";
+    g.fillRect(px - 4, py - 16, 10, 2);
+    g.fillRect(px - 2, py - 18, 6, 2);
+    g.fillStyle = "#3e8a52";
+    g.fillRect(px - 1, py - 17, 4, 1);
+  }
+  mansionPlate = canvas;
+  return canvas;
+}
+
+function paintVilla(ctx: CanvasRenderingContext2D, built: boolean): void {
+  const x = 132;
+  const y = 160;
+  ctx.fillStyle = built ? "#efe2c4" : "#c8ae7c";
+  ctx.fillRect(x, y + 36, 84, 12);
+  ctx.fillStyle = "#8a6840";
+  ctx.fillRect(x, y + 36, 84, 1);
+  ctx.fillRect(x, y + 47, 84, 1);
+  ctx.fillRect(x, y + 36, 1, 12);
+  ctx.fillRect(x + 83, y + 36, 1, 12);
+  if (!built) {
+    ctx.fillStyle = "#fff1c4";
+    ctx.fillRect(x + 4, y + 40, 2, 2);
+    ctx.fillRect(x + 78, y + 40, 2, 2);
+    ctx.fillRect(x + 40, y + 41, 4, 1);
+    return;
+  }
+  ctx.fillStyle = "#16366e";
+  ctx.fillRect(x + 6, y + 6, 72, 6);
+  ctx.fillStyle = "#ffe57a";
+  ctx.fillRect(x + 6, y + 6, 72, 1);
+  ctx.fillRect(x + 6, y + 11, 72, 1);
+  ctx.fillStyle = "#f4ead4";
+  ctx.fillRect(x + 10, y + 12, 64, 28);
+  ctx.fillStyle = "#e6c45a";
+  ctx.fillRect(x + 10, y + 12, 64, 2);
+  ctx.fillStyle = "#fff6e4";
+  for (const col of [14, 28, 56, 66]) ctx.fillRect(x + col, y + 14, 3, 24);
+  ctx.fillStyle = "#6a3018";
+  ctx.fillRect(x + 38, y + 22, 8, 18);
+  ctx.fillStyle = "#ffe9a4";
+  ctx.fillRect(x + 41, y + 30, 1, 2);
+}
+
+function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number, hue: "gold" | "blue" | "red" | "green" | "indigo" | "silver" | "lotus" | "kombat" = "gold"): void {
   const rx = 12;
   const ry = 6;
   const spin = clock * 1.5;
@@ -4677,7 +4813,9 @@ function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clo
               ? { deep: "#0c1018", mid: "#1a2434", well: "#2c3c50", shade: "#121820", rung: "#d0d8e8", back: "#708098", spine: "#ffffff", front: "#e8eef8", lip: "#f6f8ff", rim: "#b8c4d8", dark: "#1a2430", brass: "#8898b0" }
               : hue === "lotus"
                 ? { deep: "#2a1018", mid: "#4a2030", well: "#6a3044", shade: "#3a1824", rung: "#e888a8", back: "#a05068", spine: "#fff0f4", front: "#ffb0c8", lip: "#ffe0ea", rim: "#f0a0b8", dark: "#401828", brass: "#c06080" }
-                : { deep: "#0e0a06", mid: "#26180e", well: "#4a3218", shade: "#1c140c", rung: "#9a6424", back: "#7a4e18", spine: "#fff6d2", front: "#ffd060", lip: "#fff6d0", rim: "#f0d078", dark: "#4a2c10", brass: "#c8963c" };
+                : hue === "kombat"
+                  ? { deep: "#070605", mid: "#1a0c0a", well: "#120808", shade: "#0c0806", rung: "#f0c418", back: "#6e1014", spine: "#ffe14a", front: "#e01018", lip: "#fff0a0", rim: "#c9a227", dark: "#1a0808", brass: "#8a1418" }
+                  : { deep: "#0e0a06", mid: "#26180e", well: "#4a3218", shade: "#1c140c", rung: "#9a6424", back: "#7a4e18", spine: "#fff6d2", front: "#ffd060", lip: "#fff6d0", rim: "#f0d078", dark: "#4a2c10", brass: "#c8963c" };
   for (let y = -ry; y <= ry; y++) {
     const ny = y / ry;
     const twist = spin + (y + ry) * 0.72;
@@ -5204,6 +5342,24 @@ export function drawWorld(
     }
     return;
   }
+  if (wing === 19) {
+    const yard = ensureMansionLand();
+    if (yard) ctx.drawImage(yard, 0, 0);
+    paintVilla(ctx, !!s.mansion);
+    paintEgyptGate(ctx, MANSION_RETURN.x, MANSION_RETURN.y, s.clock);
+    if (sheets.idle) {
+      drawCastRite(ctx, sheets, s);
+      paintPlayer(ctx, sheets, s);
+      drawSpell(ctx, sheets, s);
+    }
+    if (s.cross) {
+      const u = Math.max(0, Math.min(1, s.cross.t / 0.85));
+      const a = u < 0.5 ? u * 2 : (1 - u) * 2;
+      ctx.fillStyle = `rgba(226, 196, 110, ${0.12 + a * 0.55})`;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    }
+    return;
+  }
   if (wing === 12) {
     paintFloorSky(ctx, s.clock);
     const well = ensureDescent();
@@ -5371,8 +5527,10 @@ export function drawWorld(
   paintFlatPortal(ctx, QUARRY_DOOR.x, QUARRY_DOOR.y, s.clock, "quarry");
   paintFlatPortal(ctx, SANCTUM_DOOR.x, SANCTUM_DOOR.y, s.clock, "sanctum");
   paintFlatPortal(ctx, MARKET_DOOR.x, MARKET_DOOR.y, s.clock, "market");
+  paintDnaHole(ctx, VISIT_DOOR.x, VISIT_DOOR.y, s.clock, "kombat");
   paintFlatPortal(ctx, ARMOUR_DOOR.x, ARMOUR_DOOR.y, s.clock, "armour");
   paintFlatPortal(ctx, WEAPON_DOOR.x, WEAPON_DOOR.y, s.clock, "weapon");
+  paintEgyptGate(ctx, MANSION_DOOR.x, MANSION_DOOR.y, s.clock);
   paintFlatPortal(ctx, RING_DOOR.x, RING_DOOR.y, s.clock, "ring");
   paintFlatPortal(ctx, COMBAT_DOOR.x, COMBAT_DOOR.y, s.clock, "combat");
   paintFlatPortal(ctx, GROVE_DOOR.x, GROVE_DOOR.y, s.clock, "skill");
@@ -5465,6 +5623,10 @@ export function drawWorld(
   for (const a of s.animals) {
     if (a.kind === "cow") continue;
     const moving = a.pause <= 0;
+    if (a.kind === "sow") {
+      stage(a.y, () => drawAnimal(ctx, sheets.sowIdle, sheets.sowWalk, s, a.x, a.y, a.dir, moving, 0.4, 66, 8), a.x);
+      continue;
+    }
     const scale = a.kind === "goat" ? 0.46 : 0.56;
     const idle = sheets[a.kind === "goat" ? "goatIdle" : "roosterIdle"];
     const walk = sheets[a.kind === "goat" ? "goatWalk" : "roosterWalk"];

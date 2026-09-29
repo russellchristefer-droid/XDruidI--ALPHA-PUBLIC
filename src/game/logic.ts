@@ -28,6 +28,7 @@ import {
   ensureStable,
   ensureGoatPen,
   ensureCourtHerd,
+  ensureSow,
   HEAVEN_GATE,
   GROVE_DOOR,
   GROVE_ARRIVE,
@@ -67,6 +68,12 @@ import {
   MARKET_RETURN,
   MARKET_PLOTS,
   marketPlotAt,
+  VISIT_DOOR,
+  MANSION_DOOR,
+  MANSION_ARRIVE,
+  MANSION_RETURN,
+  onMansionLot,
+  setMansionUp,
   ENCHANT_DOOR,
   ENCHANT_ARRIVE,
   ENCHANT_RETURN,
@@ -256,7 +263,7 @@ function craftBlurb(wing: number): string {
   return wing === 5 ? "The armour yard. The stand, the mail, and the plot." : "The weapon yard. The bench, the blade, and the plot.";
 }
 
-type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
+type SideGate = { x: number; y: number; wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19; landX: number; landY: number; dir: "n" | "e" | "s" | "w"; name: string };
 
 const GATE_REACH = 46;
 
@@ -342,6 +349,10 @@ export function sideGate(s: GameState): SideGate | null {
     if (Math.hypot(s.x - MANTRA_RETURN.x, s.y - MANTRA_RETURN.y) > 28) return null;
     return { x: MANTRA_RETURN.x, y: MANTRA_RETURN.y, wing: 1, landX: MANTRA_DOOR.x, landY: MANTRA_DOOR.y + 16, dir: "s", name: "Svarga" };
   }
+  if (wing === 19) {
+    if (Math.hypot(s.x - MANSION_RETURN.x, s.y - MANSION_RETURN.y) > 28) return null;
+    return { x: MANSION_RETURN.x, y: MANSION_RETURN.y, wing: 0, landX: MANSION_DOOR.x + 18, landY: MANSION_DOOR.y, dir: "e", name: "the courtyard" };
+  }
   if (wing === 0) {
     const skill = onGroveDoor(s.x, s.y, GROVE_DOOR.x, GROVE_DOOR.y);
     const fight = onGroveDoor(s.x, s.y, COMBAT_DOOR.x, COMBAT_DOOR.y);
@@ -353,6 +364,9 @@ export function sideGate(s: GameState): SideGate | null {
     }
     if (weapon) {
       return { x: WEAPON_DOOR.x, y: WEAPON_DOOR.y, wing: 6, landX: WEAPON_ARRIVE.x, landY: WEAPON_ARRIVE.y, dir: "s", name: "the weapon yard" };
+    }
+    if (onGroveDoor(s.x, s.y, MANSION_DOOR.x, MANSION_DOOR.y)) {
+      return { x: MANSION_DOOR.x, y: MANSION_DOOR.y, wing: 19, landX: MANSION_ARRIVE.x, landY: MANSION_ARRIVE.y, dir: "n", name: "the mansion" };
     }
     if (onGroveDoor(s.x, s.y, QUARRY_DOOR.x, QUARRY_DOOR.y)) {
       const quarryD = Math.hypot(s.x - QUARRY_DOOR.x, s.y - QUARRY_DOOR.y);
@@ -422,6 +436,9 @@ export function sideGate(s: GameState): SideGate | null {
 
 function crossSide(s: GameState, px: number, py: number): InteractResult | null {
   if (s.cross || s.action) return null;
+  if ((s.wing ?? 0) === 0 && onGroveDoor(px, py, VISIT_DOOR.x, VISIT_DOOR.y) && onGroveDoor(s.x, s.y, VISIT_DOOR.x, VISIT_DOOR.y)) {
+    return { msg: "Visit Other Courtyard [Offline]. The gate does not open." };
+  }
   const gate = sideGate(s);
   if (!gate) return null;
   if (Math.hypot(px - gate.x, py - gate.y) > 40) return null;
@@ -775,6 +792,7 @@ export function targets(s: GameState): Target[] {
   }
   for (const a of s.animals) {
     if (a.kind === "cow" && (s.wing ?? 0) !== 2) continue;
+    if (a.kind === "sow" && (s.wing ?? 0) !== 0) continue;
     list.push({ id: a.id, name: a.name, kind: "animal", x: a.x - 10, y: a.y - 12, w: 20, h: 16 });
   }
   list.push({ id: "cat", name: "Cat", kind: "cat", x: s.cat.x - 8, y: s.cat.y - 8, w: 16, h: 12 });
@@ -899,8 +917,10 @@ function verb(s: GameState, t: Target): string {
   if (t.kind === "branch") return "Chop branch";
   if (t.kind === "animal") {
     const a = s.animals.find((an) => an.id === t.id)!;
-    if (a.ready && a.kind !== "goat") return a.kind === "cow" ? "Collect milk" : "Collect egg";
+    if (a.ready && a.kind === "cow") return "Collect milk";
+    if (a.ready && a.kind === "rooster") return "Collect egg";
     if (a.kind === "goat") return "Scratch the goat";
+    if (a.kind === "sow") return a.intent === "follow" ? "Tell the sow to stay" : "Train the sow";
     return `Feed ${a.name.toLowerCase()}`;
   }
   if (t.kind === "cat") return "Pet the cat";
@@ -916,6 +936,7 @@ function verb(s: GameState, t: Target): string {
 }
 
 export function promptAt(s: GameState, px: number, py: number): string {
+  if ((s.wing ?? 0) === 0 && onGroveDoor(px, py, VISIT_DOOR.x, VISIT_DOOR.y)) return "Visit Other Courtyard [Offline]";
   const gate = sideGate(s);
   if (gate && Math.hypot(s.x - gate.x, s.y - gate.y) <= GATE_REACH && Math.hypot(px - gate.x, py - gate.y) <= 40) {
     return `Cross to ${gate.name}  [E]`;
@@ -946,6 +967,10 @@ export function promptAt(s: GameState, px: number, py: number): string {
     if (!plot) return "";
     return `Train ${SKILL_NAME[plot.skill]}  [E]`;
   }
+  if ((s.wing ?? 0) === 19) {
+    if (!inReach(s, px, py) || !onMansionLot(px, py)) return "";
+    return s.mansion ? "The mansion" : "Raise the mansion  [E]";
+  }
   if ((s.wing ?? 0) !== 0) return "";
   if (!inReach(s, px, py)) return "";
   const t = pickTarget(s, px, py);
@@ -954,6 +979,9 @@ export function promptAt(s: GameState, px: number, py: number): string {
 }
 
 export function examineAt(s: GameState, px: number, py: number): string {
+  if ((s.wing ?? 0) === 0 && onGroveDoor(px, py, VISIT_DOOR.x, VISIT_DOOR.y)) {
+    return "Visit Other Courtyard [Offline]. A kombat-colored gate. It does not open.";
+  }
   const gate = sideGate(s);
   if (gate && Math.hypot(px - gate.x, py - gate.y) <= 40) return `The end of the sidewalk. Click to cross to ${gate.name}.`;
   if ((s.wing ?? 0) === 2) {
@@ -987,6 +1015,10 @@ export function examineAt(s: GameState, px: number, py: number): string {
   if ((s.wing ?? 0) === 16) return "The library. Shelves and a reading table. The indigo ladder leads back.";
   if ((s.wing ?? 0) === 17) return "The jyotisha hall. A place to read the night, the vimana, and the living space. The silver ladder leads back.";
   if ((s.wing ?? 0) === 18) return "The mantra hall. Song, bell, and breath. The lotus ladder leads back to Svarga.";
+  if ((s.wing ?? 0) === 19) {
+    if (s.mansion) return "The mansion. Raised from branches and repair kits. The Egyptian gate leads back.";
+    return "A foundation on the sand. It wants 6 branches and 2 repair kits before the house can rise. The gate leads back.";
+  }
   if ((s.wing ?? 0) === 1) return "Leased gold. It will not keep.";
   if ((s.wing ?? 0) === -1) return "Filed dark. The sentence has a term.";
   const used = assetUseAt(px, py);
@@ -1016,6 +1048,7 @@ export function examineAt(s: GameState, px: number, py: number): string {
   }
   if (t.kind === "animal") {
     const a = s.animals.find((an) => an.id === t.id)!;
+    if (a.kind === "sow" && a.intent === "follow") return "Sow. Trained. She follows.";
     return `${a.name}. ${a.fed ? "Fed today." : "Hungry."} ${a.ready ? "Something is ready." : ""}`.trim();
   }
   if (t.kind === "ground") {
@@ -1104,6 +1137,10 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
     if (!plot) return { msg: "Open ground. The plot is the work." };
     return startAct(s, "drill", plot.id, 0.8);
   }
+  if ((s.wing ?? 0) === 19) {
+    if (!inReach(s, px, py) || !onMansionLot(px, py)) return { msg: "The sand is open. The foundation is the work." };
+    return raiseMansion(s);
+  }
   if ((s.wing ?? 0) !== 0) {
     return { msg: s.wing === 1 ? "Nothing here is a chore. The grove keeps itself." : "Nothing here is yours to use. It is evidence." };
   }
@@ -1144,6 +1181,41 @@ export function interact(s: GameState, px: number, py: number): InteractResult {
   if (t.kind === "maid") return greetMaid(s);
   if (t.kind === "flower") return pickFlower(s, t.id);
   return { msg: "Nothing to use here." };
+}
+
+function packCount(s: GameState, defId: string): number {
+  let n = 0;
+  for (const p of s.pack) {
+    if (!p || p.defId !== defId) continue;
+    n += defOf(p).stack ? p.qty : 1;
+  }
+  return n;
+}
+
+function spendDef(s: GameState, defId: string, n: number): boolean {
+  if (packCount(s, defId) < n) return false;
+  let left = n;
+  for (const p of [...s.pack]) {
+    if (!p || p.defId !== defId || left <= 0) continue;
+    const take = defOf(p).stack ? Math.min(p.qty, left) : 1;
+    if (defOf(p).stack && p.qty > take) p.qty -= take;
+    else removeItem(s, p.id);
+    left -= take;
+  }
+  return left <= 0;
+}
+
+function raiseMansion(s: GameState): InteractResult {
+  if (s.mansion) return { msg: "The mansion already stands." };
+  const wood = packCount(s, "branch");
+  const kits = packCount(s, "kit");
+  if (wood < 6 || kits < 2) {
+    return { msg: `The foundation wants 6 branches and 2 repair kits. You have ${wood} branches and ${kits} kits.` };
+  }
+  if (!spendDef(s, "branch", 6) || !spendDef(s, "kit", 2)) return { msg: "The materials will not leave the pack." };
+  s.mansion = true;
+  setMansionUp(true);
+  return { msg: `The house rises on the sand.${grant(s, "construction", 40)}`, save: true };
 }
 
 function usePlot(s: GameState, id: string): InteractResult {
@@ -1266,6 +1338,22 @@ function useAnimal(s: GameState, id: string): InteractResult {
   if (!a) return { msg: "It wandered off." };
   if (a.ready && a.kind === "cow") return startAct(s, "collect", id);
   if (a.ready && a.kind === "rooster") return startAct(s, "collect", id);
+  if (a.kind === "sow") {
+    if (a.intent === "follow") {
+      a.intent = "graze";
+      a.pause = 0.3;
+      a.route = a.y > 180 ? gateRoute(a, { x: 88, y: 168 }, true) : [];
+      return { msg: "The sow stays." };
+    }
+    a.intent = "follow";
+    a.pause = 0;
+    a.route = [];
+    const first = !a.trained;
+    a.trained = true;
+    s.life.face = "love";
+    s.life.emote = 1.6;
+    return { msg: first ? `The sow is trained. She follows.${grant(s, "husbandry", 16)}` : "The sow follows." };
+  }
   if (a.kind === "goat" && !produceItem(s)) {
     s.stamina = Math.min(100, s.stamina + 3);
     return { msg: "The goat leans in. No milk, just the company." };
@@ -1602,7 +1690,7 @@ export function applyDawn(s: GameState) {
   }
   for (const a of s.animals) {
     if (a.fed) {
-      a.ready = a.kind !== "goat";
+      a.ready = a.kind !== "goat" && a.kind !== "sow";
       a.fed = false;
     } else a.ready = false;
   }
@@ -1838,6 +1926,7 @@ export function step(s: GameState, dt: number, input: Input) {
   if (input.frozen || s.cross) s.speed = 0;
   regenMana(s, stepDt);
   setRealm(s.wing ?? 0);
+  setMansionUp(!!s.mansion);
   placeFarmer(s);
   if (s.cat.petCd > 0) s.cat.petCd = Math.max(0, s.cat.petCd - stepDt);
   stepFlowers(s, stepDt);
@@ -2238,6 +2327,8 @@ function beginCast(s: GameState): void {
   s.rune = (s.rune + 1) % SPELLS.length;
   s.cast = { spell, t: 0 };
   s.speed = 0;
+  s.life.face = "wow";
+  s.life.emote = 1.2;
   const said = liturgyName(spell, s.wing ?? 0);
   s.message = `He casts ${said}. Mana ${Math.round(s.mana)}.`;
 }
@@ -2350,9 +2441,9 @@ function listChores(s: GameState): Chore[] {
   if (packed && shovel) out.push({ id: `${packed.id}:till`, x: packed.x, y: packed.y, hold: shovel.id, say: `He tills the ${packed.name.toLowerCase()}.` });
   const open = s.plots.find((p) => p.stage === 0 && p.tilled);
   if (open && seedItem(s)) out.push({ id: `${open.id}:plant`, x: open.x, y: open.y, hold: null, say: `He plants the ${open.name.toLowerCase()}.` });
-  const ready = s.animals.find((a) => a.ready && a.kind !== "goat");
+  const ready = s.animals.find((a) => a.ready && a.kind !== "goat" && a.kind !== "sow");
   if (ready) out.push({ id: `${ready.id}:collect`, x: ready.x, y: ready.y, hold: null, say: `He collects from the ${ready.name.toLowerCase()}.` });
-  const hungry = s.animals.find((a) => !a.fed);
+  const hungry = s.animals.find((a) => !a.fed && a.kind !== "sow");
   if (hungry && produceItem(s)) out.push({ id: `${hungry.id}:feed`, x: hungry.x, y: hungry.y, hold: null, say: `He feeds the ${hungry.name.toLowerCase()}.` });
   const bloom = s.flowers?.find((f) => f.bloom >= 2);
   if (bloom) out.push({ id: `${bloom.id}:pick`, x: bloom.x, y: bloom.y, hold: null, say: `He picks the ${bloom.name.toLowerCase()}.` });
@@ -2795,10 +2886,16 @@ function followGoal(s: GameState, dt: number, x: number, y: number, speed: numbe
 
 function faceFor(s: GameState): Life["face"] {
   const life = s.life;
-  if (s.downed || life.hunger > 82 || life.thirst > 82) return "ill";
-  if (life.hunger > 55 || life.thirst > 55 || life.dirt > 70) return "need";
-  if (s.stamina < 32) return "tired";
+  if (s.downed || life.hunger > 88 || life.thirst > 88) return "ill";
+  if ((s.health ?? 100) < 28) return "angry";
+  if (life.thirst > 72) return "cry";
+  if (life.hunger > 58 || life.dirt > 78) return "need";
+  if (life.mood < 26) return "sad";
+  if (s.stamina < 32 || (isNight(s.time) && s.stamina < 48)) return "tired";
+  if (life.mood > 88) return "love";
   if (life.mood > 72) return "happy";
+  if (s.weather === "storm") return "wow";
+  if (s.weather === "clear" && life.mood > 55) return "cool";
   return "ok";
 }
 
@@ -3068,6 +3165,10 @@ function herdGoal(s: GameState, a: Animal): { x: number; y: number; intent: Anim
       x: GOAT_PEN.x + 10 + unitRand(s) * (GOAT_PEN.w - 20),
       y: GOAT_PEN.y + 6 + unitRand(s) * Math.max(4, GOAT_PEN.h - 12),
     };
+  }
+  if (a.kind === "sow") {
+    const spot = pickSpot(s, FARM_SPOTS);
+    return { intent: "graze", x: spot.x, y: Math.min(176, spot.y) };
   }
   const pd = Math.hypot(a.x - s.x, a.y - s.y);
   if (a.kind === "rooster" && pd < 24) {
@@ -3587,11 +3688,17 @@ function stepCritters(s: GameState, dt: number) {
   stepMaid(s, dt);
   stepStable(s, dt);
   stepXiang64(s, dt);
+  ensureSow(s);
   for (const a of s.animals) {
     if (a.kind === "cow") {
       stepGroveCow(s, a, dt);
       continue;
     }
+    if (a.kind === "sow" && a.intent === "follow") {
+      stepSowFollow(s, a, dt);
+      continue;
+    }
+    if (a.kind === "sow" && (s.wing ?? 0) !== 0) continue;
     if (!a.route) a.route = [];
     if (a.pause > 0) {
       a.pause -= dt;
@@ -3623,7 +3730,7 @@ function stepCritters(s: GameState, dt: number) {
         continue;
       }
     }
-    const speed = a.kind === "rooster" ? 20 : a.kind === "goat" ? 15 : 8;
+    const speed = a.kind === "rooster" ? 20 : a.kind === "sow" ? 12 : a.kind === "goat" ? 15 : 8;
     const step = followRoute(a, speed, dt, true);
     if (step === "walk") continue;
     a.route = [];
@@ -3638,6 +3745,68 @@ function stepCritters(s: GameState, dt: number) {
     else a.pause = 0.2 + unitRand(s) * 0.35;
     if (a.intent === "graze") a.dir = "s";
   }
+}
+
+function sowHeel(s: GameState): { x: number; y: number } {
+  const d = s.dir;
+  const backs =
+    d === "e"
+      ? [
+          { x: -20, y: 6 },
+          { x: -20, y: 14 },
+        ]
+      : d === "w"
+        ? [
+            { x: 20, y: 6 },
+            { x: 20, y: 14 },
+          ]
+        : d === "n"
+          ? [
+              { x: 0, y: 18 },
+              { x: 10, y: 18 },
+            ]
+          : [
+              { x: 0, y: -18 },
+              { x: -10, y: -18 },
+            ];
+  for (const o of backs) {
+    const spot = { x: s.x + o.x, y: s.y + o.y };
+    if (!footBlocked(spot.x, spot.y)) return spot;
+  }
+  return { x: s.x, y: s.y + (d === "s" ? -18 : 18) };
+}
+
+function stepSowFollow(s: GameState, a: Animal, dt: number) {
+  if ((s.wing ?? 0) !== 0) return;
+  const heel = sowHeel(s);
+  const ease = Math.min(1, dt * 2);
+  a.tx += (heel.x - a.tx) * ease;
+  a.ty += (heel.y - a.ty) * ease;
+  const dist = Math.hypot(a.x - s.x, a.y - s.y);
+  if (dist < 20 || (a.pause > 0 && dist < 32)) {
+    a.route = [];
+    a.pause = 0.3;
+    const dx = s.x - a.x;
+    const dy = s.y - a.y;
+    if (Math.abs(dx) > Math.abs(dy) + 6) a.dir = dx > 0 ? "e" : "w";
+    else if (Math.abs(dy) > Math.abs(dx) + 6) a.dir = dy > 0 ? "s" : "n";
+    return;
+  }
+  a.pause = 0;
+  if (a.route && a.route.length >= 2) {
+    const along = followRoute(a, 32, dt, true);
+    if (along === "walk") return;
+    a.route = [];
+  }
+  const dx = a.tx - a.x;
+  const dy = a.ty - a.y;
+  const speed = dist > 120 ? 42 : 30;
+  const step = slideTo(a, a.tx, a.ty, speed, dt, false);
+  if (step === "stuck") {
+    a.route = gateRoute(a, { x: a.tx, y: a.ty }, true);
+    return;
+  }
+  faceDelta(a, dx, dy);
 }
 
 function cutGoat(s: GameState, x: number, y: number) {

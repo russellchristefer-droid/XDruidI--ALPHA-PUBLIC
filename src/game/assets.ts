@@ -1,5 +1,5 @@
 /** Bump this when the pictures change so phones and computers drop the old files. */
-export const ART = "20260928ink1";
+export const ART = "20260928face2";
 
 function art(path: string): string {
   return `${path}?v=${ART}`;
@@ -53,6 +53,8 @@ const URLS: Record<string, string> = {
   roosterWalk: art("/game/animals/rooster_walk.png"),
   goatIdle: art("/game/animals/billyGoat_idle.png"),
   goatWalk: art("/game/animals/billyGoat_walk.png"),
+  sowIdle: art("/game/animals/sow_idle.png"),
+  sowWalk: art("/game/animals/sow_walk.png"),
   cat: art("/game/animals/bigcat_sit.png"),
   catWalk: art("/game/animals/bigcat_walk.png"),
   catSit: art("/game/animals/bigcat_sit.png"),
@@ -93,6 +95,7 @@ const URLS: Record<string, string> = {
   emoji: art("/game/ui/emoji.png"),
   fxHearts: art("/game/fx/hearts.png"),
   fxHeartsPink: art("/game/fx/hearts-pink.png"),
+  fxFaces: art("/game/fx/faces.png"),
   fxStars: art("/game/fx/stars.png"),
   fxBuff: art("/game/fx/buff.png"),
   fxDebuff: art("/game/fx/debuff.png"),
@@ -183,10 +186,10 @@ export const ASSET_GROUPS: { id: string; label: string; keys: string[] }[] = [
   { id: "maid", label: "Milkmaid", keys: ["maidS", "maidN", "maidW"] },
   { id: "stable", label: "Stable hand", keys: ["stableIdle", "stableWalk"] },
   { id: "druid", label: "Druid", keys: ["idle", "rod", "walk", "water", "shovel", "scythe", "axe", "hammer", "handsidle", "handswalk", "handsUpIdle", "handsUpWalk", "goddess", "goddessFront", "goddessBack", "goddessFront3", "goddessBack3"] },
-  { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "blackCat", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
+  { id: "animals", label: "Animals", keys: ["cowIdle", "cowWalk", "goatIdle", "goatWalk", "sowIdle", "sowWalk", "roosterIdle", "roosterWalk", "cat", "catSit", "catStand", "catWalk", "catRun", "blackCat", "birdWalk", "birdTakeoff", "birdFly", "bee", "butterfly"] },
   { id: "plants", label: "Plants", keys: ["tomato", "cabbage", "greens", "flowers", "treeOak", "treeApple", "treeBirch", "treePine", "treeStump", "treeSapling"] },
   { id: "covers", label: "Covers", keys: ["tree-nw", "tree-n", "tree-ne", "tree-e", "tree-sw", "tree-s", "tree-se", "bush-w", "bush-e"] },
-  { id: "fx", label: "Effects", keys: ["emoji", "fxHearts", "fxHeartsPink", "fxStars", "fxBuff", "fxDebuff", "fxTired", "fxBlood", "fxMagic", "res", "campfire"] },
+  { id: "fx", label: "Effects", keys: ["emoji", "fxHearts", "fxHeartsPink", "fxFaces", "fxStars", "fxBuff", "fxDebuff", "fxTired", "fxBlood", "fxMagic", "res", "campfire"] },
   { id: "magic", label: "Magic", keys: ["fireball", "nova", "holy", "ice", "iceball", "bolt", "spark", "poison", "drip"] },
 ];
 
@@ -237,6 +240,8 @@ const BOOT = [
   "roosterWalk",
   "goatIdle",
   "goatWalk",
+  "sowIdle",
+  "sowWalk",
   "blackCat",
   "cat",
   "catWalk",
@@ -259,6 +264,8 @@ const BOOT = [
   "bush-w",
   "bush-e",
   "campfire",
+  "emoji",
+  "fxFaces",
 ];
 
 /** The next door, the seal, and the tools. Starts the moment the yard is up. */
@@ -375,5 +382,9 @@ export function loadSheets(): Promise<Sheets> {
     left -= 1;
     if (left <= 0) open();
   });
-  return ready.then(() => sheets);
+  return ready.then(async () => {
+    const critical = ["yard", "idle", "walk", "sowIdle", "sowWalk", "emoji", "fxFaces"].filter((key) => URLS[key] && !sheets[key]);
+    if (critical.length) await loadQueue(critical, sheets, critical.length, ms);
+    return sheets;
+  });
 }

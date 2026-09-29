@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import type { IconRef, GameState, Item, PanelId, EquipSlot } from "@/game/content";
+import type { IconRef, GameState, Item, PanelId, EquipSlot, SkillId } from "@/game/content";
 import {
   MASS_CAP,
   SAVE_KEY,
@@ -19,13 +19,22 @@ import {
   ensureStable,
   ensureXiang64,
   ensureCourtHerd,
+  ensureSow,
   ensureSkills,
   isNight,
   skyLabel,
   liturgyName,
-  SKILL_IDS,
+  realmTitle,
   SKILL_NAME,
   SKILL_NOTE,
+  SKILL_WHERE,
+  grovePlotAt,
+  combatPlotAt,
+  armourPlotAt,
+  weaponPlotAt,
+  quarryPlotAt,
+  HEAVEN_GATE,
+  MANTRA_DOOR,
   skillLevel,
   skillFill,
 } from "@/game/content";
@@ -129,34 +138,77 @@ Gamepad: stick move, A use, X pack, Y body, B cancel, LB/RB hotbar, LT walk-fast
 
 function placeName(s: GameState): string {
   const wing = s.wing ?? 0;
-  if (wing === 1) return "Svarga";
-  if (wing === -1) return "Naraka";
-  if (wing === 2) return "Skill grove";
-  if (wing === 3) return "Combat yard";
-  if (wing === 4) return "Combat ring";
-  if (wing === 5) return "Armour yard";
-  if (wing === 6) return "Weapon yard";
-  if (wing === 7) return "Quarry";
-  if (wing === 8) return "Sanctum";
-  if (wing === 9) return "Market";
-  if (wing === 10) return "Enchanting";
-  if (wing === 11) return "Wilds";
-  if (wing === 12) return "Floor 332";
-  if (wing === 13) return "Tech market";
-  if (wing === 14) return "Medical";
-  if (wing === 15) return "Biology";
-  if (wing === 16) return "Library";
-  if (wing === 17) return "Jyotisha";
-  if (wing === 18) return "Mantra";
-  if (Math.abs(s.x - 40) < 36 && s.y > 150 && s.y < 236) return "Naraka gate";
-  if (Math.abs(s.x - 308) < 36 && s.y > 150 && s.y < 236) return "Svarga gate";
-  if (s.x >= 240 && s.x <= 296 && s.y >= 76 && s.y <= 108) return "Goat pen";
+  if (wing === 1) {
+    if (Math.hypot(s.x - MANTRA_DOOR.x, s.y - MANTRA_DOOR.y) < 22) return "Mantra Gate";
+    if (Math.hypot(s.x - HEAVEN_GATE.x, s.y - HEAVEN_GATE.y) < 28) return "Yard Gate";
+    return "The Tile";
+  }
+  if (wing === -1) return "The Court";
+  if (wing === 2) return grovePlotAt(s.x, s.y)?.name ?? "Training Ground";
+  if (wing === 3) return combatPlotAt(s.x, s.y)?.name ?? "Training Ground";
+  if (wing === 4) return "The Ring";
+  if (wing === 5) return armourPlotAt(s.x, s.y)?.name ?? "The Yard";
+  if (wing === 6) return weaponPlotAt(s.x, s.y)?.name ?? "The Yard";
+  if (wing === 7) return quarryPlotAt(s.x, s.y)?.name ?? "The Face";
+  if (wing === 8) return "The Sanctum";
+  if (wing === 9) return "The Stalls";
+  if (wing === 10) return "The Bench";
+  if (wing === 11) return "The Trail";
+  if (wing === 12) return "Open Floor";
+  if (wing === 13) return "The Market";
+  if (wing === 14) return "The Hall";
+  if (wing === 15) return "The Beds";
+  if (wing === 16) return "The Stacks";
+  if (wing === 17) return "The Sky";
+  if (wing === 18) return "The Circle";
+  if (wing === 19) return s.mansion ? "The House" : "The Foundation";
+  if (Math.abs(s.x - 40) < 36 && s.y > 150 && s.y < 236) return "Naraka Gate";
+  if (Math.abs(s.x - 308) < 36 && s.y > 150 && s.y < 236) return "Svarga Gate";
+  if (s.x >= 240 && s.x <= 296 && s.y >= 76 && s.y <= 108) return "Goat Pen";
   if (Math.hypot(s.x - 260, s.y - 146) < 28) return "House";
-  if (Math.hypot(s.x - 172, s.y - 380) < 36) return "Courtyard, magic plot";
+  if (Math.hypot(s.x - 172, s.y - 380) < 36) return "Magic Plot";
   if (s.y >= 192 && s.y < 236) return "Sidewalk";
   if (s.y < 192) return "Farm";
   if (s.y < 528) return "Courtyard";
-  return "Below the yard";
+  return "Below the Yard";
+}
+
+const SKILL_GROUPS: { name: string; ids: SkillId[] }[] = [
+  { name: "Field", ids: ["farming", "foraging", "fishing", "husbandry", "herbalism"] },
+  { name: "Craft", ids: ["cooking", "woodcraft", "construction", "quarry", "enchant"] },
+  { name: "Body", ids: ["healing", "survival", "tracking", "exploration"] },
+  { name: "Magic", ids: ["magic", "ritual"] },
+  { name: "Fight", ids: ["combat", "armour", "weapon", "trade"] },
+];
+
+const REALM_ORDER = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] as const;
+
+function realmNotes(wing: number): string[] {
+  if (wing === 0) {
+    return [
+      "West arch is Naraka. East arch is Svarga. Both stand on the sidewalk.",
+      "The farm is above the sidewalk. The goat pen is the upper-right fence. The pond and the house are on the farm.",
+      "Xiang Su stands on the sidewalk. The cat walks the sidewalk and the courtyard. The cow, the rooster, and the milkmaid are in the courtyard.",
+      "The seal is the magic plot. Courtyard portals open the training lands, the study halls, and Floor 332.",
+    ];
+  }
+  if (wing === 1) {
+    return [
+      "The yard gate on the tile returns home.",
+      "The lotus DNA hole under the pond, on the tile, opens the Mantra hall.",
+      "The tree can be chopped. Clouds are not the floor.",
+    ];
+  }
+  if (wing === -1) {
+    return ["The gate on the right of Naraka returns to the yard."];
+  }
+  if (wing === 2) return ["Each marked plot trains one skill. The portal at the south edge returns to the courtyard."];
+  if (wing === 3) return ["Combat Plot, Straw Dummy, Archery Butt, and Blade Post. The portal returns to the courtyard."];
+  if (wing === 4) return ["The ring is for a fight. The portal on the ring returns to the courtyard."];
+  if (wing === 12) return ["One open triangle. The wall is the edge. Space is outside it. The gold ladder returns to the courtyard."];
+  if (wing === 18) return ["The lotus ladder returns to the tile under the Svarga pond."];
+  if (wing === 19) return ["The foundation takes 6 branches and 2 repair kits. The Egyptian gate returns to the courtyard."];
+  return [`The ladder in ${realmTitle(wing)} returns to the courtyard.`];
 }
 
 type Menu = { x: number; y: number; rows: { label: string; run: () => void }[] };
@@ -267,7 +319,7 @@ function itemLabel(it: Item): string {
   const d = defOf(it);
   const qty = d.stack && it.qty > 1 ? ` ×${it.qty}` : "";
   const floor = d.kind === "tool" ? ` · Q${Math.round(it.quality)} · Floor ${it.floor.toFixed(1)}` : ` · Floor ${Math.floor(it.floor * (d.stack ? it.qty : 1))}`;
-  const water = d.waterMax ? ` · water ${it.water ?? 0}/${d.waterMax}` : "";
+  const water = d.waterMax ? ` · Water ${it.water ?? 0}/${d.waterMax}` : "";
   return `${d.name}${qty}${floor}${water}. ${it.noteOf ? "Paper. No use. No weight." : d.blurb}`;
 }
 
@@ -297,7 +349,7 @@ function SoundControls() {
       <SoundBar label="Music" value={snd.music} onChange={setMusicVolume} />
       <SoundBar label="Animals" value={snd.animals} onChange={setAnimalVolume} />
       <SoundBar label="Bell" value={snd.bell ?? 0.35} onChange={setBellVolume} />
-      <SoundBar label="Total" value={snd.volume} onChange={setVolume} />
+      <SoundBar label="Master" value={snd.volume} onChange={setVolume} />
       <button
         type="button"
         className={`sound-mute${snd.muted ? " on" : ""}`}
@@ -478,6 +530,7 @@ export function AssayGame() {
       ensureStable(stateRef.current);
       ensureXiang64(stateRef.current);
       ensureCourtHerd(stateRef.current);
+      ensureSow(stateRef.current);
       setReady(true);
     }, 12000);
     const wake = (state: GameState) => {
@@ -489,6 +542,7 @@ export function AssayGame() {
       ensureStable(state);
       ensureXiang64(state);
       ensureCourtHerd(state);
+      ensureSow(state);
     };
     loadSheets()
       .then((sheets) => {
@@ -1384,12 +1438,12 @@ export function AssayGame() {
                 />
               </div>
               <div className="panel hud-crest">
-                <b>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 332" : s.wing === 13 ? "Tech market" : s.wing === 14 ? "Medical" : s.wing === 15 ? "Biology" : s.wing === 16 ? "Library" : s.wing === 17 ? "Jyotisha" : s.wing === 18 ? "Mantra" : "Homestead"}</b>
+                <b>{realmTitle(s.wing)}</b>
                 <span>{placeName(s)}</span>
                 <span>
                   {clockLabel(s.time)} · {skyLabel(s)}
                 </span>
-                <span className="hud-sub">{s.cast ? liturgyName(s.cast.spell, s.wing ?? 0) : s.downed ? "Downed" : "Clear"}</span>
+                <span className="hud-sub">{s.cast ? liturgyName(s.cast.spell, s.wing ?? 0) : s.downed ? "Downed" : "Ready"}</span>
               </div>
               <div className="panel hud-card">
                 <div className="hud-head">
@@ -1955,23 +2009,32 @@ export function AssayGame() {
           <div className="panel sheet skills-sheet" onClick={(e) => e.stopPropagation()}>
             <h2>Skills</h2>
             <p style={{ marginTop: 0, fontSize: 13 }}>
-              Health {Math.round(s.health ?? 100)}. He learns by doing the work. The pack and the body stay on their own pages.
+              Health {Math.round(s.health ?? 100)}. He learns by doing the work. Each row names the land where that skill is trained.
             </p>
             <div className="skill-list">
-              {SKILL_IDS.map((id) => {
-                const xp = s.skills?.[id] ?? 0;
-                const level = skillLevel(xp);
-                return (
-                  <div className="skill-row" key={id}>
-                    <b>{SKILL_NAME[id]}</b>
-                    <i>Lv {level}</i>
-                    <div className="meter">
-                      <span style={{ width: `${skillFill(xp) * 100}%`, background: "#c4a574" }} />
-                    </div>
-                    <small>{SKILL_NOTE[id]}</small>
+              {SKILL_GROUPS.map((group) => (
+                <div className="skill-group" key={group.name}>
+                  <h3>{group.name}</h3>
+                  <div className="skill-list">
+                    {group.ids.map((id) => {
+                      const xp = s.skills?.[id] ?? 0;
+                      const level = skillLevel(xp);
+                      return (
+                        <div className="skill-row" key={id}>
+                          <b>{SKILL_NAME[id]}</b>
+                          <i>Lv {level}</i>
+                          <div className="meter">
+                            <span style={{ width: `${skillFill(xp) * 100}%`, background: "#c4a574" }} />
+                          </div>
+                          <small>
+                            {SKILL_NOTE[id]} Trains in {SKILL_WHERE[id]}.
+                          </small>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
             <button className="slot" style={{ width: "auto", padding: "6px 10px", marginTop: 10 }} onClick={() => { panelRef.current = null; setPanel(null); }}>
               Close
@@ -2010,17 +2073,28 @@ export function AssayGame() {
       {screen === "play" && s && panel === "map" && (
         <div className="overlay" onClick={() => { panelRef.current = null; setPanel(null); }}>
           <div className="panel sheet map-sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>{s.wing === 1 ? "Svarga" : s.wing === -1 ? "Naraka" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 332" : s.wing === 13 ? "Tech market" : s.wing === 14 ? "Medical" : s.wing === 15 ? "Biology" : s.wing === 16 ? "Library" : s.wing === 17 ? "Jyotisha" : s.wing === 18 ? "Mantra" : "Homestead"}</h2>
-            <p className="map-now">You are at {placeName(s)}.</p>
+            <h2>{realmTitle(s.wing)}</h2>
+            <p className="map-now">
+              You are in {realmTitle(s.wing)}, at {placeName(s)}.
+            </p>
+            <div className="land-index" aria-label="Lands">
+              {REALM_ORDER.map((wing) => (
+                <span key={wing} className={(s.wing ?? 0) === wing ? "here" : ""}>
+                  {realmTitle(wing)}
+                </span>
+              ))}
+            </div>
             <div
               className="live-map"
-              style={{ aspectRatio: s.wing === 1 || s.wing === -1 ? "347 / 960" : "347 / 528" }}
+              style={{ aspectRatio: (s.wing ?? 0) === 12 ? `347 / ${FLOOR_H}` : s.wing === 1 || s.wing === -1 ? "347 / 960" : "347 / 528" }}
             >
-              {s.wing ? (
+              {s.wing === 1 || s.wing === -1 ? (
                 <img
-                  src={s.wing === 1 ? `/game/land/svarga.png?v=${ART}` : s.wing != null && s.wing >= 2 ? `/game/land/grove.png?v=${ART}` : `/game/land/naraka.png?v=${ART}`}
-                  alt={s.wing === 1 ? "Svarga" : s.wing === 2 ? "Skill grove" : s.wing === 3 ? "Combat yard" : s.wing === 4 ? "Combat ring" : s.wing === 5 ? "Armour yard" : s.wing === 6 ? "Weapon yard" : s.wing === 7 ? "Quarry" : s.wing === 8 ? "Sanctum" : s.wing === 9 ? "Market" : s.wing === 10 ? "Enchanting" : s.wing === 11 ? "Wilds" : s.wing === 12 ? "Floor 332" : s.wing === 13 ? "Tech market" : s.wing === 14 ? "Medical" : s.wing === 15 ? "Biology" : s.wing === 16 ? "Library" : s.wing === 17 ? "Jyotisha" : s.wing === 18 ? "Mantra" : "Naraka"}
+                  src={s.wing === 1 ? `/game/land/svarga.png?v=${ART}` : `/game/land/naraka.png?v=${ART}`}
+                  alt={realmTitle(s.wing)}
                 />
+              ) : s.wing ? (
+                <div className="map-plate">{realmTitle(s.wing)}</div>
               ) : (
                 <>
                   <img src={`/game/yard.png?v=${ART}`} alt="The farm" className="live-map-farm" />
@@ -2046,7 +2120,10 @@ export function AssayGame() {
                 </>
               )}
               {s.wing === 1 && (
-                <span className="pin svarga" style={{ left: `${(40 / WORLD_W) * 100}%`, top: `${(210 / WORLD_H) * 100}%` }}>Yard</span>
+                <>
+                  <span className="pin svarga" style={{ left: `${(HEAVEN_GATE.x / WORLD_W) * 100}%`, top: `${(HEAVEN_GATE.y / WORLD_H) * 100}%` }}>Yard</span>
+                  <span className="pin seal" style={{ left: `${(MANTRA_DOOR.x / WORLD_W) * 100}%`, top: `${(MANTRA_DOOR.y / WORLD_H) * 100}%` }}>Mantra</span>
+                </>
               )}
               {s.wing === -1 && (
                 <span className="pin naraka" style={{ left: `${(308 / WORLD_W) * 100}%`, top: `${(210 / WORLD_H) * 100}%` }}>Yard</span>
@@ -2055,33 +2132,16 @@ export function AssayGame() {
                 className="pin you"
                 style={{
                   left: `${(s.x / WORLD_W) * 100}%`,
-                  top: `${(s.y / (s.wing ? WORLD_H : 528)) * 100}%`,
+                  top: `${(s.y / ((s.wing ?? 0) === 12 ? FLOOR_H : s.wing === 1 || s.wing === -1 ? WORLD_H : 528)) * 100}%`,
                 }}
               >
                 You
               </span>
             </div>
             <ul>
-              {(s.wing === 0 || s.wing == null) && (
-                <>
-                  <li>West arch is Naraka. East arch is Svarga. Both stand on the sidewalk.</li>
-                  <li>The farm is above the sidewalk. The goat pen is the upper-right fence. The pond and the house are on the farm.</li>
-                  <li>Xiang Su stands on the sidewalk. The cat walks the sidewalk and the courtyard.</li>
-                  <li>The seal in the courtyard is the magic plot. The field hand works the beds.</li>
-                </>
-              )}
-              {s.wing === 1 && (
-                <>
-                  <li>The gate on the left of Svarga returns to the yard.</li>
-                  <li>Under the cliff is the home land, seen from heaven. The house, the pond lotus, the fields, and the seal mark it. A shaft of light falls from Svarga onto that seal.</li>
-                </>
-              )}
-              {s.wing === -1 && (
-                <>
-                  <li>The gate on the right of Naraka returns to the yard.</li>
-                  <li>Under the cliff is the ash court. The fire channel and the two posts mark it.</li>
-                </>
-              )}
+              {realmNotes(s.wing ?? 0).map((line) => (
+                <li key={line}>{line}</li>
+              ))}
             </ul>
             <button className="slot" style={{ width: "auto", padding: "6px 10px" }} onClick={() => { panelRef.current = null; setPanel(null); }}>
               Close
@@ -2097,10 +2157,10 @@ export function AssayGame() {
             <ul style={{ fontSize: 14 }}>
               <li>Days slept: {s.stats.daysSlept} / 14</li>
               <li>Beds still alive: {bedsAlive(s)} / 4</li>
-              <li>Gate repaired: {s.stats.gateRepaired ? "yes" : "not yet"}</li>
+              <li>Gate repaired: {s.stats.gateRepaired ? "Yes" : "Not yet"}</li>
               <li>Meals cooked: {s.stats.cooked}</li>
               <li>Floor earned: {s.stats.floorEarned}</li>
-              <li>Fine can: {s.stats.boughtTool ? "bought" : "still on the ledger"}</li>
+              <li>Fine can: {s.stats.boughtTool ? "Bought" : "Still on the ledger"}</li>
               <li>Harvests: {s.stats.harvested}</li>
               <li>{isNight(s.time) ? "Night. The tub or the shed will pass the day." : "Daylight. Water what you mean to keep."}</li>
             </ul>

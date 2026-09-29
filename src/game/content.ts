@@ -624,7 +624,7 @@ export function lockBeds(s: GameState): void {
 
 export type Animal = {
   id: string;
-  kind: "cow" | "rooster" | "goat";
+  kind: "cow" | "rooster" | "goat" | "sow";
   name: string;
   x: number;
   y: number;
@@ -636,7 +636,9 @@ export type Animal = {
   pause: number;
   /** Waypoints through the gate. Empty means choose a new errand. */
   route?: number[];
-  intent?: "graze" | "drink" | "court" | "wander" | "flee";
+  intent?: "graze" | "drink" | "court" | "wander" | "flee" | "follow";
+  /** The sow has been trained to follow at least once. */
+  trained?: boolean;
 };
 
 export type BirdMode = "stand" | "walk" | "takeoff" | "fly" | "land";
@@ -932,7 +934,7 @@ export function liturgyOf(spell: SpellId): Liturgy {
 }
 
 /** Homestead keeps the practice names. Each loka speaks the same nine motions in its own pigment. */
-export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18): string {
+export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19): string {
   if (wing === 0 || wing >= 2) return SPELL_NAME[spell];
   const east = wing === 1;
   switch (spell) {
@@ -957,7 +959,7 @@ export function liturgyName(spell: SpellId, wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6
   }
 }
 
-export type Face = "ok" | "happy" | "tired" | "ill" | "need" | "heart";
+export type Face = "ok" | "happy" | "tired" | "ill" | "need" | "heart" | "sad" | "angry" | "love" | "cry" | "wow" | "cool";
 
 export type Life = {
   hunger: number;
@@ -1100,11 +1102,11 @@ export type GameState = {
   rune: number;
   cast: Cast | null;
   /** -1 west copy, 0 home, 1 east copy, 2 the skill grove. */
-  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
+  wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19;
   /** A portal crossing. The land changes halfway through the fade. */
   cross: {
     t: number;
-    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
+    wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19;
     x: number;
     y: number;
     dir: Dir;
@@ -1112,6 +1114,8 @@ export type GameState = {
     moved: boolean;
   } | null;
   uiEvent?: { panel?: PanelId; save?: boolean; summary?: boolean };
+  /** The player's house on the mansion land. Raised only after the materials are spent. */
+  mansion?: boolean;
   /** 5 = opens on the upper farmland. Older saves are moved there on load. */
   courtSpawn?: boolean | 2 | 3 | 4 | 5;
   /** 3 = field hand works the farm beds. */
@@ -1189,12 +1193,12 @@ export const SKILL_NAME: Record<SkillId, string> = {
   cooking: "Cooking",
   herbalism: "Herbalism",
   fishing: "Fishing",
-  husbandry: "Animal care",
+  husbandry: "Animal Care",
   woodcraft: "Woodcraft",
   construction: "Construction",
   tracking: "Tracking",
   healing: "Healing",
-  magic: "Elemental magic",
+  magic: "Elemental Magic",
   ritual: "Ritual",
   survival: "Survival",
   exploration: "Exploration",
@@ -1228,6 +1232,76 @@ export const SKILL_NOTE: Record<SkillId, string> = {
   trade: "Sell what the homestead has made.",
   enchant: "Bind a working onto a finished piece.",
 };
+
+export const SKILL_WHERE: Record<SkillId, string> = {
+  farming: "Skill Grove",
+  foraging: "Skill Grove",
+  cooking: "Skill Grove",
+  herbalism: "Skill Grove",
+  fishing: "Skill Grove and the farm pond",
+  husbandry: "Skill Grove",
+  woodcraft: "Skill Grove",
+  construction: "Skill Grove",
+  tracking: "Skill Grove",
+  healing: "Skill Grove and Medical",
+  magic: "Courtyard seal",
+  ritual: "Skill Grove",
+  survival: "Skill Grove",
+  exploration: "Any gate off the homestead",
+  combat: "Combat Yard and Combat Ring",
+  armour: "Armour Yard",
+  weapon: "Weapon Yard",
+  quarry: "Quarry",
+  trade: "Market",
+  enchant: "Enchanting",
+};
+
+export function realmTitle(wing: number | null | undefined): string {
+  switch (wing) {
+    case -1:
+      return "Naraka";
+    case 1:
+      return "Svarga";
+    case 2:
+      return "Skill Grove";
+    case 3:
+      return "Combat Yard";
+    case 4:
+      return "Combat Ring";
+    case 5:
+      return "Armour Yard";
+    case 6:
+      return "Weapon Yard";
+    case 7:
+      return "Quarry";
+    case 8:
+      return "Sanctum";
+    case 9:
+      return "Market";
+    case 10:
+      return "Enchanting";
+    case 11:
+      return "Wilds";
+    case 12:
+      return "Floor 332";
+    case 13:
+      return "Tech Market";
+    case 14:
+      return "Medical";
+    case 15:
+      return "Biology";
+    case 16:
+      return "Library";
+    case 17:
+      return "Jyotisha";
+    case 18:
+      return "Mantra";
+    case 19:
+      return "Mansion";
+    default:
+      return "Homestead";
+  }
+}
 
 export function freshSkills(): SkillBook {
   const book = {} as SkillBook;
@@ -1421,10 +1495,42 @@ export function ensureGoatPen(s: GameState): void {
   s.goatPen = 1;
 }
 
-/** Cow lives on the skill grove. Rooster stays on the courtyard. A save that left the cow on the farm comes back. */
+/** A save that never had the sow gets her on the upper farm. She stays north of the sidewalk. */
+export function ensureSow(s: GameState): void {
+  const home = { x: 88, y: 168 };
+  let sow = s.animals.find((a) => a.kind === "sow");
+  if (!sow) {
+    sow = {
+      id: "sow",
+      kind: "sow",
+      name: "Sow",
+      x: home.x,
+      y: home.y,
+      dir: "e",
+      fed: false,
+      ready: false,
+      tx: home.x,
+      ty: home.y,
+      pause: 1.2,
+      route: [],
+      intent: "graze",
+    };
+    s.animals.push(sow);
+  }
+  const offYard = sow.y > 516 || sow.y < 40 || sow.x < 24 || sow.x > 330;
+  if (offYard) {
+    sow.x = home.x;
+    sow.y = home.y;
+    sow.tx = home.x;
+    sow.ty = home.y;
+    sow.route = [];
+    sow.pause = 0.6;
+    if (sow.intent !== "follow") sow.intent = "graze";
+  }
+}
 export function ensureCourtHerd(s: GameState): void {
   for (const a of s.animals) {
-    if (a.kind === "goat") continue;
+    if (a.kind === "goat" || a.kind === "sow") continue;
     const spot = HERD_HOME[a.kind];
     if (!spot) continue;
     if (a.kind === "cow") {
@@ -1453,6 +1559,7 @@ export function ensureCourtHerd(s: GameState): void {
 
 export function placeHerd(s: GameState): void {
   for (const a of s.animals) {
+    if (a.kind === "sow") continue;
     const spot = HERD_HOME[a.kind];
     if (!spot || a.y < MEADOW.y - 12) continue;
     a.x = spot.x;
@@ -1508,6 +1615,7 @@ export function placeCourtSpawn(s: GameState): void {
   }
   if (!first) return;
   for (const a of s.animals) {
+    if (a.kind === "sow") continue;
     const spot = HERD_HOME[a.kind];
     if (!spot) continue;
     a.x = spot.x;
@@ -1536,10 +1644,10 @@ export type SeamRock = { x: number; y: number; i: number; s: number };
 /** Nothing sits in the void. */
 export const SEAM_ROCKS: SeamRock[] = [];
 
-let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 = 0;
+let realmWing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 = 0;
 
 /** Farm collision stays on the homestead. Each other land has its own ground. */
-export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18): void {
+export function setRealm(wing: -1 | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19): void {
   realmWing = wing;
 }
 
@@ -1561,6 +1669,7 @@ function realmFeet(x: number, y: number): boolean {
   if (realmWing === 16) return libraryFeet(x, y);
   if (realmWing === 17) return jyotishFeet(x, y);
   if (realmWing === 18) return mantraFeet(x, y);
+  if (realmWing === 19) return mansionFeet(x, y);
   const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
   if (box.y + box.h > MEADOW.y) return true;
   if (box.x < 22 || box.x + box.w > 330) return true;
@@ -1650,20 +1759,20 @@ export type GrovePlot = {
 
 /** Training stations painted on the grove plate. Magic is marked, not trained here. */
 export const GROVE_PLOTS: GrovePlot[] = [
-  { id: "g-farm", name: "Tilled bed", skill: "farming", x: 40, y: 64, w: 88, h: 36 },
-  { id: "g-herb", name: "Flower bed", skill: "herbalism", x: 40, y: 128, w: 84, h: 32 },
+  { id: "g-farm", name: "Tilled Bed", skill: "farming", x: 40, y: 64, w: 88, h: 36 },
+  { id: "g-herb", name: "Flower Bed", skill: "herbalism", x: 40, y: 128, w: 84, h: 32 },
   { id: "g-herd", name: "Trough", skill: "husbandry", x: 44, y: 188, w: 70, h: 28 },
-  { id: "g-build", name: "Stone pile", skill: "construction", x: 44, y: 268, w: 52, h: 28 },
+  { id: "g-build", name: "Stone Pile", skill: "construction", x: 44, y: 268, w: 52, h: 28 },
   { id: "g-track", name: "Cairn", skill: "tracking", x: 46, y: 328, w: 28, h: 28 },
   { id: "g-explore", name: "Waystone", skill: "exploration", x: 48, y: 420, w: 16, h: 28 },
-  { id: "g-forage", name: "Berry bush", skill: "foraging", x: 228, y: 72, w: 44, h: 34 },
+  { id: "g-forage", name: "Berry Bush", skill: "foraging", x: 228, y: 72, w: 44, h: 34 },
   { id: "g-wood", name: "Stump", skill: "woodcraft", x: 248, y: 152, w: 40, h: 28 },
-  { id: "g-cook", name: "Cook fire", skill: "cooking", x: 246, y: 214, w: 32, h: 24 },
-  { id: "g-fish", name: "Practice pond", skill: "fishing", x: 230, y: 306, w: 56, h: 14 },
+  { id: "g-cook", name: "Cook Fire", skill: "cooking", x: 246, y: 214, w: 32, h: 24 },
+  { id: "g-fish", name: "Practice Pond", skill: "fishing", x: 230, y: 306, w: 56, h: 14 },
   { id: "g-heal", name: "Spring", skill: "healing", x: 244, y: 376, w: 36, h: 24 },
   { id: "g-live", name: "Lean-to", skill: "survival", x: 220, y: 424, w: 48, h: 22 },
-  { id: "g-rite", name: "Ritual ring", skill: "ritual", x: 156, y: 286, w: 36, h: 28 },
-  { id: "g-magic", name: "Seal stone", skill: "magic", x: 286, y: 430, w: 14, h: 22 },
+  { id: "g-rite", name: "Ritual Ring", skill: "ritual", x: 156, y: 286, w: 36, h: 28 },
+  { id: "g-magic", name: "Seal Stone", skill: "magic", x: 286, y: 430, w: 14, h: 22 },
 ];
 
 export const GROVE_SOLIDS: Rect[] = [
@@ -1721,10 +1830,10 @@ export type CombatPlot = {
 };
 
 export const COMBAT_PLOTS: CombatPlot[] = [
-  { id: "c-plot", name: "Combat plot", skill: "combat", x: 108, y: 168, w: 120, h: 72 },
-  { id: "c-dummy", name: "Straw dummy", skill: "combat", x: 40, y: 72, w: 28, h: 40 },
-  { id: "c-arch", name: "Archery butt", skill: "combat", x: 248, y: 72, w: 44, h: 36 },
-  { id: "c-blade", name: "Blade post", skill: "combat", x: 44, y: 300, w: 24, h: 36 },
+  { id: "c-plot", name: "Combat Plot", skill: "combat", x: 108, y: 168, w: 120, h: 72 },
+  { id: "c-dummy", name: "Straw Dummy", skill: "combat", x: 40, y: 72, w: 28, h: 40 },
+  { id: "c-arch", name: "Archery Butt", skill: "combat", x: 248, y: 72, w: 44, h: 36 },
+  { id: "c-blade", name: "Blade Post", skill: "combat", x: 44, y: 300, w: 24, h: 36 },
   { id: "c-shield", name: "Shield rack", skill: "combat", x: 246, y: 300, w: 52, h: 28 },
 ];
 
@@ -1802,18 +1911,18 @@ export type SmithPlot = {
 };
 
 export const ARMOUR_PLOTS: SmithPlot[] = [
-  { id: "a-plot", name: "Armour plot", skill: "armour", x: 118, y: 250, w: 110, h: 56 },
-  { id: "a-stand", name: "Armour stand", skill: "armour", x: 44, y: 72, w: 28, h: 40 },
-  { id: "a-helm", name: "Helm form", skill: "armour", x: 46, y: 160, w: 32, h: 28 },
-  { id: "a-mail", name: "Mail bench", skill: "armour", x: 236, y: 80, w: 56, h: 24 },
-  { id: "a-fit", name: "Fitting post", skill: "armour", x: 250, y: 180, w: 22, h: 36 },
+  { id: "a-plot", name: "Armour Plot", skill: "armour", x: 118, y: 250, w: 110, h: 56 },
+  { id: "a-stand", name: "Armour Stand", skill: "armour", x: 44, y: 72, w: 28, h: 40 },
+  { id: "a-helm", name: "Helm Form", skill: "armour", x: 46, y: 160, w: 32, h: 28 },
+  { id: "a-mail", name: "Mail Bench", skill: "armour", x: 236, y: 80, w: 56, h: 24 },
+  { id: "a-fit", name: "Fitting Post", skill: "armour", x: 250, y: 180, w: 22, h: 36 },
 ];
 
 export const WEAPON_PLOTS: SmithPlot[] = [
-  { id: "w-plot", name: "Weapon plot", skill: "weapon", x: 118, y: 250, w: 110, h: 56 },
-  { id: "w-bench", name: "Weapon bench", skill: "weapon", x: 40, y: 72, w: 56, h: 24 },
-  { id: "w-blade", name: "Blade stone", skill: "weapon", x: 48, y: 160, w: 36, h: 28 },
-  { id: "w-haft", name: "Haft rack", skill: "weapon", x: 240, y: 72, w: 40, h: 36 },
+  { id: "w-plot", name: "Weapon Plot", skill: "weapon", x: 118, y: 250, w: 110, h: 56 },
+  { id: "w-bench", name: "Weapon Bench", skill: "weapon", x: 40, y: 72, w: 56, h: 24 },
+  { id: "w-blade", name: "Blade Stone", skill: "weapon", x: 48, y: 160, w: 36, h: 28 },
+  { id: "w-haft", name: "Haft Rack", skill: "weapon", x: 240, y: 72, w: 40, h: 36 },
   { id: "w-forge", name: "Forge", skill: "weapon", x: 246, y: 176, w: 36, h: 28 },
 ];
 
@@ -1863,7 +1972,39 @@ function weaponFeet(x: number, y: number): boolean {
   return yardFeet(WEAPON_SOLIDS, x, y);
 }
 
-/** Left courtyard, between the weapon portal and the combat ring. */
+/** Left courtyard, between the weapon portal and the jyotisha hall. */
+export const MANSION_DOOR = { x: 36, y: 314 } as const;
+export const MANSION_ARRIVE = { x: 174, y: 390 } as const;
+export const MANSION_RETURN = { x: 174, y: 460 } as const;
+export const MANSION_LOT = { x: 132, y: 168, w: 84, h: 64 } as const;
+
+const MANSION_SOLIDS: Rect[] = [
+  { x: 118, y: 52, w: 112, h: 22 },
+  { x: 46, y: 108, w: 10, h: 8 },
+  { x: 292, y: 108, w: 10, h: 8 },
+  { x: 52, y: 292, w: 10, h: 8 },
+  { x: 286, y: 292, w: 10, h: 8 },
+];
+
+const MANSION_HOUSE: Rect = { x: 144, y: 176, w: 60, h: 28 };
+
+export function onMansionLot(x: number, y: number): boolean {
+  const lot = MANSION_LOT;
+  return x >= lot.x && x < lot.x + lot.w && y >= lot.y && y < lot.y + lot.h;
+}
+
+let mansionUp = false;
+
+export function setMansionUp(on: boolean): void {
+  mansionUp = on;
+}
+
+function mansionFeet(x: number, y: number): boolean {
+  if (yardFeet(MANSION_SOLIDS, x, y)) return true;
+  if (!mansionUp) return false;
+  const box = { x: x - 4, y: y - 4, w: 8, h: 5 };
+  return overlap(box, MANSION_HOUSE);
+}
 export const QUARRY_DOOR = { x: 36, y: 380 } as const;
 export const QUARRY_ARRIVE = { x: 174, y: 200 } as const;
 export const QUARRY_RETURN = { x: 174, y: 460 } as const;
@@ -1872,6 +2013,9 @@ export const QUARRY_RETURN = { x: 174, y: 460 } as const;
 export const SANCTUM_DOOR = { x: 308, y: 380 } as const;
 export const SANCTUM_ARRIVE = { x: 174, y: 200 } as const;
 export const SANCTUM_RETURN = { x: 174, y: 460 } as const;
+
+/** Right courtyard, between the armour portal and the market. Offline. */
+export const VISIT_DOOR = { x: 308, y: 314 } as const;
 
 /** Right courtyard, just above the sanctum portal. */
 export const MARKET_DOOR = { x: 308, y: 356 } as const;
@@ -2186,7 +2330,7 @@ export function lifeLabel(life: Life): string {
 export function skyLabel(s: { weather?: Sky; wet?: number }): string {
   if (s.weather === "storm") return "Thunderstorm";
   if (s.weather === "rain") return "Rain";
-  if ((s.wet ?? 0) > 0.35) return "Wet ground";
+  if ((s.wet ?? 0) > 0.35) return "Wet Ground";
   return "Clear";
 }
 
@@ -2213,7 +2357,7 @@ export function clockLabel(time: number): string {
   const mins = Math.floor(6 * 60 + time * 16 * 60);
   const h = Math.floor(mins / 60) % 24;
   const m = mins % 60;
-  const ap = h >= 12 ? "pm" : "am";
+  const ap = h >= 12 ? "PM" : "AM";
   const hh = ((h + 11) % 12) + 1;
   return `${hh}:${m.toString().padStart(2, "0")} ${ap}`;
 }
@@ -2295,6 +2439,7 @@ export function createGame(): GameState {
       { id: "cow", kind: "cow", name: "Cow", x: HERD_HOME.cow.x, y: HERD_HOME.cow.y, dir: "e", fed: false, ready: false, tx: HERD_HOME.cow.x, ty: HERD_HOME.cow.y, pause: 1.6 },
       { id: "rooster", kind: "rooster", name: "Rooster", x: HERD_HOME.rooster.x, y: HERD_HOME.rooster.y, dir: "n", fed: false, ready: false, tx: HERD_HOME.rooster.x, ty: HERD_HOME.rooster.y, pause: 0.5 },
       { id: "goat", kind: "goat", name: "Goat", x: HERD_HOME.goat.x, y: HERD_HOME.goat.y, dir: "w", fed: false, ready: false, tx: HERD_HOME.goat.x, ty: HERD_HOME.goat.y, pause: 0.9 },
+      { id: "sow", kind: "sow", name: "Sow", x: 88, y: 168, dir: "e", fed: false, ready: false, tx: 88, ty: 168, pause: 1.2, route: [], intent: "graze" },
     ],
     branches: [],
     structures: [
