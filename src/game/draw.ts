@@ -4663,22 +4663,32 @@ function ensureSmith(sheets: Sheets, kind: "armour" | "weapon" | "quarry" | "san
 function paintDnaHole(ctx: CanvasRenderingContext2D, cx: number, cy: number, clock: number): void {
   const rx = 12;
   const ry = 6;
-  const spin = clock * 2.4;
+  const spin = clock * 1.5;
   for (let y = -ry; y <= ry; y++) {
     const ny = y / ry;
-    const twist = spin + ny * Math.PI * 2.2;
-    const span = Math.cos(ny * 0.6) * rx * 0.62;
-    const a = Math.sin(twist) * span;
-    const b = -a;
-    const rung = Math.abs(Math.sin(twist)) < 0.38;
+    const twist = spin + (y + ry) * 0.72;
+    const amp = 5.2 * (1 - ny * ny * 0.12);
+    const ax = Math.sin(twist) * amp;
+    const bx = -ax;
+    const frontA = Math.cos(twist) >= 0;
+    const rung = (y + ry + Math.floor(spin * 2)) % 3 === 1;
     for (let x = -rx; x <= rx; x++) {
       const d = (x / rx) * (x / rx) + ny * ny;
       if (d > 1) continue;
-      const depth = (y + ry) / (ry * 2);
-      let color = depth > 0.72 ? "#120c08" : depth > 0.35 ? "#24180e" : "#3a2814";
-      if (rung && x > Math.min(a, b) && x < Math.max(a, b)) color = depth > 0.6 ? "#785018" : "#e2b657";
-      if (Math.abs(x - a) <= 0.8 || Math.abs(x - b) <= 0.8) color = Math.sin(twist) > 0 && Math.abs(x - a) <= 0.8 ? "#ffecaa" : "#b08034";
-      if (d > 0.78) color = y < 0 ? (d > 0.9 ? "#ffecaa" : "#e2b657") : d > 0.9 ? "#3a2410" : "#785018";
+      const depth = (ny + 1) * 0.5;
+      let color = depth < 0.3 ? "#4a3218" : depth < 0.65 ? "#26180e" : "#0e0a06";
+      if (d > 0.58 && d <= 0.8) color = "#1c140c";
+      const onA = Math.abs(x - ax) < 1.05;
+      const onB = Math.abs(x - bx) < 1.05;
+      const lo = Math.min(ax, bx);
+      const hi = Math.max(ax, bx);
+      if (rung && x > lo + 0.6 && x < hi - 0.6 && d < 0.78) color = "#9a6424";
+      if ((frontA ? onB : onA) && d < 0.84) color = "#7a4e18";
+      if ((frontA ? onA : onB) && d < 0.84) {
+        const spine = Math.abs(x - (frontA ? ax : bx)) < 0.45;
+        color = spine ? "#fff6d2" : "#ffd060";
+      }
+      if (d > 0.8) color = y < -1 ? (d > 0.92 ? "#fff6d0" : "#f0d078") : d > 0.92 ? "#4a2c10" : "#c8963c";
       ctx.fillStyle = color;
       ctx.fillRect(cx + x, cy + y, 1, 1);
     }
