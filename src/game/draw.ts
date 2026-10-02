@@ -1317,17 +1317,49 @@ function drawSpell(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState):
   void s;
 }
 
-const FACE_FX: Partial<Record<GameState["life"]["face"], number>> = {
-  happy: 0,
-  sad: 1,
-  tired: 2,
-  need: 3,
-  angry: 4,
-  love: 5,
-  cry: 6,
-  wow: 7,
-  cool: 8,
+const FACE_FX: Partial<Record<GameState["life"]["face"], number[]>> = {
+  happy: [0, 1],
+  sad: [2],
+  tired: [3],
+  need: [4],
+  cry: [4],
+  angry: [5],
+  love: [6, 7, 8],
+  wow: [9],
+  cool: [10],
 };
+
+function blitAether(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  sx: number,
+  sy: number,
+  sw: number,
+  sh: number,
+  x: number,
+  y: number,
+  scale: number,
+  footX: number,
+  footY: number,
+  alpha: number,
+) {
+  if (img instanceof HTMLImageElement && img.naturalWidth <= 0) return;
+  const dw = Math.max(1, Math.round(sw * scale));
+  const dh = Math.max(1, Math.round(sh * scale));
+  const ox = Math.round(-footX * scale);
+  const oy = Math.round(-footY * scale);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.translate(Math.round(x), Math.round(y));
+  ctx.globalAlpha = alpha * 0.28;
+  ctx.drawImage(img, sx, sy, sw, sh, ox - 1, oy, dw, dh);
+  ctx.drawImage(img, sx, sy, sw, sh, ox + 1, oy, dw, dh);
+  ctx.drawImage(img, sx, sy, sw, sh, ox, oy - 1, dw, dh);
+  ctx.drawImage(img, sx, sy, sw, sh, ox, oy + 1, dw, dh);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(img, sx, sy, sw, sh, ox, oy, dw, dh);
+  ctx.restore();
+}
 
 function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState) {
   const life = s.life;
@@ -1336,8 +1368,11 @@ function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState)
   if (s.downed || life?.face === "ill") key = "fxDebuff";
   else if (life && life.emote > 0 && life.face === "heart") key = "fxHearts";
   else if (faceRow != null && sheets.fxFaces && sheets.fxFaces.width >= 400) {
+    const rows = faceRow;
     const frame = Math.floor(s.clock * 8) % 5;
-    blit(ctx, sheets.fxFaces, frame * 80, faceRow * 64, 80, 64, s.x, s.y - 16, 0.4, false, 40, 40);
+    const row = rows[Math.floor(s.clock / 1.8) % rows.length] ?? rows[0]!;
+    const breath = 0.55 + 0.2 * Math.sin(s.clock * 2.2);
+    blitAether(ctx, sheets.fxFaces, frame * 80, row * 64, 80, 64, s.x, s.y - 36, 0.4, 40, 40, breath);
     return;
   } else if (life && life.emote > 0 && life.face === "tired") key = "fxTired";
   else if (life && life.emote > 0 && (life.face === "need" || life.face === "sad" || life.face === "angry" || life.face === "cry")) key = "fxDebuff";
