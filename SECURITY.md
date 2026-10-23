@@ -18,7 +18,7 @@ Say what you tried, what you expected, and what happened. Allow a reasonable tim
 
 - The homestead save lives in your browser. Anyone who can use that browser profile can open the save. Use a device you trust.
 - Sign-in, if the host turns it on, uses a session cookie. Do not paste that cookie into chat or issues.
-- Assets are loaded from the same site as the game. A phone should open the HTTPS (or local dev) page in a browser. A link that your phone tries to open as an application is the wrong kind of link.
+- Assets are loaded from the same site as the game. The game runs in a desktop browser on a personal computer. A phone or a tablet is asked to open the address there. A link that a phone tries to open as an application is the wrong kind of link.
 
 ## Hardening already in the client
 

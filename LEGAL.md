@@ -8,7 +8,7 @@ The homestead is stored in the browser on that device (local storage). Playing d
 
 ## Your device
 
-Open the game in a browser on a phone or a computer. Do not expect a phone to launch it as a separate application from a bare file link. Use the site address.
+Open the game in a desktop browser on a personal computer. A phone or a tablet is shown a note asking you to continue on a computer. Do not expect a phone to launch the address as a separate application.
 
 ## Third-party art
 

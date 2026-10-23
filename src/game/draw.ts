@@ -1324,7 +1324,6 @@ const FACE_FX: Partial<Record<GameState["life"]["face"], number[]>> = {
   need: [4],
   cry: [4],
   angry: [5],
-  love: [6, 7, 8],
   wow: [9],
   cool: [10],
 };
@@ -1366,7 +1365,7 @@ function drawEffect(ctx: CanvasRenderingContext2D, sheets: Sheets, s: GameState)
   let key: keyof Sheets | null = null;
   const faceRow = life && life.emote > 0 ? FACE_FX[life.face] : undefined;
   if (s.downed || life?.face === "ill") key = "fxDebuff";
-  else if (life && life.emote > 0 && life.face === "heart") key = "fxHearts";
+  else if (life && life.emote > 0 && (life.face === "heart" || life.face === "love")) key = "fxHearts";
   else if (faceRow != null && sheets.fxFaces && sheets.fxFaces.width >= 400) {
     const rows = faceRow;
     const frame = Math.floor(s.clock * 8) % 5;
@@ -4947,32 +4946,62 @@ function ensureDescent(): HTMLCanvasElement | null {
     if (edge < 4) continue;
     const left = Math.ceil(mid - edge);
     const right = Math.floor(mid + edge);
+    const plateY = Math.floor(y / 16);
+    const rib = y % 56;
     for (let x = left; x <= right; x++) {
       const fromEdge = Math.min(x - left, right - x);
-      const tx = Math.floor(x / 8);
-      const ty = Math.floor(y / 4);
-      const lx = ((x % 8) + 8) % 8;
-      const ly = ((y % 4) + 4) % 4;
+      const fromMid = Math.abs(x - mid);
+      const lx = ((x % 16) + 16) % 16;
+      const ly = ((y % 16) + 16) % 16;
       const n = noise(x, y);
-      let color = (tx + ty) % 2 === 0 ? "#d6c4a0" : "#c4ae86";
-      if (ly === 0 && lx > 0 && lx < 3) color = "#fff4d2";
-      else if (ly === 0) color = "#ead8b4";
-      if (ly === 3 && lx >= 5) color = "#5a3c24";
-      else if (ly === 2 && lx === 5) color = "#6e5438";
-      if (lx === 0 && ly === 0) color = "#302418";
-      if ((n & 15) === 0) color = "#b89878";
-      if ((n & 31) === 3) color = "#e2b657";
-      if (fromEdge >= 11 && fromEdge <= 13) color = ly === 0 ? "#fff4d2" : "#4e3824";
+      let color = "#2a2218";
       if (fromEdge < 11) {
-        const course = Math.floor(y / 4) % 2 === 0;
-        if (fromEdge >= 7) color = course ? "#c4ae86" : "#a89070";
-        else if (fromEdge >= 4) color = ly === 0 ? "#8a6844" : "#5a3c24";
-        else if (fromEdge >= 2) color = "#3a2818";
-        else color = fromEdge === 0 ? "#1a100c" : "#2a1c12";
-        if (fromEdge === 10 && ly === 0) color = "#fff8e8";
+        const course = Math.floor(y / 8) % 2 === 0;
+        if (fromEdge === 0) color = "#07060a";
+        else if (fromEdge === 1) color = "#12101a";
+        else if (fromEdge <= 3) color = course ? "#3a2c44" : "#2a2034";
+        else if (fromEdge <= 6) color = "#4a3828";
+        else if (fromEdge <= 8) color = "#6a5434";
+        else color = "#e2b657";
+        const py = (y % 44) - 22;
+        const port = y % 88 > 18 && fromEdge >= 3 && fromEdge <= 7 && py > -8 && py < 8;
+        if (port) {
+          const px = fromEdge - 5;
+          const d = px * px + py * py;
+          if (d < 12) color = (n & 3) === 0 ? "#fff6d0" : d < 6 ? "#1a2048" : "#243868";
+          else if (d < 20) color = "#c4a05a";
+        }
+        if (fromEdge === 5 && y % 22 === 6) color = y % 66 < 22 ? "#c04048" : y % 66 < 44 ? "#3a68c0" : "#2a8a58";
+        if (fromEdge === 9 && ly % 4 === 0) color = "#fff4d2";
+      } else {
+        const seam = lx === 0 || ly === 0;
+        const alt = (Math.floor(x / 16) + plateY) % 2 === 0;
+        color = seam ? "#140e0c" : alt ? "#3a2e22" : "#32261c";
+        if (!seam && lx === 1 && ly > 0 && ly < 3) color = "#6a5434";
+        if (!seam && (n & 29) === 0) color = "#4a3a28";
+        if (fromMid < 8) {
+          color = fromMid < 2 ? "#fff4d2" : fromMid < 5 ? "#e2b657" : "#8a6428";
+          if (ly === 0) color = "#5a4018";
+          if (fromMid > 5 && y % 28 === 10) color = y % 56 < 28 ? "#ff8088" : "#8ec8f0";
+        } else if (rib < 3) {
+          color = rib === 1 ? "#fff4d2" : "#c4a05a";
+        }
+        if (seam === false && fromMid > 22 && lx === 8 && ly === 8) {
+          color = plateY % 3 === 0 ? "#68c070" : plateY % 3 === 1 ? "#e06068" : "#7ec8f0";
+        }
       }
       g.fillStyle = color;
       g.fillRect(x, y, 1, 1);
+    }
+  }
+  let noseY = 0;
+  for (let y = 0; y < FLOOR_H; y++) if (floorEdge(y) >= 26) noseY = y;
+  for (let dy = -7; dy <= 7; dy++) {
+    for (let dx = -7; dx <= 7; dx++) {
+      const d = dx * dx + dy * dy;
+      if (d > 34) continue;
+      g.fillStyle = d < 5 ? "#fff6d0" : d < 14 ? "#7ec8f0" : "#e2b657";
+      g.fillRect(Math.round(mid + dx), noseY + dy, 1, 1);
     }
   }
   descentPlate = canvas;

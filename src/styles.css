@@ -1344,3 +1344,75 @@
 .assay.touch .map-edit {
   top: 42%;
 }
+
+.pc-gate {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 18px;
+  background: #172014;
+  color: #f3e6c8;
+}
+
+.pc-card {
+  width: min(34rem, 100%);
+  margin: 0;
+  padding: 28px 26px 24px;
+  border: 1px solid #6a5430;
+  background: #241c14;
+  box-shadow: 0 0 0 1px #3a2c1c;
+}
+
+.pc-kicker {
+  margin: 0 0 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #e6c86a;
+}
+
+.pc-card h1 {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #f7edd4;
+}
+
+.pc-card p {
+  margin: 0 0 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #e7d7b4;
+}
+
+.pc-address {
+  padding: 10px 12px;
+  border: 1px solid #4a3a24;
+  background: #14110e;
+  color: #f3e6c8;
+  word-break: break-all;
+  font-size: 13px;
+}
+
+.pc-copy {
+  font-family: inherit;
+  font-size: 14px;
+  color: #172014;
+  background: #e6c86a;
+  border: 1px solid #f3e0a0;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.pc-copy:hover {
+  background: #f0d78a;
+}
+
+.pc-fine {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: #b7a48a;
+}

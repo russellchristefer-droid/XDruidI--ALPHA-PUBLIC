@@ -117,11 +117,14 @@ const SHEET = {
   fish: { url: `/game/icons/fish.png?v=${ART}`, w: 320, h: 352 },
 } as const;
 
-const CONTROLS = `WASD or arrows    Move. 4 directions.
+const CONTROLS = `WASD or arrows    Move. 4 directions. Numpad 8, 4, 6, and 2 do the same.
 Shift             Walk faster while stamina holds. A heavy pack refuses.
 Left click        Use the highlighted tile.
 Right click       Examine, or a short menu.
 Mouse wheel       Zoom. Scroll up closer, down further out.
+Mouse back / forward  Previous or next hotbar slot.
+F11 or Alt+Enter  Full screen. Esc still pauses.
+Alt+Tab           Pauses the yard, unless Options turns that off.
 E or Space        Use the tile you face.
 Q                 Activate or eat the hotbar slot.
 F                 Stow or draw the hand item.
@@ -420,6 +423,8 @@ export function AssayGame() {
   const [narrow, setNarrow] = useState(false);
   const [running, setRunning] = useState(false);
   const [wipe, setWipe] = useState(false);
+  const [full, setFull] = useState(false);
+  const [pauseAway, setPauseAway] = useState(true);
   const [vaultSel, setVaultSel] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [devHere, setDevHere] = useState(false);
@@ -596,6 +601,13 @@ export function AssayGame() {
         return;
       }
       if (typing) return;
+      if (e.code === "F11" || (e.altKey && e.code === "Enter")) {
+        e.preventDefault();
+        if (e.repeat) return;
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else void document.documentElement.requestFullscreen?.();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && editorRef.current.open) {
         e.preventDefault();
         if (e.shiftKey) editApi.current.redo();
@@ -603,7 +615,7 @@ export function AssayGame() {
         return;
       }
       keysRef.current.add(e.code);
-      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(e.code)) e.preventDefault();
+      if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "Numpad2", "Numpad4", "Numpad6", "Numpad8"].includes(e.code)) e.preventDefault();
       if (e.repeat) return;
       api.current.onKey(e.code);
     };
@@ -614,13 +626,59 @@ export function AssayGame() {
       keysRef.current.delete(e.code);
     };
     const blur = () => keysRef.current.clear();
+    const side = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4 && e.button !== 1) return;
+      e.preventDefault();
+      if (e.type !== "pointerdown" || e.button === 1) return;
+      if (screenRef.current !== "play" || panelRef.current || editorRef.current.open) return;
+      const cur = stateRef.current;
+      if (!cur) return;
+      selectHotbar(cur, cur.selected + (e.button === 4 ? 1 : -1));
+    };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     window.addEventListener("blur", blur);
+    window.addEventListener("mousedown", side);
+    window.addEventListener("pointerdown", side);
+    window.addEventListener("mouseup", side);
+    window.addEventListener("auxclick", side);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
+      window.removeEventListener("mousedown", side);
+      window.removeEventListener("pointerdown", side);
+      window.removeEventListener("mouseup", side);
+      window.removeEventListener("auxclick", side);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("xdruid-pc-pause-away") === "0") setPauseAway(false);
+    } catch {
+      /* The choice stays on for this visit. */
+    }
+    const onVis = () => {
+      if (document.visibilityState !== "hidden") return;
+      let hold = true;
+      try {
+        hold = localStorage.getItem("xdruid-pc-pause-away") !== "0";
+      } catch {
+        /* Keep the pause. */
+      }
+      if (!hold || screenRef.current !== "play" || panelRef.current || editorRef.current.open) return;
+      panelRef.current = "pause";
+      setPanel("pause");
+      keysRef.current.clear();
+    };
+    const onFs = () => setFull(!!document.fullscreenElement);
+    document.addEventListener("visibilitychange", onVis);
+    document.addEventListener("fullscreenchange", onFs);
+    onFs();
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      document.removeEventListener("fullscreenchange", onFs);
     };
   }, []);
 
@@ -719,10 +777,10 @@ export function AssayGame() {
           const stick = stickRef.current;
           let mx = stick.x;
           let my = stick.y;
-          if (keys.has("KeyA") || keys.has("ArrowLeft")) mx -= 1;
-          if (keys.has("KeyD") || keys.has("ArrowRight")) mx += 1;
-          if (keys.has("KeyW") || keys.has("ArrowUp")) my -= 1;
-          if (keys.has("KeyS") || keys.has("ArrowDown")) my += 1;
+          if (keys.has("KeyA") || keys.has("ArrowLeft") || keys.has("Numpad4")) mx -= 1;
+          if (keys.has("KeyD") || keys.has("ArrowRight") || keys.has("Numpad6")) mx += 1;
+          if (keys.has("KeyW") || keys.has("ArrowUp") || keys.has("Numpad8")) my -= 1;
+          if (keys.has("KeyS") || keys.has("ArrowDown") || keys.has("Numpad2")) my += 1;
           let run = keys.has("ShiftLeft") || keys.has("ShiftRight") || runHold.current;
           const pads = navigator.getGamepads?.();
           const gp = pads ? pads[0] : null;
@@ -853,6 +911,31 @@ export function AssayGame() {
     setMenu(null);
   };
   api.current.toggle = toggle;
+
+  const toggleFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen?.();
+  };
+
+  const setAwayPause = (on: boolean) => {
+    setPauseAway(on);
+    try {
+      localStorage.setItem("xdruid-pc-pause-away", on ? "1" : "0");
+    } catch {
+      /* The choice lasts for this visit only. */
+    }
+  };
+
+  const quitToTitle = () => {
+    const cur = stateRef.current;
+    if (cur) persist(cur);
+    keysRef.current.clear();
+    panelRef.current = null;
+    setPanel(null);
+    setMenu(null);
+    screenRef.current = "title";
+    setScreen("title");
+  };
 
   api.current.onKey = (code) => {
     const cur = stateRef.current;
@@ -1227,7 +1310,10 @@ export function AssayGame() {
   };
 
   return (
-    <main className={`${handheld ? "assay touch" : "assay"}${editorOpen && devHere ? " dev-open" : ""}`}>
+    <main
+      className={`${handheld ? "assay touch" : "assay"}${editorOpen && devHere ? " dev-open" : ""}`}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="yard-stage">
       <canvas
         ref={canvasRef}
@@ -1775,6 +1861,15 @@ export function AssayGame() {
           <div className="panel sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
             <h2>Options</h2>
             <SoundControls />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", margin: "8px 0" }}>
+              <button className="slot" style={{ width: "auto", padding: "6px 10px" }} type="button" onClick={toggleFull}>
+                {full ? "Leave full screen" : "Full screen"}
+              </button>
+              <label style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
+                <input type="checkbox" checked={pauseAway} onChange={(e) => setAwayPause(e.target.checked)} />
+                Pause when this window is in the background
+              </label>
+            </div>
             <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13 }}>{CONTROLS}</pre>
             <p style={{ fontSize: 12 }}>
               Art: Farm Life by sophi-x-x. Animals: Farmstead 01 Byre and Barn. Food and crops: Farm to Table. Used inside this game only, not redistributed as a pack.
@@ -2169,7 +2264,7 @@ export function AssayGame() {
             )}
             <details style={{ fontSize: 13, margin: "8px 0" }}>
               <summary>Legal and security</summary>
-              <p>XDruid I is a game. Play it in a browser on a phone or a computer. Do not open the files as an app.</p>
+              <p>XDruid I is a game for a personal computer. Play it in a desktop browser. A phone or a tablet is asked to continue on a computer.</p>
               <p>The yard is saved in this browser only. There is no account required to play, and the save is not sent to a server.</p>
               <p>The fish and rod pictures are third-party art. They may be used inside this game. They are not a separate download, and they are not licensed for reuse on their own.</p>
               <p>Do not put passwords, keys, or private notes in the yard. Report a security problem in the GitHub repository under Security, not in a public issue with exploit details.</p>
@@ -2178,6 +2273,11 @@ export function AssayGame() {
               <button className="slot" style={{ width: "auto", padding: "6px 10px" }} onClick={() => { panelRef.current = null; setPanel(null); }}>
                 {panel === "summary" ? "Keep going" : "Resume"}
               </button>
+              {panel === "pause" && (
+                <button className="slot" style={{ width: "auto", padding: "6px 10px" }} type="button" onClick={toggleFull}>
+                  {full ? "Leave full screen" : "Full screen"}
+                </button>
+              )}
               <button
                 className="slot"
                 style={{ width: "auto", padding: "6px 10px" }}
@@ -2191,6 +2291,11 @@ export function AssayGame() {
               >
                 {wipe ? "Really wipe this yard?" : "New homestead"}
               </button>
+              {panel === "pause" && (
+                <button className="slot" style={{ width: "auto", padding: "6px 10px" }} type="button" onClick={quitToTitle}>
+                  Quit to title
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -2057,7 +2057,7 @@ function tendSelf(s: GameState, dt: number, input: Input) {
   if (life.emote > 0) life.emote = Math.max(0, life.emote - dt);
   else {
     const next = faceFor(s);
-    if (next !== "ok" && next !== life.face) life.emote = 1.8;
+    if (next === "love" || (next !== "ok" && next !== life.face)) life.emote = 1.8;
     life.face = next;
   }
 

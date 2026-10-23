@@ -1,11 +1,11 @@
 # XDruid I
 
 **Stage:** Alpha  
-**Client:** Browser (phone and PC)  
+**Client:** Browser on a personal computer  
 **Sidecars:** SNES LoROM companion, Python desktop companion  
 **Save:** Local to the browser. Not a stable format.
 
-XDruid I is a SNES-style homestead. The live game is a website. Open it in a browser. A phone that tries to launch the link as an application has the wrong kind of link.
+XDruid I is a SNES-style homestead. The live game is a website for a personal computer. Open it in a desktop browser. A phone or a tablet is asked to continue on a computer.
 
 The druid keeps a floating yard. Farmland sits above the sidewalk, inside the art-deco frame. The courtyard under the sidewalk is the magic training plot. The vimana holds that courtyard over living space. Naraka is the west arch. Svarga is the east arch. The pictures in those mouths are the lands he is crossing to.
 
@@ -15,7 +15,7 @@ This alpha is playable and unfinished. Lands, gates, and the save can change. Th
 
 | Name | What it is |
 |---|---|
-| Browser client | The game. Phone and PC. |
+| Browser client | The game. Personal computer. |
 | SNES sidecar | `snes/xdruid.sfc`. A 32 KB LoROM companion. Not a port. |
 | Python sidecar | `python/xdruid.py`. A desktop window. Not a port. |
 
@@ -63,7 +63,7 @@ The other 332 floors are not cut yet. Floor 332 is the only descent floor in thi
 
 ## Controls
 
-PC: keyboard. Phone: stick on the left, round button on the right. The hotbar sits between them so the labels do not cover each other. The top bar is body, place, clock, and hands, with the volume buses in one row under that. Pause holds the controls, the legal note, and the security note.
+Keyboard and mouse on a personal computer. Pause holds the controls, the legal note, and the security note. A phone or a tablet shows a note asking you to open the address on a computer.
 
 ## SNES sidecar
 
