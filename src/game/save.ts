@@ -1,4 +1,5 @@
 import { SAVE_KEY, defaultFlowers, ensureAuto, ensureBirds, ensureFishing, ensureHealth, ensureLife, ensureMagic, ensureReaper, ensureHand, ensureXiang64, ensureMaid, ensureStable, ensureGoatPen, ensureCourtHerd, ensureSow, ensureSkills, ensureWeather, ensureWing, lockBeds, placeCourtSpawn, placeHerd, ensureFarmRack, type GameState } from "./content.ts";
+import { trackSave, trackLoad } from "./telemetry.ts";
 
 export const BAK1 = `${SAVE_KEY}.bak1`;
 export const BAK2 = `${SAVE_KEY}.bak2`;
@@ -64,14 +65,20 @@ function quarantine(store: SaveStore, key: string, raw: string) {
 }
 
 export function writeSave(store: SaveStore, s: GameState) {
-  const rack = ensureFarmRack(s);
-  const cur = store.get(SAVE_KEY);
-  const bak1 = store.get(BAK1);
-  if (bak1 != null) store.set(BAK2, bak1);
-  if (cur != null) store.set(BAK1, cur);
-  const raw = encodeState(s);
-  store.set(SAVE_KEY, raw);
-  if ((rack.seeds[rack.at] ?? 0) === 0 && !store.get(LANDMARK)) store.set(LANDMARK, raw);
+  try {
+    const rack = ensureFarmRack(s);
+    const cur = store.get(SAVE_KEY);
+    const bak1 = store.get(BAK1);
+    if (bak1 != null) store.set(BAK2, bak1);
+    if (cur != null) store.set(BAK1, cur);
+    const raw = encodeState(s);
+    store.set(SAVE_KEY, raw);
+    if ((rack.seeds[rack.at] ?? 0) === 0 && !store.get(LANDMARK)) store.set(LANDMARK, raw);
+    trackSave(true);
+  } catch (e) {
+    trackSave(false, e instanceof Error ? e.message : "write failed");
+    throw e;
+  }
 }
 
 export function readSaveFrom(store: SaveStore): GameState | null {
@@ -101,9 +108,12 @@ export function readSaveFrom(store: SaveStore): GameState | null {
       ensureHealth(decoded.state);
       ensureAuto(decoded.state);
       ensureWing(decoded.state);
+      trackLoad(true);
       return decoded.state;
     }
     quarantine(store, key, raw);
+    trackLoad(false, decoded.reason);
   }
+  trackLoad(false, "no valid save");
   return null;
 }
