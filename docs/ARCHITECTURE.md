@@ -14,6 +14,7 @@
 | Persistence | `src/game/save.ts` | Encode/decode with FNV checksum, localStorage rotation, quarantine, ensure* migrations |
 | Audio | `src/game/audio.ts` + *sound.ts | Buses (Master, Music, Weather, Animals, Bell), event-triggered |
 | Assets | `src/game/assets.ts`, public/ | Sprite sheets referenced by IconRef |
+| Localization | `src/game/i18n.ts`, `public/locales/` | Stable-key English source; drop-in JSON locales; t() fallback |
 | Tiles / collision | `src/game/tiles.ts`, `realmFeet.ts` | Stamps, blocks, plate solid |
 | Dev tools | `dev-sprites.ts`, `dev-sprite-api.ts`, MapEditor | Console briefs, sprite inspection |
 
