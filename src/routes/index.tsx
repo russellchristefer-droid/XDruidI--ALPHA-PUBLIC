@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AssayGame } from "@/components/AssayGame";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -52,6 +52,9 @@ function PcNotice() {
         <button type="button" className="pc-copy" onClick={() => void copy()}>
           {copied ? "Address copied" : "Copy address"}
         </button>
+        <p>
+          <Link to="/changelog">See what changed</Link>
+        </p>
         <p className="pc-fine">The save stays in the browser on that computer. Nothing is started from this screen.</p>
       </article>
     </main>
