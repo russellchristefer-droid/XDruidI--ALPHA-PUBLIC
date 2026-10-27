@@ -18,10 +18,12 @@
 | CONTENT_REGISTRY.md | src/game/content.ts | Current (types partial; full GameState still in content.ts) |
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate | Current |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-001) |
 
 ## Flagged
 
 - No `docs/DRUIDI_BOT_CONTRACT.md` existed at the start of this slice. A stub has been added.
 - Full GameState type is large and lives only in content.ts; the schema docs summarize the visible parts. A complete extracted type dump would be a useful next slice.
+- Public-facing changelog page added at /changelog. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant.
 
 Run this check whenever a system file is touched.
