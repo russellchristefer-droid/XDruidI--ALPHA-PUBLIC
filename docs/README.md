@@ -8,6 +8,8 @@
 
 XDruid I (Assay Homestead) is a SNES-style persistent homestead life-sim in the browser. One druid tends a floating yard, farms, keeps animals, trains magic in the courtyard, and travels through portals to other lands. The live build is at https://xdruidi.grok.me. It is not Unity, not Godot, not a finished product.
 
+Public changelog: https://xdruidi.grok.me/changelog (plain language, newest first, grouped by theme, each entry links to the work-order ID).
+
 ## Stack
 
 - Client: Vite + React 19 + TanStack Start (see package.json).
@@ -26,6 +28,7 @@ XDruid I (Assay Homestead) is a SNES-style persistent homestead life-sim in the 
 5. `src/game/logic.ts` owns simulation rules (needs, autonomy, growth, interactions).
 6. `src/components/AssayGame.tsx` wires the React UI and canvas.
 7. Governing vision: `AGENTS.project.md` and `src/game/xdruid-mandate.ts`.
+8. Public changelog at `/changelog` for player-visible history.
 
 ## Non-negotiable rules (from vision)
 
