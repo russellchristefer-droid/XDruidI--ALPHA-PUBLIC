@@ -19,12 +19,29 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-10-27</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            A quiet local record of how the yard is used can now be kept if you choose it. It stays on your computer, covers the session, actions, portals, skills, saves, and how smoothly the yard runs, and shows a simple page of what happened. Nothing is sent away.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/c16d2a89691efb7d2ad9883940ab2fa4d14e2149">ANALYTICS-001</a>
+          </li>
+          <li>
+            The words the yard uses can now be swapped for another language. English is the starting set, ready for others to be added later.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/b8644d150228df9de02d71e67ed433fe07e58196">I18N-001</a>
+          </li>
+        </ul>
+
         <h2>2026-10-26</h2>
         <h3>Systems</h3>
         <ul>
           <li>
             The project knowledge base is now public and complete enough that a new developer can understand the whole alpha from the docs folder alone in one afternoon. Architecture, systems, content registry, save format, style, and freshness checks are dated and cross-linked.{" "}
             <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/acc724f48a850e6771d99317da0194826d4a6097">DOC-KB-001</a>
+          </li>
+          <li>
+            This public changelog page was added so a returning visitor can see at once what has changed. Entries are plain language, newest first, grouped by theme, and each links to the work that produced it. Older history is kept.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/f0edbaf92b76e6e86bd8c1c9bf5b3a0057d4c5b1">CHANGELOG-001</a>
           </li>
         </ul>
 
