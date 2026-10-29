@@ -16,3 +16,9 @@ The vision calls for a formal extension / mod SDK. None is exposed in the curren
 ## Freshness
 
 If a public API surface appears, document its stable entry points here.
+
+## 2026-10-29 — Formal extension framework shipped
+
+Stable API in `src/game/modding.ts`. See `docs/MODDING.md` for the full contract, exact signatures, validation rules, sandbox guarantees, and the non-engineer crop example.
+
+Hyper-realism check: the registry + typed JSON + quarantine + version field is what a real studio ships so the game can grow through community without a rewrite.
