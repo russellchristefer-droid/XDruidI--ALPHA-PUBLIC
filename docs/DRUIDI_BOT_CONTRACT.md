@@ -1,6 +1,6 @@
 # DRUIDI Bot Contract
 
-**Dated:** 2026-10-28 (elevated from stub of 2026-10-26)  
+**Dated:** 2026-10-29 (process ownership locked; elevated standard of 2026-10-28 retained)  
 **Status:** Living constitution. Owner's latest explicit instruction supersedes all prior text.  
 **Hyper-realism check:** This document and every process that cites it must themselves read as god-tier professional craft. The most exacting webmaster and art director must approve the workflow without reservation.
 
@@ -25,7 +25,7 @@ This file is the shared production contract that every specialist bot (Chief of 
 3. Live deployed build (https://xdruidi.grok.me).
 4. Art pack reference (https://sophi-x-x.itch.io/farm-life-pixel-art-pack-animated-asset-pack).
 
-## Professional standard (locked 2026-10-28)
+## Professional standard (locked 2026-10-28, reaffirmed 2026-10-29)
 
 All Druidi / XDruid I / Assay Homestead development must start and remain at god-tier professional webmaster and hyper-realistic 2D game development level — better than the combined output of every major studio and MMORPG team. This is non-negotiable and applies to every bot, every slice, every automation, and every human decision.
 
@@ -40,7 +40,7 @@ Concretely this means:
 
 Hyper-realism is non-negotiable. If a request for "hyperrealism" would break the pixel style, keep the pixel style and state the conflict.
 
-## Definition of done (every slice, before release-gate review)
+## Definition of done (every slice, before release-gate review) — locked 2026-10-28, enforced 2026-10-29
 
 A slice is not done until all of the following are true:
 
@@ -58,6 +58,12 @@ A slice is not done until all of the following are true:
 - Escalation paths defined (owner for licensing, destructive migrations, major restructuring; Lead Engineer for engine integrity; Art Director for style conflicts).
 - Single source of truth: this contract + the verified repository state + the live site.
 - Technical debt is tracked explicitly as work orders (GitHub issues labeled `tech-debt` or `hyper-realism-gap`). Never accumulate silently.
+
+## Process ownership and audit log (locked 2026-10-29)
+
+The professional development standard is owned by the roster under this contract. Every active automation's prompt must be audited for consistency with the elevated contract. Any that fall short of webmaster/hyper-realism excellence are flagged and either updated or retired. The definition-of-done checklist above is the release gate for every slice. Technical debt is filed as work orders immediately.
+
+- 2026-10-29: Contract reaffirmed as living constitution. DoD checklist locked and enforced. Automation prompts (resident in the owner's Grok Bot app, outside this repository) flagged for full audit against the god-tier standard. Work order PROCESS-001 filed for prompt alignment. Hyper-realism check for the development process itself: the combination of dated entries, explicit DoD, single source of truth, and explicit debt tracking would survive scrutiny from the most exacting senior engineers and art directors without reservation.
 
 ## Report format (for every slice)
 
