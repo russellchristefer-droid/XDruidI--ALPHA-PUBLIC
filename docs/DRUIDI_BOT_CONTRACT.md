@@ -81,3 +81,7 @@ No self-verification.
 ## Freshness
 
 Update this contract whenever a new mandate, lane, or rule is added. Date every entry. Flag stale sections in DOC_FRESHNESS.md.
+
+## 2026-10-29 — Modding & extensibility framework (MOD-001)
+
+The extension contract is now live. New content is added by dropping typed definition files into the registry without touching engine code. Sandbox prevents broken mods from corrupting saves or crashing the simulation. API is versioned so old mods keep working. Documented in docs/MODDING.md. Hyper-realism check: a non-engineer can add one new crop by following the docs.

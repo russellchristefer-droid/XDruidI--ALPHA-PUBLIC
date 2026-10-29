@@ -57,3 +57,9 @@ New content must be added as data in DEFS (or generated the same way fish are). 
 ## Gaps
 
 Farm Life pack does not contain winter tiles, interiors, livestock beyond the listed animals, clothing sprites, magic effects, or audio. Follow the gap policy in AGENTS.project.md §3.
+
+## 2026-10-29 — Registry moved behind versioned extension API
+
+Base DEFS remain the source of truth for core content. New content (crops, creatures, items, realms, rituals, sounds) is added by dropping typed definition files into the registry. See `docs/MODDING.md` and `src/game/modding.ts`.
+
+A non-engineer can add one new crop by following the example in MODDING.md.
