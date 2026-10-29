@@ -1,0 +1,13 @@
+{
+  "apiVersion": 1,
+  "id": "pumpkin",
+  "name": "Pumpkin",
+  "stages": 5,
+  "growthSeconds": 120,
+  "waterRequired": true,
+  "wiltSeconds": 180,
+  "productDefId": "pumpkin",
+  "seedDefId": "seed_pumpkin",
+  "icon": { "sheet": "veg", "x": 64, "y": 32, "w": 32, "h": 32 },
+  "blurb": "Heavy autumn fruit. Needs water. Harvests into the pack."
+}
