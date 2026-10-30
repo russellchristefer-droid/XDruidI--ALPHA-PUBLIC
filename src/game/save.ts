@@ -1,10 +1,10 @@
 import { SAVE_KEY, defaultFlowers, ensureAuto, ensureBirds, ensureFishing, ensureHealth, ensureLife, ensureMagic, ensureReaper, ensureHand, ensureXiang64, ensureMaid, ensureStable, ensureGoatPen, ensureCourtHerd, ensureSow, ensureSkills, ensureWeather, ensureWing, lockBeds, placeCourtSpawn, placeHerd, ensureFarmRack, type GameState } from "./content.ts";
 import { trackSave, trackLoad } from "./telemetry.ts";
+import { logError } from "./errorLog.ts";
 
 export const BAK1 = `${SAVE_KEY}.bak1`;
 export const BAK2 = `${SAVE_KEY}.bak2`;
 export const QUARANTINE = `${SAVE_KEY}-quarantine`;
-/** The farmland as it was before a later experiment. Never rotated away. */
 export const LANDMARK = `${SAVE_KEY}.farmland`;
 
 export type SaveStore = {
@@ -36,7 +36,8 @@ export function decodeState(raw: string): { ok: true; state: GameState } | { ok:
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (e) {
+    logError(e, "decodeState.parse");
     return { ok: false, reason: "unreadable" };
   }
   if (!parsed || typeof parsed !== "object") return { ok: false, reason: "not an object" };
@@ -76,9 +77,27 @@ export function writeSave(store: SaveStore, s: GameState) {
     if ((rack.seeds[rack.at] ?? 0) === 0 && !store.get(LANDMARK)) store.set(LANDMARK, raw);
     trackSave(true);
   } catch (e) {
+    logError(e, "writeSave");
     trackSave(false, e instanceof Error ? e.message : "write failed");
     throw e;
   }
+}
+
+export type RecoveryOption = { key: string; label: string; raw: string; reason?: string };
+
+export function listRecoveryOptions(store: SaveStore): RecoveryOption[] {
+  const options: RecoveryOption[] = [];
+  for (const [key, label] of [[SAVE_KEY, "Current"], [BAK1, "Backup 1"], [BAK2, "Backup 2"], [LANDMARK, "Landmark farmland"]] as const) {
+    const raw = store.get(key);
+    if (!raw) continue;
+    const decoded = decodeState(raw);
+    if (decoded.ok) {
+      options.push({ key, label, raw });
+    } else {
+      options.push({ key, label, raw, reason: decoded.reason });
+    }
+  }
+  return options;
 }
 
 export function readSaveFrom(store: SaveStore): GameState | null {
@@ -113,6 +132,7 @@ export function readSaveFrom(store: SaveStore): GameState | null {
     }
     quarantine(store, key, raw);
     trackLoad(false, decoded.reason);
+    logError(new Error(decoded.reason), `readSave:${key}`);
   }
   trackLoad(false, "no valid save");
   return null;
