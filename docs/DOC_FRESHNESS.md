@@ -19,13 +19,13 @@
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate | Current |
 | DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-001 ownership lock 2026-10-29) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-002) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-003) |
 
 ## Flagged
 
 - No `docs/DRUIDI_BOT_CONTRACT.md` existed at the start of the 2026-10-26 slice. Stub added then; elevated 2026-10-28; process ownership locked 2026-10-29.
 - Full GameState type is large and lives only in content.ts; the schema docs summarize the visible parts. A complete extracted type dump would be a useful next slice.
-- Public-facing changelog page maintained at /changelog. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Updated with 2026-10-27 telemetry and localization entries.
+- Public-facing changelog page maintained at /changelog. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Updated with 2026-10-29 process lock and modding framework entries.
 - Active automation prompts (in Grok Bot app) require audit against the elevated contract (PROCESS-001).
 
 Run this check whenever a system file is touched.
