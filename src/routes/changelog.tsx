@@ -19,6 +19,26 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-10-29</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The way the project is developed is now locked to a higher standard of care. Ownership of the process is clear, every change must pass a strict definition of done, and technical debt is tracked as explicit work orders instead of being left silent.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/b0fe54635b2cc275e8974700263c2c538797e7a3">PROCESS-001</a>
+          </li>
+          <li>
+            New content — crops, creatures, items, realms, rituals, and sounds — can now be added by dropping a simple definition file into a registry. The engine loads it safely, checks it, and keeps a broken file from harming the yard or the save. The interface is versioned so older additions keep working.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/945889c663db93801cd23b75b804980cdac11baa">MOD-001</a>
+          </li>
+        </ul>
+        <h3>Content</h3>
+        <ul>
+          <li>
+            The docs now show exactly how a non-engineer can add one new crop by following a single example. The pumpkin is the working sample.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/5e0bb2b4efb23410291a46ebef7ae182764129cb">MOD-001</a>
+          </li>
+        </ul>
+
         <h2>2026-10-27</h2>
         <h3>Systems</h3>
         <ul>
