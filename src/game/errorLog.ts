@@ -6,11 +6,17 @@
 import { track } from "./telemetry.ts";
 import type { GameState } from "./content.ts";
 
+/** Small, safe subset of GameState kept with each error (counts instead of big arrays). */
+export type StateSnapshot = Partial<Pick<GameState, "version" | "x" | "y" | "wing" | "rng">> & {
+  packCount?: number;
+  note?: string;
+};
+
 export type ErrorRecord = {
   t: number;
   message: string;
   stack?: string;
-  stateSnapshot?: Partial<GameState>;
+  stateSnapshot?: StateSnapshot;
   context: string;
   userAgent?: string;
   url?: string;
@@ -19,7 +25,7 @@ export type ErrorRecord = {
 const LOG_KEY = "xdruid-error-log";
 const MAX = 50;
 
-function safeSnapshot(s: GameState | null | undefined): Partial<GameState> | undefined {
+function safeSnapshot(s: GameState | null | undefined): StateSnapshot | undefined {
   if (!s) return undefined;
   try {
     return {
@@ -27,12 +33,12 @@ function safeSnapshot(s: GameState | null | undefined): Partial<GameState> | und
       x: s.x,
       y: s.y,
       wing: s.wing,
-      pack: s.pack?.length,
+      packCount: s.pack?.length,
       rng: s.rng,
       // omit large/transient fields
     };
   } catch {
-    return { note: "snapshot failed" } as any;
+    return { note: "snapshot failed" };
   }
 }
 
@@ -72,7 +78,11 @@ export function getErrorLog(): ErrorRecord[] {
 }
 
 export function clearErrorLog() {
-  try { localStorage.removeItem(LOG_KEY); } catch {}
+  try {
+    localStorage.removeItem(LOG_KEY);
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 // Global handlers — no unhandled rejection reaches the player

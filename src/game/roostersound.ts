@@ -1,4 +1,4 @@
-import { hourOf, type GameState } from "./content";
+import { hourOf, type GameState } from "./content.ts";
 
 export type Crow = {
   x: number;

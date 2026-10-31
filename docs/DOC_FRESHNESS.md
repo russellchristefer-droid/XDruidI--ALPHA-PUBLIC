@@ -20,7 +20,8 @@
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
 | DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-001 ownership lock 2026-10-29) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-003) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-003; 2026-10-31 in-review entries for CI-001 / OBS-001 / SAVE-005-006) |
+| CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 
 ## Flagged
 
@@ -29,5 +30,7 @@
 - Public-facing changelog page maintained at /changelog. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Updated with 2026-10-29 process lock and modding framework entries.
 - Active automation prompts (in Grok Bot app) require audit against the elevated contract (PROCESS-001).
 - VISUAL_STYLE_GUIDE.md established 2026-10-31 as the living art-direction reference. Remaining realm identities (Combat, Quarry, Floor 332, Mansion) require definition before art ships.
+
+- CI-001 (2026-10-31): `npm test` covers scripts + logic, modding, birdsong, tiles, house, audio. `camp.test.ts` and `dev-sprites.test.ts` already fail on main and run in a non-blocking job (`npm run test:known-failing`) until fixed.
 
 Run this check whenever a system file is touched.

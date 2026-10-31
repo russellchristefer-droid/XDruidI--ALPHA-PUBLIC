@@ -3948,7 +3948,7 @@ function alongPath(clock: number, speed: number, pts: { x: number; y: number }[]
     seg.push({ a, b, d, at: total });
     total += d;
   }
-  let dist = (clock * speed) % total;
+  const dist = (clock * speed) % total;
   for (const s of seg) {
     if (dist <= s.at + s.d) {
       const t = (dist - s.at) / s.d;

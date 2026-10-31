@@ -460,7 +460,7 @@ export function AssayGame() {
 
   const api = useRef({
     onKey: (_code: string) => {},
-    useAt: (_x: number, _y: number) => {},
+    actAt: (_x: number, _y: number) => {},
     toggle: (_p: PanelId) => {},
     apply: (_r: InteractResult) => {},
   });
@@ -807,7 +807,7 @@ export function AssayGame() {
               const done = freed("KeyB");
               if (!done && konamiRef.current.length === 0 && panelRef.current) api.current.toggle(panelRef.current);
             }
-            if (hit(0) && !freed("KeyA")) api.current.useAt(facingPoint(s).x, facingPoint(s).y);
+            if (hit(0) && !freed("KeyA")) api.current.actAt(facingPoint(s).x, facingPoint(s).y);
             if (hit(2)) api.current.toggle("pack");
             if (hit(3)) api.current.toggle("body");
             if (hit(4)) selectHotbar(s, s.selected - 1);
@@ -888,13 +888,13 @@ export function AssayGame() {
   };
   api.current.apply = apply;
 
-  const useAt = (x: number, y: number) => {
+  const actAt = (x: number, y: number) => {
     const cur = stateRef.current;
     if (!cur || screenRef.current !== "play") return;
     if (panelRef.current) return;
     apply(interact(cur, x, y));
   };
-  api.current.useAt = useAt;
+  api.current.actAt = actAt;
 
   const toggle = (p: PanelId) => {
     if (screenRef.current !== "play") {
@@ -972,7 +972,7 @@ export function AssayGame() {
     }
     if (code === "KeyE" || code === "Space") {
       const p = facingPoint(cur);
-      useAt(p.x, p.y);
+      actAt(p.x, p.y);
       return;
     }
     if (code === "KeyQ") {
@@ -1416,7 +1416,7 @@ export function AssayGame() {
               x: e.clientX,
               y: e.clientY,
               rows: [
-                { label: promptAt(cur, w.x, w.y).replace("  [E]", "") || "Use", run: () => useAt(w.x, w.y) },
+                { label: promptAt(cur, w.x, w.y).replace("  [E]", "") || "Use", run: () => actAt(w.x, w.y) },
                 { label: "Examine", run: () => bump() },
               ],
             });
@@ -1432,7 +1432,7 @@ export function AssayGame() {
                 x: e.clientX,
                 y: e.clientY,
                 rows: [
-                  { label: promptAt(cur, w.x, w.y).replace("  [E]", "") || "Use", run: () => useAt(w.x, w.y) },
+                  { label: promptAt(cur, w.x, w.y).replace("  [E]", "") || "Use", run: () => actAt(w.x, w.y) },
                   { label: "Examine", run: () => bump() },
                 ],
               });
@@ -1443,7 +1443,7 @@ export function AssayGame() {
             (e.currentTarget as HTMLElement).dataset.held = "";
             return;
           }
-          if (e.button === 0) useAt(w.x, w.y);
+          if (e.button === 0) actAt(w.x, w.y);
         }}
         onPointerUp={(e) => {
           const el = e.currentTarget as HTMLElement;
@@ -1484,7 +1484,7 @@ export function AssayGame() {
           if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
           if (screenRef.current !== "play" || editorRef.current.open) return;
           const w = worldOf(e.clientX, e.clientY);
-          if (w) useAt(w.x, w.y);
+          if (w) actAt(w.x, w.y);
         }}
       />
 
@@ -1826,7 +1826,7 @@ export function AssayGame() {
               const cur = stateRef.current;
               if (!cur) return;
               const p = facingPoint(cur);
-              useAt(p.x, p.y);
+              actAt(p.x, p.y);
             }}
           >
             E

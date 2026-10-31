@@ -733,7 +733,7 @@ export function unequipItem(s: GameState, slot: EquipSlot): string {
 
 export function addCoins(s: GameState, n: number): void {
   if (n === 0) return;
-  let stack = s.pack.find((p) => p?.defId === "coin") ?? null;
+  const stack = s.pack.find((p) => p?.defId === "coin") ?? null;
   if (n > 0) {
     if (stack) stack.qty += n;
     else {

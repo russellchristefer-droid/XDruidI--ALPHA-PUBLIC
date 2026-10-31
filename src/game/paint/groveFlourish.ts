@@ -66,14 +66,14 @@ export function flourishGrove(ctx: CanvasRenderingContext2D, clock: number): voi
   }
 
   // Standing skill stones with marks.
-  const stones = [
+  const stones: Array<[number, number, string]> = [
     [64, 160, "#d6c4a0"],
     [280, 160, "#c4ae86"],
     [64, 340, "#ead8b4"],
     [280, 340, "#d6c4a0"],
   ];
   for (const [sx, sy, col] of stones) {
-    ctx.fillStyle = col as string;
+    ctx.fillStyle = col;
     ctx.fillRect(sx, sy, 8, 16);
     ctx.fillStyle = "#785018";
     ctx.fillRect(sx + 2, sy + 4, 4, 1);

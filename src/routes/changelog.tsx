@@ -19,6 +19,22 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-10-31 · in review, not yet on the live yard</h2>
+        <p>
+          These changes are in the code and waiting for review. They reach xdruidi.grok.me only when the owner publishes.
+        </p>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            Every change to the code is now checked automatically before it is merged: the yard is built, its types and style are checked, and its tests are run. Nothing is deployed by this check. Saves are not affected.{" "}
+            CI-001
+          </li>
+          <li>
+            The optional local usage record no longer writes the realm name over the type of a portal visit, so portal visits are counted correctly. Records already kept are left as they are.{" "}
+            CI-001
+          </li>
+        </ul>
+
         <h2>2026-10-29</h2>
         <h3>Systems</h3>
         <ul>

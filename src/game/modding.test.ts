@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, beforeEach } from "node:test";
+import assert from "node:assert/strict";
 import { ContentRegistry, EXTENSION_API_VERSION, type CropDefinition } from "./modding.ts";
 
 describe("ContentRegistry", () => {
@@ -23,30 +24,30 @@ describe("ContentRegistry", () => {
       blurb: "test",
     };
     const result = reg.registerCrop(crop);
-    expect(result.ok).toBe(true);
-    expect(reg.getCrop("pumpkin")?.name).toBe("Pumpkin");
+    assert.equal(result.ok, true);
+    assert.equal(reg.getCrop("pumpkin")?.name, "Pumpkin");
   });
 
   it("rejects bad id", () => {
     const crop = { apiVersion: 1, id: "Pumpkin!", name: "x", stages: 5, growthSeconds: 1, waterRequired: true, wiltSeconds: 1, productDefId: "a", seedDefId: "b", icon: { sheet: "s", x: 0, y: 0, w: 1, h: 1 }, blurb: "" } as CropDefinition;
     const result = reg.registerCrop(crop);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors.length).toBeGreaterThan(0);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.ok(result.errors.length > 0);
   });
 
   it("quarantines broken JSON", () => {
     const result = reg.loadDefinitionFile("{ broken", "bad-mod");
-    expect(result.ok).toBe(false);
-    expect(reg.getQuarantined().length).toBe(1);
+    assert.equal(result.ok, false);
+    assert.equal(reg.getQuarantined().length, 1);
   });
 
   it("rejects wrong apiVersion", () => {
     const raw = JSON.stringify({ apiVersion: 99, id: "x", name: "x", stages: 5, growthSeconds: 1, waterRequired: true, wiltSeconds: 1, productDefId: "a", seedDefId: "b", icon: { sheet: "s", x: 0, y: 0, w: 1, h: 1 }, blurb: "" });
     const result = reg.loadDefinitionFile(raw, "future");
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 
   it("exposes stable version", () => {
-    expect(EXTENSION_API_VERSION).toBe(1);
+    assert.equal(EXTENSION_API_VERSION, 1);
   });
 });

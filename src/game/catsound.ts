@@ -1,4 +1,4 @@
-import type { GameState } from "./content";
+import type { GameState } from "./content.ts";
 
 export type CatKind = "short" | "long" | "trill" | "lick" | "groan";
 
