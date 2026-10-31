@@ -546,3 +546,27 @@ test("the grim reaper does not walk the courtyard", () => {
   assert.equal(r.x, x);
   assert.equal(r.y, y);
 });
+
+// CHR-40 / DRUIDI-SAVE-006: a harvest finishes inside step(), after the save that ran when
+// the swing started. The finished action must ask for a save, or a reload loses it.
+test("a finished harvest asks for a save and survives a reload", () => {
+  const store = memoryStore();
+  const s = createGame();
+  const plot = s.plots[2]!;
+  plot.crop = "cabbage";
+  plot.stage = 5;
+  const scythe = s.pack.find((p) => p?.defId === "scythe")!;
+  s.activeId = scythe.id;
+  s.x = plot.x + 20;
+  s.y = plot.y + 4;
+  interact(s, plot.x, plot.y);
+  assert.equal(s.action?.kind, "harvest");
+  writeSave(store, s); // the save that happens when the swing starts
+  for (let i = 0; i < 40 && s.action; i++) step(s, 0.05, { mx: 0, my: 0, run: false, frozen: false });
+  assert.equal(s.action, null);
+  assert.equal(s.stats.harvested, 1);
+  assert.equal(s.uiEvent?.save, true);
+  if (s.uiEvent?.save) writeSave(store, s); // what the game screen does with uiEvent.save
+  const back = readSaveFrom(store);
+  assert.equal(back?.stats.harvested, 1);
+});

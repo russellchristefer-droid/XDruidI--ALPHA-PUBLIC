@@ -1977,12 +1977,15 @@ export function step(s: GameState, dt: number, input: Input) {
       const msg = resolveAction(s);
       s.action = null;
       s.message = msg;
+      // The result lands here, after the save made when the swing started, so ask the
+      // screen to save again or a reload loses the harvest (DRUIDI-SAVE-006).
+      s.uiEvent = { ...s.uiEvent, save: true };
       if (s.pending) {
         const p = s.pending;
         s.pending = null;
         const r = interact(s, p.px, p.py);
         if (r.msg) s.message = r.msg;
-        s.uiEvent = r;
+        s.uiEvent = { ...r, save: true };
       }
     }
   } else {

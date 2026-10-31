@@ -38,6 +38,17 @@ function Changelog() {
             OBS-001
           </li>
         </ul>
+        <h3>Saves</h3>
+        <ul>
+          <li>
+            If your save cannot be read, the yard now tells you plainly: either that it restored from a backup, or that none could be read and a new homestead was started. The note stays until you press OK. Bad copies are always kept aside, never deleted, and an older kept copy is never overwritten by a newer one.{" "}
+            SAVE-005
+          </li>
+          <li>
+            A harvest, or any other timed action, is now saved when it finishes, and the yard also saves when you switch tabs or close the window. A reload no longer loses the last thing you did.{" "}
+            SAVE-006
+          </li>
+        </ul>
 
         <h2>2026-10-29</h2>
         <h3>Systems</h3>

@@ -75,7 +75,7 @@ import {
   releaseGoat,
   type InteractResult,
 } from "@/game/logic";
-import { BAK1, BAK2, readSaveFrom, writeSave, type SaveStore } from "@/game/save";
+import { BAK1, BAK2, loadSave, writeSave, type SaveStore } from "@/game/save";
 import { MapEditor, builderDevAllowed } from "@/components/MapEditor";
 import { loadDevSprites, snapSprite, devSpriteBook, placeBounds, setSpriteGhost, setSpritePick, spriteIndexAt, fitScale, SCALES, type SpriteBook, type SpritePlace } from "@/game/dev-sprites";
 import { liftDevSprite, pinDevAsset, replaceDevPlaced, saveDevSprite } from "@/game/dev-sprite-api";
@@ -240,12 +240,24 @@ function store(): SaveStore {
   };
 }
 
-function readSave(): GameState | null {
+/** Loads the save, or starts a new homestead, and tells the player when a save was bad
+ * (restored from a backup, or none could be read) instead of starting over silently. */
+/** Save-recovery notice from the last load; shown until the player dismisses it. */
+let loadNotice: string | null = null;
+
+function loadOrNew(): GameState {
+  let result: ReturnType<typeof loadSave> | null = null;
   try {
-    return readSaveFrom(store());
+    result = loadSave(store());
   } catch {
-    return null;
+    result = null;
   }
+  const state = result?.state ?? createGame();
+  if (result?.message) {
+    state.message = result.message;
+    loadNotice = result.message;
+  }
+  return state;
 }
 
 function persist(s: GameState) {
@@ -522,7 +534,7 @@ export function AssayGame() {
       if (!sheetsRef.current) sheetsRef.current = {};
       if (!stateRef.current) {
         try {
-          stateRef.current = readSave() ?? createGame();
+          stateRef.current = loadOrNew();
         } catch {
           stateRef.current = createGame();
         }
@@ -557,7 +569,7 @@ export function AssayGame() {
         loadDevSprites().then((book) => setSprites(book)).catch(() => {});
         if (!stateRef.current) {
           try {
-            stateRef.current = readSave() ?? createGame();
+            stateRef.current = loadOrNew();
           } catch {
             stateRef.current = createGame();
           }
@@ -661,6 +673,14 @@ export function AssayGame() {
     }
     const onVis = () => {
       if (document.visibilityState !== "hidden") return;
+      // Save when the tab is hidden or closing, so a reload never loses the last action.
+      if (screenRef.current === "play" && stateRef.current) {
+        try {
+          persist(stateRef.current);
+        } catch {
+          /* writeSave already logged it */
+        }
+      }
       let hold = true;
       try {
         hold = localStorage.getItem("xdruid-pc-pause-away") !== "0";
@@ -1019,7 +1039,7 @@ export function AssayGame() {
       localStorage.removeItem(BAK1);
       localStorage.removeItem(BAK2);
       stateRef.current = createGame();
-    } else if (!stateRef.current) stateRef.current = readSave() ?? createGame();
+    } else if (!stateRef.current) stateRef.current = loadOrNew();
     screenRef.current = "play";
     panelRef.current = null;
     setScreen("play");
@@ -1623,6 +1643,22 @@ export function AssayGame() {
             </div>
           </div>
           <div className="hotbar-wrap">
+            {loadNotice && (
+              <div className="prompt" role="alert" style={{ maxWidth: "100%", borderColor: "#e07a5f" }}>
+                {loadNotice}{" "}
+                <button
+                  type="button"
+                  className="slot"
+                  style={{ width: "auto", padding: "2px 8px" }}
+                  onClick={() => {
+                    loadNotice = null;
+                    bump();
+                  }}
+                >
+                  OK
+                </button>
+              </div>
+            )}
             {handheld ? (
               <div className="prompt">
                 {s.message || prompt || (s.downed ? "Downed. Crawl to the tub." : "Walk the yard.")}
