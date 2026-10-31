@@ -10,7 +10,7 @@
 - Sentry (OBS-001, in review): `src/lib/sentry` loads `@sentry/react` only when `VITE_SENTRY_DSN` is set at build time (Vercel Production). `logError` forwards every entry. No personal data (`sendDefaultPii: false`), no tracing. Project: `xdruidi`.
 - Window `error` and `unhandledrejection` listeners. No unhandled promise rejection reaches the player.
 - Asset load failures in `assets.ts` already retry once then omit the sheet. Draw path uses colored pixel placeholders (material-accurate tints) instead of crashing.
-- Save corruption: `listRecoveryOptions` exposes Current / Backup 1 / Backup 2 / Landmark with reasons. Correction 2026-10-31: no screen calls it yet, so the player is NOT offered a choice; the loader falls back automatically (see SAVE_FORMAT.md).
+- Save corruption: `listRecoveryOptions` exposes Current / Backup 1 / Backup 2 / Landmark with reasons. Correction 2026-10-31: no screen calls it yet, so the player is NOT offered a choice; the loader falls back automatically. SAVE-005 (in review) adds a dismissible alert saying what happened (see SAVE_FORMAT.md).
 - Structured log (`src/game/errorLog.ts`): stack, safe state snapshot (position, wing, pack length, rng), context, UA, URL. Stored locally (last 50). Every entry automatically files a defect via telemetry `failure` event.
 
 ## Paths covered
