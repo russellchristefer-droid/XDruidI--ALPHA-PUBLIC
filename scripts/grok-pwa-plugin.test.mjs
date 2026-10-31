@@ -19,6 +19,10 @@ import {
 } from "./grok-pwa-shared.mjs";
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
+// These tests describe the scaffold defaults. Run them from an empty workspace so the
+// game's own public/og.jpg and site config do not leak into the expected titles and cards.
+process.chdir(mkdtempSync(join(tmpdir(), "grok-pwa-test-")));
+
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 test("injects before </head>", () => {

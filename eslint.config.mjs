@@ -15,6 +15,8 @@ export default tseslint.config(
       ".nitro/**",
       "node_modules/**",
       "src/routeTree.gen.ts",
+      // Unused Grok Build paste kept for reference (see DRUIDI-MV-09); it is @ts-nocheck.
+      "src/groveCrownWalker13.js",
     ],
   },
   js.configs.recommended,
@@ -41,6 +43,12 @@ export default tseslint.config(
       ],
       "@typescript-eslint/no-explicit-any": "off",
     },
+  },
+  {
+    // Game logic is plain TypeScript, not React. Functions like usePlot/useWell mean
+    // "use this object in the world", so the hooks rule gives false errors here.
+    files: ["src/game/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
   },
   // Disable rules that conflict with Prettier formatting.
   prettier,

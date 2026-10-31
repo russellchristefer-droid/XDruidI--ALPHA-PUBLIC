@@ -11,7 +11,7 @@ export type TelemetryEvent =
   | { name: "session_end"; t: number; durationSec: number }
   | { name: "action"; t: number; kind: string; detail?: string }
   | { name: "failure"; t: number; kind: "death" | "health_low" | "stamina_empty" | "other"; detail?: string }
-  | { name: "portal_visit"; t: number; realm: number; name: string }
+  | { name: "portal_visit"; t: number; realm: number; realmName: string }
   | { name: "skill_progress"; t: number; skill: string; level: number; xpDelta?: number }
   | { name: "save_attempt"; t: number; success: boolean; reason?: string }
   | { name: "load_attempt"; t: number; success: boolean; reason?: string }
@@ -51,7 +51,7 @@ export function isTelemetryOptedIn(): boolean {
 export function setTelemetryOptIn(v: boolean) {
   optedIn = v;
   saveOptIn(v);
-  if (v) track("session_start");
+  if (v) track({ name: "session_start" });
   else {
     eventBuffer = [];
     try { localStorage.removeItem(EVENTS_KEY); } catch { /* ignore */ }
@@ -94,7 +94,14 @@ function scheduleFlush() {
   }, 15000);
 }
 
-export function track(event: Omit<TelemetryEvent, "t"> & { t?: number }) {
+/** TelemetryEvent without its timestamp; distributes over the union so each event keeps its own fields. */
+export type TelemetryInput = TelemetryEvent extends infer E
+  ? E extends TelemetryEvent
+    ? Omit<E, "t"> & { t?: number }
+    : never
+  : never;
+
+export function track(event: TelemetryInput) {
   if (!optedIn) return;
   const full = { ...event, t: event.t ?? now() } as TelemetryEvent;
   eventBuffer.push(full);
@@ -125,7 +132,7 @@ export function trackFailure(kind: "death" | "health_low" | "stamina_empty" | "o
 }
 
 export function trackPortal(realm: number, name: string) {
-  track({ name: "portal_visit", realm, name });
+  track({ name: "portal_visit", realm, realmName: name });
 }
 
 export function trackSkill(skill: string, level: number, xpDelta?: number) {
