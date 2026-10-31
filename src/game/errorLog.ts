@@ -4,6 +4,7 @@
  * No personal data.
  */
 import { track } from "./telemetry.ts";
+import { captureToSentry } from "../lib/sentry/index.ts";
 import type { GameState } from "./content.ts";
 
 /** Small, safe subset of GameState kept with each error (counts instead of big arrays). */
@@ -65,6 +66,7 @@ export function logError(err: unknown, context: string, state?: GameState | null
     kind: "other",
     detail: `defect:${rec.context}:${rec.message.slice(0, 120)}`,
   });
+  captureToSentry(err, rec.context);
   console.error("[XDruid defect]", rec);
   return rec;
 }
