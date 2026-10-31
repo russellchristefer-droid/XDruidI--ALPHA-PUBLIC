@@ -6,10 +6,11 @@
 
 ## Coverage
 
-- Global React ErrorBoundary (`src/components/ErrorBoundary.tsx`) wraps the yard. Catches render and logic failures. Player sees a recoverable notice, not a blank page.
+- Global React ErrorBoundary (`src/components/ErrorBoundary.tsx`). Until OBS-001 (2026-10-31, in review) nothing rendered it; OBS-001 mounts it around the app in `src/routes/__root.tsx`. Catches render failures. Player sees a recoverable notice, not a blank page.
+- Sentry (OBS-001, in review): `src/lib/sentry` loads `@sentry/react` only when `VITE_SENTRY_DSN` is set at build time (Vercel Production). `logError` forwards every entry. No personal data (`sendDefaultPii: false`), no tracing. Project: `xdruidi`.
 - Window `error` and `unhandledrejection` listeners. No unhandled promise rejection reaches the player.
 - Asset load failures in `assets.ts` already retry once then omit the sheet. Draw path uses colored pixel placeholders (material-accurate tints) instead of crashing.
-- Save corruption: `listRecoveryOptions` exposes Current / Backup 1 / Backup 2 / Landmark with reasons. Player is offered an explicit choice rather than silent new-game or fail.
+- Save corruption: `listRecoveryOptions` exposes Current / Backup 1 / Backup 2 / Landmark with reasons. Correction 2026-10-31: no screen calls it yet, so the player is NOT offered a choice; the loader falls back automatically (see SAVE_FORMAT.md).
 - Structured log (`src/game/errorLog.ts`): stack, safe state snapshot (position, wing, pack length, rng), context, UA, URL. Stored locally (last 50). Every entry automatically files a defect via telemetry `failure` event.
 
 ## Paths covered
@@ -27,7 +28,7 @@ Unit: errorLog.safeSnapshot does not throw on partial state. Recovery list inclu
 
 ## Unverified
 
-Live deployment of the new boundary and recovery UI. Console after forced throw.
+Live deployment of the boundary and Sentry (not on xdruidi.grok.me; needs owner publish and the DSN set in Vercel). Verified locally 2026-10-31 (vite preview, headless Chromium): no console errors on load; a thrown error produced one envelope request to the xdruidi ingest URL (intercepted in the test, nothing sent).
 
 ## Risks
 

@@ -33,6 +33,10 @@ function Changelog() {
             The optional local usage record no longer writes the realm name over the type of a portal visit, so portal visits are counted correctly. Records already kept are left as they are.{" "}
             CI-001
           </li>
+          <li>
+            If the yard hits an error, the crash notice from ERR-001 is now actually shown, instead of a blank page. When the owner turns it on, the error is also reported to the project's error tracker with no personal data, so it can be fixed. Saves are not affected.{" "}
+            OBS-001
+          </li>
         </ul>
 
         <h2>2026-10-29</h2>

@@ -1,7 +1,19 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { useEffect } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { initSentry } from "@/lib/sentry";
+import "@/game/errorLog";
 import appCss from "../styles.css?url";
+
+/** Starts Sentry in the browser only (no-op without VITE_SENTRY_DSN). */
+function SentryInit() {
+  useEffect(() => {
+    initSentry();
+  }, []);
+  return null;
+}
 
 const APP_NAME = "XDruid I";
 
@@ -36,9 +48,12 @@ export const Route = createRootRoute({
         />
       </head>
       <body>
+        <SentryInit />
         <PreviewHostBridge />
         <AuthProvider>
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </AuthProvider>
         <Scripts />
       </body>
