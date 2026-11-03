@@ -1,6 +1,6 @@
 # Doc Freshness Check
 
-**Dated:** 2026-10-31  
+**Dated:** 2026-11-03  
 **Purpose:** Flag any section whose code has diverged.
 
 ## How to check
@@ -9,7 +9,7 @@
 2. If a constant, type, key, or ensure* list differs, mark the doc stale.
 3. Docs that describe code that no longer exists are defects — delete or rewrite them in the same slice.
 
-## Current known state (2026-10-31)
+## Current known state (2026-11-03)
 
 | Doc | Source | Status |
 |-----|--------|--------|
@@ -19,16 +19,16 @@
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
-| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-001 ownership lock 2026-10-29) |
+| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-002 restoration and 2026-11-03 elevation) |
 | Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-003; 2026-10-31 in-review entries for CI-001 / OBS-001 / SAVE-005-006) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 
 ## Flagged
 
-- No `docs/DRUIDI_BOT_CONTRACT.md` existed at the start of the 2026-10-26 slice. Stub added then; elevated 2026-10-28; process ownership locked 2026-10-29.
+- No `docs/DRUIDI_BOT_CONTRACT.md` existed at the start of the 2026-10-26 slice. Stub added then; elevated 2026-10-28; process ownership locked 2026-10-29. Accidentally emptied in ERR-001 (170bd50, 2026-10-30); restored and re-elevated in PROCESS-002 (2026-11-03).
 - Full GameState type is large and lives only in content.ts; the schema docs summarize the visible parts. A complete extracted type dump would be a useful next slice.
 - Public-facing changelog page maintained at /changelog. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Updated with 2026-10-29 process lock and modding framework entries.
-- Active automation prompts (in Grok Bot app) require audit against the elevated contract (PROCESS-001).
+- Active automation prompts (in Grok Bot app) require audit against the elevated contract (PROCESS-001 remains open).
 - VISUAL_STYLE_GUIDE.md established 2026-10-31 as the living art-direction reference. Remaining realm identities (Combat, Quarry, Floor 332, Mansion) require definition before art ships.
 
 - CI-001 (2026-10-31): `npm test` covers scripts + logic, modding, birdsong, tiles, house, audio. `camp.test.ts` and `dev-sprites.test.ts` already fail on main and run in a non-blocking job (`npm run test:known-failing`) until fixed.
