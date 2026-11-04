@@ -19,6 +19,15 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-03</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The shared production contract that every specialist bot must read and obey was restored and elevated after it was accidentally emptied. The god-tier professional standard for perfect pixel-grid integrity, nearest-neighbor sampling, disciplined 16×16 density, material-accurate response, and cause-and-effect realism is locked. The definition of done remains the release gate for every slice. Technical debt stays tracked as explicit work orders. Saves and the live yard are unaffected.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commit/ef8f7c1a8c9f81c6d8ee49c36e316f9af279f278">PROCESS-002</a>
+          </li>
+        </ul>
+
         <h2>2026-10-31 · in review, not yet on the live yard</h2>
         <p>
           These changes are in the code and waiting for review. They reach xdruidi.grok.me only when the owner publishes.
