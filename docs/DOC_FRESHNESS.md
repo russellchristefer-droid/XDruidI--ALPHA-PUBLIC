@@ -1,6 +1,6 @@
 # Doc Freshness Check
 
-**Dated:** 2026-11-03  
+**Dated:** 2026-11-05  
 **Purpose:** Flag any section whose code has diverged.
 
 ## How to check
@@ -9,7 +9,7 @@
 2. If a constant, type, key, or ensure* list differs, mark the doc stale.
 3. Docs that describe code that no longer exists are defects — delete or rewrite them in the same slice.
 
-## Current known state (2026-11-03)
+## Current known state (2026-11-05)
 
 | Doc | Source | Status |
 |-----|--------|--------|
@@ -19,13 +19,13 @@
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
-| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-002 restoration and 2026-11-03 elevation) |
+| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-003 2026-11-05 elevation locked) |
 | Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-004; 2026-11-03 PROCESS-002 entry added; 2026-10-31 in-review entries for CI-001 / OBS-001 / SAVE-005-006 remain) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 
 ## Flagged
 
-- No `docs/DRUIDI_BOT_CONTRACT.md` existed at the start of the 2026-10-26 slice. Stub added then; elevated 2026-10-28; process ownership locked 2026-10-29. Accidentally emptied in ERR-001 (170bd50, 2026-10-30); restored and re-elevated in PROCESS-002 (2026-11-03).
+- No `docs/DRUIDI_BOT_CONTRACT.md` existed at the start of the 2026-10-26 slice. Stub added then; elevated 2026-10-28; process ownership locked 2026-10-29. Accidentally emptied in ERR-001 (170bd50, 2026-10-30); restored and re-elevated in PROCESS-002 (2026-11-03). Elevated again in PROCESS-003 (2026-11-05).
 - Full GameState type is large and lives only in content.ts; the schema docs summarize the visible parts. A complete extracted type dump would be a useful next slice.
 - Public-facing changelog page maintained at /changelog. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Updated with 2026-11-03 PROCESS-002 contract restoration entry (CHANGELOG-004).
 - Active automation prompts (in Grok Bot app) require audit against the elevated contract (PROCESS-001 remains open).
