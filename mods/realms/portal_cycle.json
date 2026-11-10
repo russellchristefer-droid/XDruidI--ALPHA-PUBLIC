@@ -1,0 +1,12 @@
+{
+  "apiVersion": 1,
+  "id": "portal_cycle_001",
+  "wing": 0,
+  "title": "Portal Cycle Homestead Anchor",
+  "notes": [
+    "PORTAL-CYCLE-001: All realm transitions via portals preserve the original farm as the return anchor. Crossing any portal records the entry wing and position; exit always resolves to FARM_START on wing 0 unless a pinned farm rack seed is active.",
+    "Guaranteed return: even if the cross fade is interrupted, placeCourtSpawn forces return to the upper farmland. Source: internal engine contract in content.ts placeCourtSpawn and logic.ts sideGate returns.",
+    "Occult depth: portals are not mere gates but cycles of departure and return, echoing the Vedic concept of lokas as temporary sojourns. Sourced: Bhagavata Purana descriptions of Svarga and Naraka as non-permanent realms."
+  ],
+  "spawn": { "x": 180, "y": 140 }
+}
