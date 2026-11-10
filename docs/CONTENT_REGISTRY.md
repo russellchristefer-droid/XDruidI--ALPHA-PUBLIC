@@ -63,3 +63,7 @@ Farm Life pack does not contain winter tiles, interiors, livestock beyond the li
 Base DEFS remain the source of truth for core content. New content (crops, creatures, items, realms, rituals, sounds) is added by dropping typed definition files into the registry. See `docs/MODDING.md` and `src/game/modding.ts`.
 
 A non-engineer can add one new crop by following the example in MODDING.md.
+
+## 2026-11-10 — Occult and ritual content ownership (PORTAL-CYCLE-001)
+
+Typed definitions added under mods/ for portal cycle anchor, ritual focus staff (equipable with sockets), offering items (milk, flowers, incense with material properties), shrine/altar rituals, mantra chant sound, and occult region notes (sanctum, mantra hall) with spawn/ambient/lore. All stable IDs. Scriptural references sourced from Vedic texts (Rig Veda, Grihya Sutras, Puranas) and traditional practices; none invented. Hyper-realism: material responses documented (liquid spoilage, resin burn temps, organic wilt).
