@@ -1,0 +1,11 @@
+{
+  "apiVersion": 1,
+  "id": "occult_sanctum",
+  "wing": 8,
+  "title": "Occult Sanctum",
+  "notes": [
+    "Spawn table: bees (from pack), butterflies, occasional bird. Ambient rules: soft chant audio if ritual skill >5, smoke particles from incense offerings, spiritual balance decay slowed.",
+    "Lore text: The sanctum is a place of offering, not combat. Shrines accept milk and flowers; altars take incense. Return to homestead is always possible via the courtyard portal. Sourced: domestic ritual spaces in Grihya Sutras and general occult practice of sacred enclosures."
+  ],
+  "spawn": { "x": 174, "y": 200 }
+}
