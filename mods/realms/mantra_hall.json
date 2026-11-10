@@ -1,0 +1,10 @@
+{
+  "apiVersion": 1,
+  "id": "mantra_hall",
+  "wing": 18,
+  "title": "Mantra Hall",
+  "notes": [
+    "Spawn table: none, pure focus space. Ambient rules: continuous soft mantra chant on Music bus when present. Lore: Hall of recitation. Chants elevate spiritual balance and can be hooked to ritual focus. Guaranteed return to farm. Sourced: Vedic mantra practice, Rig Veda and later Upanishadic traditions."
+  ],
+  "spawn": { "x": 174, "y": 200 }
+}
