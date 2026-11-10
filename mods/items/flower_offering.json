@@ -1,0 +1,12 @@
+{
+  "apiVersion": 1,
+  "id": "flower_offering",
+  "name": "Bloom Offering",
+  "kind": "resource",
+  "weight": 0.05,
+  "floor": 10,
+  "quality": 2,
+  "stack": true,
+  "icon": { "sheet": "plants", "x": 0, "y": 32, "w": 16, "h": 16 },
+  "blurb": "Petals from the four pack flowers. Organic material: seasonal, wilts if not used. Placed on shrines. Sourced from traditional floral offerings in Vedic and folk rites."
+}
