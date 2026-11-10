@@ -1,0 +1,9 @@
+{
+  "apiVersion": 1,
+  "id": "shrine_offering",
+  "name": "Shrine Offering Rite",
+  "skillId": "ritual",
+  "cost": { "stamina": 15, "items": { "milk_offering": 1, "flower_offering": 1 } },
+  "effect": "spiritual_balance +10; spawn ambient bees if flowers present",
+  "blurb": "Place offerings at a shrine. Milk pours (liquid), flowers scatter (organic). Raises spiritual balance. Placement: courtyard or grove ritual ring. Sourced: simple offering rites in Vedic domestic practice (Grihya Sutras)."
+}
