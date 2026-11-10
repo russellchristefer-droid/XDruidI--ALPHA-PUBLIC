@@ -1,0 +1,12 @@
+{
+  "apiVersion": 1,
+  "id": "milk_offering",
+  "name": "Fresh Milk Offering",
+  "kind": "resource",
+  "weight": 0.5,
+  "floor": 40,
+  "quality": 2,
+  "stack": true,
+  "icon": { "sheet": "food", "x": 32, "y": 0, "w": 16, "h": 16 },
+  "blurb": "Liquid milk from the cow. Real material: spoils after 48 hours if not offered; cools and can be poured. Used in offerings at shrines and altars. Sourced from traditional pastoral rites; milk as pure offering in Vedic yajna (Rig Veda 1.22 etc.)."
+}
