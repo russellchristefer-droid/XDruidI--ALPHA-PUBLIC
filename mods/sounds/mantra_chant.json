@@ -1,0 +1,8 @@
+{
+  "apiVersion": 1,
+  "id": "mantra_chant",
+  "event": "ritual_chant",
+  "bus": "Music",
+  "volume": 0.6,
+  "blurb": "Mantra chant audio hook. Looped soft vocalise for ritual focus. Triggers on altar rites or mantra hall. Sourced: traditional Vedic mantra recitation style, not a specific copyrighted recording."
+}
