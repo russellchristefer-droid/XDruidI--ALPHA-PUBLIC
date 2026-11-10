@@ -1,0 +1,9 @@
+{
+  "apiVersion": 1,
+  "id": "altar_incense",
+  "name": "Altar Incense Burn",
+  "skillId": "ritual",
+  "cost": { "stamina": 10, "items": { "incense_offering": 1 } },
+  "effect": "spiritual_balance +8; ambient smoke particles; chant hook triggers",
+  "blurb": "Burn incense at an altar. Real burn: smoke rises, scent persists 30s, ash remains. Material-accurate. Sourced: incense use in ancient rites across cultures, e.g. Egyptian and Vedic."
+}
