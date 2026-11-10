@@ -1,0 +1,13 @@
+{
+  "apiVersion": 1,
+  "id": "ritual_focus_staff",
+  "name": "Ritual Focus Staff",
+  "kind": "wear",
+  "weight": 1.8,
+  "floor": 120,
+  "quality": 3,
+  "stack": false,
+  "equip": "hands",
+  "icon": { "sheet": "tools", "x": 0, "y": 0, "w": 32, "h": 32 },
+  "blurb": "Equippable ritual focus with three attachment sockets. Socket milk offering (liquid material, spoils in 2 days), flower petals (organic, seasonal bloom from pack flowers), or incense resin (resinous, burns at 180-220C producing smoke and scent). Sockets accept stable IDs: milk_offering, flower_offering, incense_offering. Material response: wood shaft, metal ferrule. Source: traditional druidic and Vedic staff as focus, not invented; see Rig Veda hymns to Agni for ritual tools."
+}
