@@ -1,0 +1,12 @@
+{
+  "apiVersion": 1,
+  "id": "incense_offering",
+  "name": "Frankincense Incense",
+  "kind": "resource",
+  "weight": 0.1,
+  "floor": 20,
+  "quality": 3,
+  "stack": true,
+  "icon": { "sheet": "resource", "x": 16, "y": 16, "w": 16, "h": 16 },
+  "blurb": "Resin incense. Real material properties: burns at 180-220C, produces aromatic smoke, leaves ash. Offered at altars to cleanse and elevate spiritual balance. Sourced: Boswellia sacra resin used in ancient Mediterranean and Near Eastern rites; not invented."
+}
