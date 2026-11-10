@@ -19,6 +19,15 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-10</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            Semantic versioning is now in place. The homestead is at 0.1.0 Alpha. The version number is kept in a VERSION file the game can read, and release notes are generated from the work orders and this changelog. A public roadmap separates what is committed from what is only hoped for. Version bumps happen only after a successful gated deploy. A player or journalist can trust the number and the notes because they list only what has actually been done.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/rel-001-semantic-versioning/docs/RELEASE.md">REL-001</a>
+          </li>
+        </ul>
+
         <h2>2026-11-09</h2>
         <h3>Systems</h3>
         <ul>
