@@ -19,6 +19,24 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-09</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The public changelog is maintained as the visible proof of continuous development. Entries stay in plain language a returning player can read at a glance, grouped by theme, newest first, with links to the work-order that produced each change. History is never removed. The east house is mentioned only when a change actually touches it.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commits/main/src/routes/changelog.tsx">CHANGELOG-002</a>
+          </li>
+        </ul>
+
+        <h2>2026-11-05</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The shared production contract was reaffirmed and elevated once more. The god-tier professional standard for perfect pixel-grid integrity, nearest-neighbor sampling only, disciplined 16×16 density, material-accurate response, and cause-and-effect realism remains locked. The definition of done stays the release gate. Technical debt continues to be tracked as explicit work orders. Saves and the live yard are unaffected.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/DRUIDI_BOT_CONTRACT.md">PROCESS-003</a>
+          </li>
+        </ul>
+
         <h2>2026-11-03</h2>
         <h3>Systems</h3>
         <ul>
