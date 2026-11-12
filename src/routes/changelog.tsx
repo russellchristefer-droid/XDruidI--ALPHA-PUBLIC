@@ -19,6 +19,15 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-11</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The public changelog is kept as the visible proof of continuous development. Dated entries in plain language, grouped by theme, newest first, each linking to its work-order ID, remain in the public source. History is preserved. The east house is mentioned only when relevant. The live yard at xdruidi.grok.me/changelog still returns Not Found; publication of this page awaits the owner.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commits/main/src/routes/changelog.tsx">CHANGELOG-004</a>
+          </li>
+        </ul>
+
         <h2>2026-11-10</h2>
         <h3>Systems</h3>
         <ul>
