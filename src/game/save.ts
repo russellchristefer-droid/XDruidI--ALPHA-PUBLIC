@@ -1,4 +1,4 @@
-import { SAVE_KEY, defaultFlowers, ensureAuto, ensureBirds, ensureFishing, ensureHealth, ensureLife, ensureMagic, ensureReaper, ensureHand, ensureXiang64, ensureMaid, ensureStable, ensureGoatPen, ensureCourtHerd, ensureSow, ensureSkills, ensureWeather, ensureWing, lockBeds, placeCourtSpawn, placeHerd, ensureFarmRack, type GameState } from "./content.ts";
+import { SAVE_KEY, defaultFlowers, ensureAuto, ensureBirds, ensureFishing, ensureHealth, ensureLife, ensureMagic, ensureReaper, ensureHand, ensureXiang64, ensureMaid, ensureStable, ensureGoatPen, ensureCourtHerd, ensureSow, ensureSkills, ensureWeather, ensureWing, lockBeds, placeCourtSpawn, placeHerd, ensureFarmRack, ensureCreatureMemory, type GameState } from "./content.ts";
 import { trackSave, trackLoad } from "./telemetry.ts";
 import { logError } from "./errorLog.ts";
 
@@ -175,6 +175,7 @@ function finishLoad(store: SaveStore, key: string, raw: string, state: GameState
   ensureGoatPen(state);
   ensureCourtHerd(state);
   ensureSow(state);
+  ensureCreatureMemory(state);
   ensureWeather(state);
   ensureLife(state);
   ensureFishing(state);

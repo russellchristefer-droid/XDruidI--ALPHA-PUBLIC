@@ -45,3 +45,8 @@ Event-driven, not timer-driven. Mute must leave the game fully playable.
 ## Freshness
 
 Any system change requires an update here in the same slice.
+
+
+## 2026-11-11 — Creature memory and bonding (MEMORY-001)
+
+Individual animals (cow, rooster, goat, sow) and the black cat carry persistent `CreatureMemory`. Bond rises only from repeated positive interactions (feed, train, pet). Visible effects: closer approach distance, remembered feeding hour, optional guard spot, tool reaction, mood echo. Birds remain transient for this slice; individual crow memory is the next candidate. Bonding is earned, never toggled. Hyper-realism check: yes — a specific animal behaves differently from its kind after consistent care.

@@ -51,3 +51,8 @@ Additive only. `ensure*` functions fill missing pieces. Destructive changes requ
 ## Freshness
 
 If save.ts or the ensure* list changes, update this file in the same commit.
+
+
+## 2026-11-11 — Creature memory (MEMORY-001)
+
+Additive only. `Animal.memory` and `cat.memory` are optional `CreatureMemory` objects. Old saves receive defaults via `ensureCreatureMemory` (called after `ensureSow`). No fields removed or renamed. Bond, interactions, feedHour, closeApproach, guard, toolReaction, and moodEcho persist across sessions. Hyper-realism check: a farmer notices the hen that arrives near the remembered feed hour, the crow whose landing distance shrinks after repeated non-aggressive presence, the animal that guards a chosen spot.

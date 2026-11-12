@@ -622,6 +622,25 @@ export function lockBeds(s: GameState): void {
   });
 }
 
+export type CreatureMemory = {
+  /** Earned bond 0–100. Rises only from repeated positive interactions; never toggled. */
+  bond: number;
+  /** Total positive interactions counted. */
+  interactions: number;
+  /** Game clock of last interaction. */
+  lastClock: number;
+  /** Remembered preferred feeding hour (0–23) if the animal has learned a schedule. */
+  feedHour?: number;
+  /** Minimum approach distance in pixels. Starts high; lowers as bond rises (crows, hens). */
+  closeApproach: number;
+  /** Optional guarded spot. Animal prefers to stand near it when bond is high. */
+  guard?: { x: number; y: number };
+  /** Reaction to farmer tools: neutral, wary (scythe/axe), curious. */
+  toolReaction: "neutral" | "wary" | "curious";
+  /** How strongly the animal echoes the farmer’s mood (0–1). */
+  moodEcho: number;
+};
+
 export type Animal = {
   id: string;
   kind: "cow" | "rooster" | "goat" | "sow";
@@ -639,6 +658,8 @@ export type Animal = {
   intent?: "graze" | "drink" | "court" | "wander" | "flee" | "follow";
   /** The sow has been trained to follow at least once. */
   trained?: boolean;
+  /** Persistent individual memory. Additive; old saves receive defaults via ensure. */
+  memory?: CreatureMemory;
 };
 
 export type BirdMode = "stand" | "walk" | "takeoff" | "fly" | "land";
@@ -1058,6 +1079,8 @@ export type GameState = {
     clipT?: number;
     route?: number[];
     intent?: "court" | "drink" | "yard" | "follow";
+    /** Persistent individual memory. Additive. */
+    memory?: CreatureMemory;
     /** Seconds until she speaks again. Not saved as part of the story. */
     mew?: number;
   };
@@ -1496,6 +1519,40 @@ export function ensureGoatPen(s: GameState): void {
 }
 
 /** A save that never had the sow gets her on the upper farm. She stays north of the sidewalk. */
+
+export function ensureCreatureMemory(s: GameState): void {
+  for (const a of s.animals) {
+    if (!a.memory) {
+      a.memory = {
+        bond: 0,
+        interactions: 0,
+        lastClock: s.clock ?? 0,
+        closeApproach: a.kind === "rooster" ? 48 : 36,
+        toolReaction: "neutral",
+        moodEcho: 0.1,
+      };
+    }
+    const m = a.memory;
+    if (typeof m.bond !== "number") m.bond = 0;
+    if (typeof m.interactions !== "number") m.interactions = 0;
+    if (typeof m.lastClock !== "number") m.lastClock = 0;
+    if (typeof m.closeApproach !== "number") m.closeApproach = 40;
+    if (!m.toolReaction) m.toolReaction = "neutral";
+    if (typeof m.moodEcho !== "number") m.moodEcho = 0.1;
+    m.bond = Math.max(0, Math.min(100, m.bond));
+  }
+  if (s.cat && !s.cat.memory) {
+    s.cat.memory = {
+      bond: 0,
+      interactions: 0,
+      lastClock: s.clock ?? 0,
+      closeApproach: 24,
+      toolReaction: "curious",
+      moodEcho: 0.3,
+    };
+  }
+}
+
 export function ensureSow(s: GameState): void {
   const home = { x: 88, y: 168 };
   let sow = s.animals.find((a) => a.kind === "sow");

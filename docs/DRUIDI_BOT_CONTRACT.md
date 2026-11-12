@@ -87,3 +87,8 @@ Update this contract whenever a new mandate, lane, or rule is added. Date every 
 ## 2026-10-29 — Modding & extensibility framework (MOD-001)
 
 The extension contract is now live. New content is added by dropping typed definition files into the registry without touching engine code. Sandbox prevents broken mods from corrupting saves or crashing the simulation. API is versioned so old mods keep working. Documented in docs/MODDING.md. Hyper-realism check: a non-engineer can add one new crop by following the docs.
+
+
+## 2026-11-11 — Creature memory and bonding (MEMORY-001)
+
+Individual animals retain typed persistent memory across sessions. Bond emerges from repeated interaction. Schema lives on Animal and cat. Ensure function migrates old saves. Visible behavioral influence required. Hyper-realism check: a real farmer would notice the difference. No menu toggle.

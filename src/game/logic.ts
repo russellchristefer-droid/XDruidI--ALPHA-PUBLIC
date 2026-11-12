@@ -1350,6 +1350,12 @@ function useAnimal(s: GameState, id: string): InteractResult {
     a.route = [];
     const first = !a.trained;
     a.trained = true;
+    if (a.memory) {
+      a.memory.bond = Math.min(100, a.memory.bond + 8);
+      a.memory.interactions += 1;
+      a.memory.lastClock = s.clock ?? 0;
+      a.memory.moodEcho = Math.min(1, a.memory.moodEcho + 0.05);
+    }
     s.life.face = "love";
     s.life.emote = 1.6;
     return { msg: first ? `The sow is trained. She follows.${grant(s, "husbandry", 16)}` : "The sow follows." };
@@ -1367,6 +1373,12 @@ function petCat(s: GameState): InteractResult {
   if (s.cat.petCd > 0) return { msg: "The cat is busy being a cat." };
   s.cat.petCd = 20;
   s.stamina = Math.min(100, s.stamina + 4);
+  if (s.cat.memory) {
+    s.cat.memory.bond = Math.min(100, s.cat.memory.bond + 6);
+    s.cat.memory.interactions += 1;
+    s.cat.memory.lastClock = s.clock ?? 0;
+    s.cat.memory.closeApproach = Math.max(8, s.cat.memory.closeApproach - 1);
+  }
   mewNow(s, Math.random() < 0.5 ? "long" : "trill");
   return { msg: `The cat allows it. A little of the day comes back.${grant(s, "husbandry", 8)}` };
 }
@@ -1638,6 +1650,16 @@ export function resolveAction(s: GameState): string {
     if (raw.qty > 1) raw.qty -= 1;
     else removeItem(s, raw.id);
     a.fed = true;
+    if (a.memory) {
+      a.memory.bond = Math.min(100, a.memory.bond + 5);
+      a.memory.interactions += 1;
+      a.memory.lastClock = s.clock ?? 0;
+      // Learn feed hour from current time if not set
+      if (a.memory.feedHour === undefined && s.time !== undefined) {
+        a.memory.feedHour = Math.floor((s.time % 24));
+      }
+      a.memory.closeApproach = Math.max(12, a.memory.closeApproach - 2);
+    }
     cost(3, 0);
     return `Fed the ${a.name.toLowerCase()}. Check back after dawn.${grant(s, "husbandry", 12)}`;
   }
