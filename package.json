@@ -20,7 +20,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:known-failing": "node --experimental-strip-types --test src/game/camp.test.ts src/game/dev-sprites.test.ts",
-    "build:ci": "node scripts/with-app-env.mjs vite build"
+    "build:ci": "node scripts/with-app-env.mjs vite build",
+    "check:size": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
