@@ -34,3 +34,11 @@
 - CI-001 (2026-10-31): `npm test` covers scripts + logic, modding, birdsong, tiles, house, audio. `camp.test.ts` and `dev-sprites.test.ts` already fail on main and run in a non-blocking job (`npm run test:known-failing`) until fixed.
 
 Run this check whenever a system file is touched.
+
+## 2026-11-12 — PIPELINE-001
+
+| Doc | Source | Status |
+|-----|--------|--------|
+| BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
+
+CI now fails on bundle size budget exceedance. Deploy remains gated to green commits only. Rollback procedure documented.
