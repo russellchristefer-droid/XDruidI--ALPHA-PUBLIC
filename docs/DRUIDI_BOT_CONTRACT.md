@@ -99,3 +99,7 @@ The public-facing changelog page remains the visible proof of continuous develop
 ## 2026-11-14 — Knowledge base ownership and freshness (DOCS-001)
 
 Docs/ is maintained as the complete, current knowledge base. Architecture overview, system maps, content registry schema reference, save format spec, extension API docs, style guide cross-links, and plain-English README are current. Doc-freshness check performed and updated. Hyper-realism check: a new developer reading the docs folder alone can understand the whole game in one afternoon. No docs describe code that no longer exists.
+
+## 2026-11-14 — Release management (REL-001)
+
+Semantic versioning (MAJOR.MINOR.PATCH) is established and tied to the contract's milestone definitions. Automated release notes are generated from the day's work orders and changelog entries. Version tags in the repo and a VERSION file the game reads at runtime for display in the HUD or main menu. Release archive via git tags so any prior version can be rebuilt. Version bumps happen only on successful gated deploys (coordinate with Build Pipeline). Public roadmap reflects committed versus aspirational work without overpromising. Documented in docs/RELEASE_MANAGEMENT.md and docs/ROADMAP.md. Hyper-realism check: a player or journalist looking at the version number and release notes can trust them as accurate for the public source.
