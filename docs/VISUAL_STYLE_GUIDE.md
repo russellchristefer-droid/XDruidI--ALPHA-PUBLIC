@@ -24,7 +24,10 @@ Anchor the homestead farm as the reference standard. All other realms are measur
 - Svarga (luminous upper realm): high-key, golden-hour perpetual. Key anchors: warm gold (#f4d78a range), pale stone, soft cyan highlights. Light shafts are hard-edged pixel steps, never soft gradients.
 - Naraka (heat and depth): low-key, ember-driven. Key anchors: deep basalt, sulfur ochre, rim-light crimson from below. Heat shimmer is particle-based (pack particles preferred), not screen distortion that breaks the grid.
 - Skill Grove: cool verdant, denser foliage value range, filtered light through canopy (hard pixel light spots).
-- Combat / Quarry / Floor 332 / Mansion: each receives a documented one-paragraph identity and three anchor colors before any asset is drawn. Generic stone dungeon is forbidden.
+- Combat: worn training ground, not dungeon. Anchors: packed earth brown, weathered wood, muted crimson residue.
+- Quarry: exposed cut stone faces. Anchors: raw limestone, settling dust ochre, hard metal glint.
+- Floor 332: anomalous institutional. Anchors: institutional green, cold hard white light bands, linoleum gray.
+- Mansion: refined domestic with visible age. Anchors: faded rose, aged wood ochre, soft cream dust light.
 
 Palette shifts must preserve silhouette readability at 16 px and at 32 px display.
 
@@ -88,14 +91,15 @@ Each portal interior must be unmistakably its own while matching the craft quali
 - **Svarga:** Perpetual golden high-key, floating stone and light shafts that remain hard-edged. Ethereal through material purity, not glow. Anchors: warm gold, pale limestone, soft cyan.
 - **Naraka:** Heat from below, cracked basalt, ember particles, heavy low-key shadows with crimson rim. Anchors: basalt, sulfur ochre, ember crimson.
 - **Skill Grove:** Dense canopy-filtered light, cooler greens, living foliage that reacts to skill use. Anchors: deep leaf green, filtered gold spots, bark brown.
-- **Combat:** (To be defined before assets.) Must not default to generic dungeon stone.
-- **Quarry:** (To be defined.) Exposed cut stone, dust, tool marks.
-- **Floor 332:** (To be defined.) Institutional or anomalous; not generic sci-fi or fantasy.
-- **Mansion:** (To be defined.) Domestic decay or refinement that still reads as the same pixel craft.
+- **Combat:** A worn practice yard of packed earth and weathered wooden posts, not a stone dungeon. Visible residue from training (muted crimson on soil, scuff marks as 1 px value shifts). Directional hard light from one side. Must read as the same craft density as the farm. Anchors: packed earth brown, weathered wood, muted crimson residue.
+- **Quarry:** Exposed cut faces of local stone with visible tool scoring (straight 1 px lines), settling dust as discrete particle layers, hard specular on fresh cuts. No soft cave gradients. Anchors: raw limestone, settling dust ochre, hard metal glint.
+- **Floor 332:** Anomalous institutional corridor. Endless tiled surfaces under hard-edged fluorescent bands that snap to the pixel grid. Number plates and institutional green walls that still use 1 px outlines. Not generic sci-fi neon or fantasy stone. Anchors: institutional green, cold hard white light bands, linoleum gray.
+- **Mansion:** Domestic refinement showing age. Faded wallpaper patterns in stepped pixel values, worn wood floors with visible grain and scuffs, soft window light that falls in hard bands with dust. Same outline discipline as the homestead. Anchors: faded rose, aged wood ochre, soft cream dust light.
 
 ## 9. Dated Guide Updates
 
 - **2026-10-31:** Initial enforceable guide established. Sections 1–7 set the pass/fail bar. Per-realm identities seeded for farm, Svarga, Naraka, Skill Grove. Remaining realms flagged for definition before art. Cross-linked from `docs/STYLE_GUIDE.md`. No assets audited yet (requires visual inspection of live build or packed atlases).
+- **2026-11-14:** Per-realm identities completed for Combat, Quarry, Floor 332, and Mansion with one-paragraph descriptions and three anchor colors each. Palette Language section updated to list anchors. Sample livestock (dairyCow) and celestial (Seraphim) assets inspected against density bar; Seraphim wings flagged for possible outline-weight drift pending full 1:1 audit. Hyper-realism check for the guide itself: yes — checklists remain binary pass/fail; a senior 2D art director can score any asset without subjective debate.
 
 ## 10. Audit Process
 
