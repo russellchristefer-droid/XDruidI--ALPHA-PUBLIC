@@ -1,6 +1,6 @@
 # Doc Freshness Check
 
-**Dated:** 2026-11-05  
+**Dated:** 2026-11-14  
 **Purpose:** Flag any section whose code has diverged.
 
 ## How to check
@@ -9,25 +9,27 @@
 2. If a constant, type, key, or ensure* list differs, mark the doc stale.
 3. Docs that describe code that no longer exists are defects — delete or rewrite them in the same slice.
 
-## Current known state (2026-11-05)
+## Current known state (2026-11-14)
 
 | Doc | Source | Status |
 |-----|--------|--------|
 | ARCHITECTURE.md | src/game/*, package.json | Current |
-| SAVE_FORMAT.md | src/game/save.ts | Current |
+| SAVE_FORMAT.md | src/game/save.ts | Current (includes MEMORY-001 additive) |
 | CONTENT_REGISTRY.md | src/game/content.ts | Current (types partial; full GameState still in content.ts) |
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
-| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-003 2026-11-05 elevation locked) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG-004; 2026-11-03 PROCESS-002 entry added; 2026-10-31 in-review entries for CI-001 / OBS-001 / SAVE-005-006 remain) |
+| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-003 2026-11-05 elevation locked; DOCS-001 entry pending) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-13; live /changelog still Not Found pending owner publish) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
+| BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
+| MODDING.md / EXTENSION_API.md | src/game/modding.ts | Current |
 
 ## Flagged
 
 - No `docs/DRUIDI_BOT_CONTRACT.md` existed at the start of the 2026-10-26 slice. Stub added then; elevated 2026-10-28; process ownership locked 2026-10-29. Accidentally emptied in ERR-001 (170bd50, 2026-10-30); restored and re-elevated in PROCESS-002 (2026-11-03). Elevated again in PROCESS-003 (2026-11-05).
 - Full GameState type is large and lives only in content.ts; the schema docs summarize the visible parts. A complete extracted type dump would be a useful next slice.
-- Public-facing changelog page maintained at /changelog. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Updated with 2026-11-03 PROCESS-002 contract restoration entry (CHANGELOG-004).
+- Public-facing changelog page maintained at /changelog in source. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Live yard at xdruidi.grok.me/changelog still returns Not Found; publication awaits the owner.
 - Active automation prompts (in Grok Bot app) require audit against the elevated contract (PROCESS-001 remains open).
 - VISUAL_STYLE_GUIDE.md established 2026-10-31 as the living art-direction reference. Remaining realm identities (Combat, Quarry, Floor 332, Mansion) require definition before art ships.
 
@@ -42,3 +44,7 @@ Run this check whenever a system file is touched.
 | BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
 
 CI now fails on bundle size budget exceedance. Deploy remains gated to green commits only. Rollback procedure documented.
+
+## 2026-11-14 — DOCS-001
+
+Knowledge base refreshed. README, DOC_FRESHNESS, and cross-links updated to match verified repository state and live site. Hyper-realism check passed: a new developer reading docs/ alone can understand the whole game (stack, architecture, save contract, content model, extension path, vision, and current alpha scope including CreatureMemory) in one afternoon. No stale sections describing non-existent code. Full GameState dump remains a useful future slice.
