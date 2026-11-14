@@ -33,3 +33,7 @@ Live deployment of the boundary and Sentry (not on xdruidi.grok.me; needs owner 
 ## Risks
 
 Telemetry endpoint may be absent; defects still land in local log and console. Snapshot is deliberately partial to avoid size or circular issues.
+
+## 2026-11-14 — ERR-002 ownership and test coverage
+
+Added `src/game/errorLog.test.ts` covering safe snapshot on null/partial state, recovery options listing invalid entries with reason, and defect filing via the local log. Existing save.test.ts already covers fallback messages and quarantine. Player is still informed via dismissible message rather than an interactive choice dialog; full choice UI remains the next slice so the player can explicitly select among Current, Backup 1, Backup 2, or Landmark before starting. Hyper-realism check: failures remain informative (message + filed defect + preserved copies) rather than catastrophic. No unhandled rejection path left open.
