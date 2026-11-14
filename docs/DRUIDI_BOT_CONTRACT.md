@@ -95,3 +95,7 @@ Individual animals retain typed persistent memory across sessions. Bond emerges 
 ## 2026-11-13 — Public changelog maintenance (CHANGELOG-005)
 
 The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language, grouped by theme, newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed.
+
+## 2026-11-14 — Knowledge base ownership and freshness (DOCS-001)
+
+Docs/ is maintained as the complete, current knowledge base. Architecture overview, system maps, content registry schema reference, save format spec, extension API docs, style guide cross-links, and plain-English README are current. Doc-freshness check performed and updated. Hyper-realism check: a new developer reading the docs folder alone can understand the whole game in one afternoon. No docs describe code that no longer exists.
