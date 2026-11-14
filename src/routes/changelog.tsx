@@ -19,6 +19,28 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-13</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The public changelog is maintained as the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme, newest first, each linking to its work-order ID, remain in the public source. History is preserved. The east house is mentioned only when relevant. The live yard at xdruidi.grok.me/changelog still returns Not Found; publication of this page awaits the owner.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commits/main/src/routes/changelog.tsx">CHANGELOG-005</a>
+          </li>
+          <li>
+            The build pipeline is now documented as a living, gated process. Typecheck, lint, tests, production build, and bundle size budgets must all pass before any commit can reach the live yard. Manual copy-paste deploys are forbidden. Saves and the current live yard are unaffected.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/BUILD_PIPELINE.md">PIPELINE-001</a>
+          </li>
+        </ul>
+
+        <h2>2026-11-12</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            Individual animals and the cat now retain typed persistent memory across sessions. Bond emerges from repeated interaction. Old saves are migrated safely. The difference is visible in behavior; there is no menu toggle.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/DRUIDI_BOT_CONTRACT.md">MEMORY-001</a>
+          </li>
+        </ul>
+
         <h2>2026-11-11</h2>
         <h3>Systems</h3>
         <ul>

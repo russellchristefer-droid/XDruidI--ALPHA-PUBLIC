@@ -88,7 +88,10 @@ Update this contract whenever a new mandate, lane, or rule is added. Date every 
 
 The extension contract is now live. New content is added by dropping typed definition files into the registry without touching engine code. Sandbox prevents broken mods from corrupting saves or crashing the simulation. API is versioned so old mods keep working. Documented in docs/MODDING.md. Hyper-realism check: a non-engineer can add one new crop by following the docs.
 
-
 ## 2026-11-11 — Creature memory and bonding (MEMORY-001)
 
 Individual animals retain typed persistent memory across sessions. Bond emerges from repeated interaction. Schema lives on Animal and cat. Ensure function migrates old saves. Visible behavioral influence required. Hyper-realism check: a real farmer would notice the difference. No menu toggle.
+
+## 2026-11-13 — Public changelog maintenance (CHANGELOG-005)
+
+The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language, grouped by theme, newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed.
