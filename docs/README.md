@@ -1,6 +1,6 @@
 # XDruid I / Assay Homestead — Project Knowledge Base
 
-**Last updated:** 2026-10-27  
+**Last updated:** 2026-11-14  
 **Status:** Alpha — living document. Update in the same slice as any system change.  
 **Hyper-realism check:** A new developer reading this folder alone should understand the whole game in one afternoon. If a section fails that test, flag it in DOC_FRESHNESS.md.
 
@@ -8,29 +8,31 @@
 
 XDruid I (Assay Homestead) is a SNES-style persistent homestead life-sim in the browser. One druid tends a floating yard, farms, keeps animals, trains magic in the courtyard, and travels through portals to other lands. The live build is at https://xdruidi.grok.me. It is not Unity, not Godot, not a finished product.
 
-Public changelog: https://xdruidi.grok.me/changelog (plain language, newest first, grouped by theme, each entry links to the work-order ID).
+Public changelog: https://xdruidi.grok.me/changelog (plain language, newest first, grouped by theme, each entry links to the work-order ID). Publication of the page to the live host remains pending owner action; the source is current in the repository.
 
 ## Stack
 
 - Client: Vite + React 19 + TanStack Start (see package.json).
-- Game engine: pure TypeScript in `src/game/` (logic.ts, content.ts, draw.ts, save.ts, audio.ts, telemetry.ts, etc.).
+- Game engine: pure TypeScript in `src/game/` (logic.ts, content.ts, draw.ts, save.ts, audio.ts, telemetry.ts, modding.ts, etc.).
 - Rendering: canvas-based pixel drawing (draw.ts is large).
 - Persistence: browser localStorage under key `assay-homestead-v2`, with checksum, backups, and quarantine.
 - Telemetry: opt-in local event tracking in `src/game/telemetry.ts` (sessions, actions, portals, skills, save/load, perf). Dashboard at `/telemetry`. No personal data. Degrades if remote endpoint missing.
 - Sidecars: SNES LoROM (`snes/xdruid.sfc`) and Python desktop window (`python/xdruid.py`). Neither is the browser game.
 - Art: Farm Life pixel pack by sophi-x-x (16×16 grid, 32×32 display). Credit required in spirit; do not redistribute raw files.
+- Extension: versioned registry in `src/game/modding.ts`; drop typed definitions into `mods/` (see MODDING.md and EXTENSION_API.md).
 
 ## How to read the code in an afternoon
 
 1. Start with `README.md` (repo root) for player-facing description.
 2. Read `docs/ARCHITECTURE.md` for structure.
-3. Skim `src/game/content.ts` for world constants, item definitions (DEFS), plots, animals.
+3. Skim `src/game/content.ts` for world constants, item definitions (DEFS), plots, animals, and the GameState type.
 4. Read `src/game/save.ts` for the exact save contract.
-5. `src/game/logic.ts` owns simulation rules (needs, autonomy, growth, interactions).
+5. `src/game/logic.ts` owns simulation rules (needs, autonomy, growth, interactions, creature memory).
 6. `src/components/AssayGame.tsx` wires the React UI and canvas.
 7. Governing vision: `AGENTS.project.md` and `src/game/xdruid-mandate.ts`.
-8. Public changelog at `/changelog` for player-visible history.
+8. Public changelog source at `src/routes/changelog.tsx` for player-visible history.
 9. Telemetry: `src/game/telemetry.ts` + `/telemetry` dashboard.
+10. Extension and modding: `docs/MODDING.md` and `docs/EXTENSION_API.md`.
 
 ## Non-negotiable rules (from vision)
 
@@ -40,8 +42,8 @@ Public changelog: https://xdruidi.grok.me/changelog (plain language, newest firs
 - Runnable always. Live site must stay up.
 - Stop for approval on destructive migrations or licensing changes.
 
-## Current alpha scope (as of 2026-10-27)
+## Current alpha scope (as of 2026-11-14)
 
-Homestead yard with beds, animals (cow, rooster, goat, sow, cat), fishing pond, magic courtyard, portals to many lands (Svarga, Naraka, Skill Grove, Combat, Quarry, Floor 332, Mansion, etc.). Pack of 28 slots with weight. Tools spend Floor. Day/night clock. Local save only. Opt-in telemetry for prioritization.
+Homestead yard with beds, animals (cow, rooster, goat, sow, cat) that retain persistent CreatureMemory, fishing pond, magic courtyard, portals to many lands (Svarga, Naraka, Skill Grove, Combat, Quarry, Floor 332, Mansion, etc.). Pack of 28 slots with weight. Tools spend Floor. Day/night clock. Local save only with checksum and quarantine. Opt-in telemetry for prioritization. Versioned modding registry for additive content.
 
-See the other files in this folder for schemas and maps.
+See the other files in this folder for schemas and maps. A new developer can form a complete picture of the engine, systems, save contract, content model, and extension path from this folder plus the governing documents in one afternoon.
