@@ -103,3 +103,7 @@ Docs/ is maintained as the complete, current knowledge base. Architecture overvi
 ## 2026-11-14 — Release management (REL-001)
 
 Semantic versioning (MAJOR.MINOR.PATCH) is established and tied to the contract's milestone definitions. Automated release notes are generated from the day's work orders and changelog entries. Version tags in the repo and a VERSION file the game reads at runtime for display in the HUD or main menu. Release archive via git tags so any prior version can be rebuilt. Version bumps happen only on successful gated deploys (coordinate with Build Pipeline). Public roadmap reflects committed versus aspirational work without overpromising. Documented in docs/RELEASE_MANAGEMENT.md and docs/ROADMAP.md. Hyper-realism check: a player or journalist looking at the version number and release notes can trust them as accurate for the public source.
+
+## 2026-11-14 — Public changelog maintenance (CHANGELOG-006)
+
+The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme (realism, systems, content, fixes), newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
