@@ -19,6 +19,23 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-14</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The public changelog is maintained as the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme, newest first, each linking to its work-order ID, remain in the public source. History is preserved. The east house is mentioned only when relevant. The live yard at xdruidi.grok.me/changelog still returns Not Found; publication of this page awaits the owner.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commits/main/src/routes/changelog.tsx">CHANGELOG-006</a>
+          </li>
+          <li>
+            The project knowledge base in the docs folder is kept complete and current. Architecture, system maps, content registry, save format, extension API, style guide, and the plain-English README are up to date. A new developer can understand the whole game from the docs alone in one afternoon.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/DRUIDI_BOT_CONTRACT.md">DOCS-001</a>
+          </li>
+          <li>
+            Semantic versioning is established. Release notes are generated from work orders and changelog entries. A VERSION file the game reads at runtime is in place. Prior versions can be rebuilt from git tags. Version bumps occur only on successful gated deploys. The public roadmap distinguishes committed work from aspirations.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/RELEASE_MANAGEMENT.md">REL-001</a>
+          </li>
+        </ul>
+
         <h2>2026-11-13</h2>
         <h3>Systems</h3>
         <ul>
