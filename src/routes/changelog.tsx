@@ -19,6 +19,19 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-16</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The public changelog continues as the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme (realism, systems, content, fixes), newest first, each linking to its work-order ID, remain in the public source. History is never removed. The east house is mentioned only when relevant. The live yard at xdruidi.grok.me/changelog still returns Not Found; publication of this page awaits the owner.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commits/main/src/routes/changelog.tsx">CHANGELOG-007</a>
+          </li>
+          <li>
+            Process ownership of the professional development standard has been explicitly assigned to the roster. The living constitution, definition-of-done checklist as release gate, and explicit technical-debt tracking as work orders remain locked and elevated. Saves and the live yard are unaffected.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/DRUIDI_BOT_CONTRACT.md">PROCESS-004</a>
+          </li>
+        </ul>
+
         <h2>2026-11-14</h2>
         <h3>Systems</h3>
         <ul>
