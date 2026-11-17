@@ -112,3 +112,7 @@ The public-facing changelog page remains the visible proof of continuous develop
 ## 2026-11-16 — Process ownership and god-tier standard elevation (PROCESS-004)
 
 Owner's latest explicit instruction locked. Process ownership of the professional development standard assigned to the roster under this contract. DoD checklist reaffirmed as release gate. Automation audit (PROCESS-001) remains open. Hyper-realism check: the development process itself, with dated living constitution, explicit ownership, and debt tracking, meets the god-tier bar.
+
+## 2026-11-16 — Public changelog maintenance (CHANGELOG-007)
+
+The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme (realism, systems, content, fixes), newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
