@@ -1,6 +1,6 @@
 # DRUIDI Bot Contract
 
-**Dated:** 2026-11-16 (owner's latest explicit instruction locked; god-tier professional webmaster and hyper-realistic 2D game development bar reaffirmed, elevated, and process ownership assigned to the roster)  
+**Dated:** 2026-11-17 (public changelog maintained as living proof of continuous development; prior elevation of 2026-11-16 retained)  
 **Status:** Living constitution. Owner's latest explicit instruction supersedes all prior text.  
 **Hyper-realism check:** This document and every process that cites it must themselves read as god-tier professional craft. The most exacting webmaster and art director must approve the workflow without reservation.
 
@@ -114,5 +114,9 @@ The public-facing changelog page remains the visible proof of continuous develop
 Owner's latest explicit instruction locked. Process ownership of the professional development standard assigned to the roster under this contract. DoD checklist reaffirmed as release gate. Automation audit (PROCESS-001) remains open. Hyper-realism check: the development process itself, with dated living constitution, explicit ownership, and debt tracking, meets the god-tier bar.
 
 ## 2026-11-16 — Public changelog maintenance (CHANGELOG-007)
+
+The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme (realism, systems, content, fixes), newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
+
+## 2026-11-17 — Public changelog maintenance (CHANGELOG-008)
 
 The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme (realism, systems, content, fixes), newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
