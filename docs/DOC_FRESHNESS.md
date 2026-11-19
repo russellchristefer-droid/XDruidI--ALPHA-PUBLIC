@@ -1,6 +1,6 @@
 # Doc Freshness Check
 
-**Dated:** 2026-11-14  
+**Dated:** 2026-11-19  
 **Purpose:** Flag any section whose code has diverged.
 
 ## How to check
@@ -9,7 +9,7 @@
 2. If a constant, type, key, or ensure* list differs, mark the doc stale.
 3. Docs that describe code that no longer exists are defects — delete or rewrite them in the same slice.
 
-## Current known state (2026-11-14)
+## Current known state (2026-11-19)
 
 | Doc | Source | Status |
 |-----|--------|--------|
@@ -19,11 +19,12 @@
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
-| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (PROCESS-003 2026-11-05 elevation locked; DOCS-001 entry pending) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-13; live /changelog still Not Found pending owner publish) |
+| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (elevations through 2026-11-17) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-17; live /changelog still Not Found pending owner publish) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 | BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
 | MODDING.md / EXTENSION_API.md | src/game/modding.ts | Current |
+| .grok/project_memory.md | historical notes | Stale for current alpha (describes prior Three.js / private-repo prototype; not authoritative for XDruidI canvas engine) |
 
 ## Flagged
 
@@ -32,6 +33,7 @@
 - Public-facing changelog page maintained at /changelog in source. Newest first, plain language, grouped by theme, each entry links to work-order ID. History kept. East house mentioned only if relevant. Live yard at xdruidi.grok.me/changelog still returns Not Found; publication awaits the owner.
 - Active automation prompts (in Grok Bot app) require audit against the elevated contract (PROCESS-001 remains open).
 - VISUAL_STYLE_GUIDE.md established 2026-10-31 as the living art-direction reference. Remaining realm identities (Combat, Quarry, Floor 332, Mansion) require definition before art ships.
+- `.grok/project_memory.md` retains 2026-09 notes about a prior Three.js prototype and private repo. It is historical; the living knowledge base is docs/ + AGENTS.project.md + src/game/ for the current canvas alpha. Do not treat it as current system truth.
 
 - CI-001 (2026-10-31): `npm test` covers scripts + logic, modding, birdsong, tiles, house, audio. `camp.test.ts` and `dev-sprites.test.ts` already fail on main and run in a non-blocking job (`npm run test:known-failing`) until fixed.
 
@@ -48,3 +50,7 @@ CI now fails on bundle size budget exceedance. Deploy remains gated to green com
 ## 2026-11-14 — DOCS-001
 
 Knowledge base refreshed. README, DOC_FRESHNESS, and cross-links updated to match verified repository state and live site. Hyper-realism check passed: a new developer reading docs/ alone can understand the whole game (stack, architecture, save contract, content model, extension path, vision, and current alpha scope including CreatureMemory) in one afternoon. No stale sections describing non-existent code. Full GameState dump remains a useful future slice.
+
+## 2026-11-19 — DOCS-002
+
+Four locations read in full (docs/ + AGENTS.project.md + contract, repo especially src/game/, live https://xdruidi.grok.me, Farm Life pack listing). Constants, types, save envelope, extension API, and system maps match source. Hyper-realism check: yes — a new developer can understand the whole current alpha (architecture, systems, content registry, save format, extension path, style, roadmap, non-negotiables) from docs/ alone in one afternoon. `.grok/project_memory.md` flagged as historical. No docs describe code that no longer exists. Live changelog remains unpublished (Not Found).
