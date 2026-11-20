@@ -1,6 +1,6 @@
 # Doc Freshness Check
 
-**Dated:** 2026-11-19  
+**Dated:** 2026-11-20  
 **Purpose:** Flag any section whose code has diverged.
 
 ## How to check
@@ -9,7 +9,7 @@
 2. If a constant, type, key, or ensure* list differs, mark the doc stale.
 3. Docs that describe code that no longer exists are defects — delete or rewrite them in the same slice.
 
-## Current known state (2026-11-19)
+## Current known state (2026-11-20)
 
 | Doc | Source | Status |
 |-----|--------|--------|
@@ -19,8 +19,8 @@
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
-| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (elevations through 2026-11-17) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-17; live /changelog still Not Found pending owner publish) |
+| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (elevations through 2026-11-19) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-19; live /changelog still Not Found pending owner publish) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 | BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
 | MODDING.md / EXTENSION_API.md | src/game/modding.ts | Current |
@@ -54,3 +54,7 @@ Knowledge base refreshed. README, DOC_FRESHNESS, and cross-links updated to matc
 ## 2026-11-19 — DOCS-002
 
 Four locations read in full (docs/ + AGENTS.project.md + contract, repo especially src/game/, live https://xdruidi.grok.me, Farm Life pack listing). Constants, types, save envelope, extension API, and system maps match source. Hyper-realism check: yes — a new developer can understand the whole current alpha (architecture, systems, content registry, save format, extension path, style, roadmap, non-negotiables) from docs/ alone in one afternoon. `.grok/project_memory.md` flagged as historical. No docs describe code that no longer exists. Live changelog remains unpublished (Not Found).
+
+## 2026-11-20 — DOCS-003
+
+Four locations read in full (docs/ + AGENTS.project.md + contract, repo especially src/game/, live https://xdruidi.grok.me, Farm Life pack listing). Constants, types, save envelope (FNV-1a, version 1, pack length 28, ensure* including ensureCreatureMemory), extension API, and system maps match source. Hyper-realism check: yes — a new developer reading docs/ alone can understand the whole game (stack, architecture, save contract, content model, extension path, vision, current alpha scope including CreatureMemory and portals) in one afternoon. No docs describe code that no longer exists. Live changelog remains unpublished (Not Found). Full GameState dump remains a useful future slice.
