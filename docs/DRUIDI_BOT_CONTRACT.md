@@ -1,6 +1,6 @@
 # DRUIDI Bot Contract
 
-**Dated:** 2026-11-19 (public changelog maintained as living proof of continuous development; prior elevation of 2026-11-16 retained)  
+**Dated:** 2026-11-20 (knowledge base freshness confirmed; prior elevations retained)  
 **Status:** Living constitution. Owner's latest explicit instruction supersedes all prior text.  
 **Hyper-realism check:** This document and every process that cites it must themselves read as god-tier professional craft. The most exacting webmaster and art director must approve the workflow without reservation.
 
@@ -124,3 +124,7 @@ The public-facing changelog page remains the visible proof of continuous develop
 ## 2026-11-19 — Public changelog maintenance (CHANGELOG-009)
 
 The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme (realism, systems, content, fixes), newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
+
+## 2026-11-20 — Knowledge base freshness (DOCS-003)
+
+Docs/ maintained as the complete, current knowledge base. Architecture overview, system maps, content registry schema reference, save format spec, extension API docs, style guide cross-links, and plain-English README confirmed current against source and the four locations. Doc-freshness check performed and updated. Hyper-realism check: a new developer reading the docs folder alone can understand the whole game in one afternoon. No docs describe code that no longer exists.
