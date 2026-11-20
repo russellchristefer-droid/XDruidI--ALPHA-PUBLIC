@@ -1,6 +1,6 @@
 # XDruid I / Assay Homestead — Project Knowledge Base
 
-**Last updated:** 2026-11-14  
+**Last updated:** 2026-11-20  
 **Status:** Alpha — living document. Update in the same slice as any system change.  
 **Hyper-realism check:** A new developer reading this folder alone should understand the whole game in one afternoon. If a section fails that test, flag it in DOC_FRESHNESS.md.
 
@@ -42,7 +42,7 @@ Public changelog: https://xdruidi.grok.me/changelog (plain language, newest firs
 - Runnable always. Live site must stay up.
 - Stop for approval on destructive migrations or licensing changes.
 
-## Current alpha scope (as of 2026-11-14)
+## Current alpha scope (as of 2026-11-20)
 
 Homestead yard with beds, animals (cow, rooster, goat, sow, cat) that retain persistent CreatureMemory, fishing pond, magic courtyard, portals to many lands (Svarga, Naraka, Skill Grove, Combat, Quarry, Floor 332, Mansion, etc.). Pack of 28 slots with weight. Tools spend Floor. Day/night clock. Local save only with checksum and quarantine. Opt-in telemetry for prioritization. Versioned modding registry for additive content.
 
