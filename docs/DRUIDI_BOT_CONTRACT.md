@@ -133,3 +133,7 @@ Docs/ maintained as the complete, current knowledge base. Architecture overview,
 ## 2026-11-22 — Process ownership reaffirmation and four-location mandate (PROCESS-005)
 
 Owner's latest explicit instruction locked. Process ownership of the god-tier professional webmaster and hyper-realistic 2D game development standard reassigned and enforced under this contract. Four locations read in full. DoD checklist reaffirmed as the release gate. Automation audit (PROCESS-001) remains open (prompts outside repository). Hyper-realism check: the development process itself, with dated living constitution, explicit ownership, four-location read mandate, single source of truth, and explicit debt tracking, meets the god-tier bar and would be approved without reservation by the most exacting webmaster and art director.
+
+## 2026-11-22 — Build pipeline ownership (PIPELINE-002)
+
+Ownership of the gated build pipeline locked. Dev server stability, production build configuration, bundle size budgets, tree-shaking verification, environment variable handling (no secrets in client bundles), deploy script to xdruidi.grok.me, rollback procedure, and build-time validation that fails the pipeline on TypeScript errors or test failures documented with exact commands in docs/BUILD_PIPELINE.md. A broken build must never reach live. Hyper-realism check: yes — the pipeline feels like something a real studio ships on, not a manual copy-paste deploy. The most exacting release engineer would approve without reservation.
