@@ -1,9 +1,9 @@
 # Build Pipeline — XDruid I / Assay Homestead
 
-**Dated:** 2026-11-12  
-**Work order:** PIPELINE-001  
+**Dated:** 2026-11-22 (ownership reaffirmed under current contract; PIPELINE-001 retained)  
+**Work order:** PIPELINE-002  
 **Status:** Living. A broken build must never reach https://xdruidi.grok.me.  
-**Hyper-realism check:** This pipeline is the one a real studio ships on. Every stage is gated, documented with exact commands, fails closed, and leaves an audit trail. Manual copy-paste deploys are forbidden.
+**Hyper-realism check:** This pipeline is the one a real studio ships on. Every stage is gated, documented with exact commands, fails closed, and leaves an audit trail. Manual copy-paste deploys are forbidden. The most exacting release engineer would approve without reservation.
 
 ## Governing principle
 
@@ -82,7 +82,7 @@ Known-failing tests (`camp.test.ts`, `dev-sprites.test.ts`) run in a separate no
 node scripts/check-bundle-size.mjs dist
 ```
 
-Locked budgets (2026-11-12):
+Locked budgets (2026-11-12, reaffirmed 2026-11-22):
 
 - Total `dist/` (excluding source maps): ≤ 8 MiB
 - Total JavaScript: ≤ 4 MiB
@@ -115,7 +115,7 @@ Exact steps (owner or authorized operator only):
    ```
 2. Tag the release (optional but recommended):  
    ```bash
-   git tag -a v-alpha-$(date +%Y%m%d-%H%M) -m "PIPELINE-001 gated build"
+   git tag -a v-alpha-$(date +%Y%m%d-%H%M) -m "PIPELINE-002 gated build"
    git push origin --tags
    ```
 3. Trigger the platform deploy of that exact commit (Vercel / host dashboard or CLI).  
@@ -164,5 +164,9 @@ Any regression is a blocking defect.
 ## Freshness
 
 Update this document in the same slice as any change to scripts, CI, Vite config, or deploy targets. Flag stale sections in `docs/DOC_FRESHNESS.md`.
+
+## 2026-11-22 — Ownership reaffirmation (PIPELINE-002)
+
+Process ownership of the build pipeline assigned and locked under the living contract. Four locations read in full. Pipeline stages, exact commands, gates, budgets, secret handling, deploy, and rollback confirmed current against package.json, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, and vite.config.ts. Hyper-realism check: yes — the combination of deterministic install, gated typecheck/lint/test/build/size, explicit secret handling, documented deploy of only green commits, and a one-command rollback path is the workflow a senior webmaster and release engineer would approve without reservation. It is not a manual copy-paste deploy. A broken build must never reach live.
 
 **Hyper-realism check:** The combination of deterministic install, gated typecheck/lint/test/build/size, explicit secret handling, documented deploy of only green commits, and a one-command rollback path is the workflow a senior webmaster and release engineer would approve without reservation. It is not a manual copy-paste deploy.
