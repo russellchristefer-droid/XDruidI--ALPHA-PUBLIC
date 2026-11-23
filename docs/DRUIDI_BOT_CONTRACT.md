@@ -137,3 +137,7 @@ Owner's latest explicit instruction locked. Process ownership of the god-tier pr
 ## 2026-11-22 — Build pipeline ownership (PIPELINE-002)
 
 Ownership of the gated build pipeline locked. Dev server stability, production build configuration, bundle size budgets, tree-shaking verification, environment variable handling (no secrets in client bundles), deploy script to xdruidi.grok.me, rollback procedure, and build-time validation that fails the pipeline on TypeScript errors or test failures documented with exact commands in docs/BUILD_PIPELINE.md. A broken build must never reach live. Hyper-realism check: yes — the pipeline feels like something a real studio ships on, not a manual copy-paste deploy. The most exacting release engineer would approve without reservation.
+
+## 2026-11-22 — Public changelog maintenance (CHANGELOG-010)
+
+The public-facing changelog page remains the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme (realism, systems, content, fixes), newest first, each linking to its work-order ID, are kept in the public source. History is never removed. The east house is mentioned only when relevant. Publication to the live yard at https://xdruidi.grok.me/changelog awaits the owner; the address currently returns Not Found. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
