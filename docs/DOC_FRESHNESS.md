@@ -20,7 +20,7 @@
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
 | DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (elevations through 2026-11-22, PROCESS-005) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-19; live /changelog still Not Found pending owner publish) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-22, CHANGELOG-010; live /changelog still Not Found pending owner publish) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 | BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
 | MODDING.md / EXTENSION_API.md | src/game/modding.ts | Current |
@@ -66,3 +66,7 @@ Contract updated with dated elevation of process ownership and four-location man
 ## 2026-11-22 — DOCS-004
 
 Four locations read in full before work (knowledge base docs/ + AGENTS.project.md + contract + historical .grok/project_memory.md; implementation workspace git repo especially src/game/; live deployed build https://xdruidi.grok.me showing ONE YARD with pack and Floor; Farm Life pack listing matching gap policy). All living docs match verified source. Hyper-realism check: yes — a new developer can understand the whole game (architecture, system maps, content registry, save format, extension API, style guides, plain-English README, non-negotiables, current alpha scope) from docs/ alone in one afternoon. No docs describe code that no longer exists. Live /changelog remains Not Found pending owner publish. Full GameState type dump remains a useful next slice.
+
+## 2026-11-22 — CHANGELOG-010
+
+Public changelog source updated with newest-first plain-language entries for PROCESS-005, PIPELINE-002, DOCS-004, and VIS-001. History preserved. East house not mentioned (not relevant). Live publication still pending owner. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
