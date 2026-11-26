@@ -19,6 +19,19 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-26</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            Community and player feedback ownership is now explicit. Monitoring covers the live yard, GitHub issues, the art-pack itch.io page, and social channels. Reports are triaged as bug, enhancement, question, or duplicate with severity and affected system. Requests are logged with source attribution; features are never promised — the contract decides priority. A living FAQ answers common alpha questions. No player reports were present this cycle.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/COMMUNITY_FEEDBACK.md">COMM-001</a>
+          </li>
+          <li>
+            The public changelog continues as the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme, newest first, each linking to its work-order ID, remain in the public source. History is never removed. The east house is mentioned only when relevant. The live yard at xdruidi.grok.me/changelog still returns Not Found; publication of this page awaits the owner.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commits/main/src/routes/changelog.tsx">CHANGELOG-012</a>
+          </li>
+        </ul>
+
         <h2>2026-11-23</h2>
         <h3>Systems</h3>
         <ul>
