@@ -1,7 +1,7 @@
 # Release Management — XDruid I / Assay Homestead
 
-**Dated:** 2026-11-14  
-**Work order:** REL-001  
+**Dated:** 2026-11-26 (ownership reaffirmed under current contract after full four-location read; REL-001 retained)  
+**Work order:** REL-002  
 **Status:** Living. Version numbers and release notes must be accurate enough that a player or journalist can trust them.  
 **Hyper-realism check:** A senior release engineer at a major studio would approve this process. Semantic versions map to contract milestones. Notes are generated from work orders and changelog. Bumps happen only after green gated deploys. The roadmap distinguishes committed from aspirational without overpromising.
 
@@ -15,7 +15,7 @@ Tied to the contract's milestone definitions in DRUIDI_BOT_CONTRACT.md and AGENT
 - MINOR: new systems that ship to live (e.g., full animal bonding visible, new realm).
 - PATCH: fixes, docs, process, non-breaking improvements.
 
-Current: 0.1.0-alpha (established 2026-11-14).
+Current: 0.1.0-alpha (established 2026-11-14). No bump in this slice; only process and docs ownership reaffirmed. Bumps remain gated on successful deploys of systems that warrant them.
 
 ## Automated release notes
 
@@ -27,7 +27,7 @@ Notes must be plain language, newest first, grouped by theme, link to work-order
 
 - Tags: vMAJOR.MINOR.PATCH (e.g. v0.1.0-alpha) created only after successful gated deploy (see BUILD_PIPELINE.md).  
 - Release archive: git tags + source tree allow any prior version to be rebuilt with `git checkout vX.Y.Z && npm ci && npm run build:ci`.  
-- No binary artifacts committed; rebuild from source is the archive.
+- No binary artifacts committed; rebuild from source is the archive. No tags created yet; process ready for first gated bump.
 
 ## Coordination with Build Pipeline
 
@@ -35,7 +35,7 @@ Version bumps happen only on successful gated deploys (CI green on the exact SHA
 
 ## Runtime display
 
-The game reads VERSION at runtime (import or fetch of /VERSION) and displays it in the HUD or main menu (e.g. "XDruid I · 0.1.0-alpha"). Implementation is a thin read in src/game or a React component; placeholder until wired.
+The game reads VERSION at runtime (import or fetch of /VERSION) and displays it in the HUD or main menu (e.g. "XDruid I · 0.1.0-alpha"). Implementation is a thin read in src/game or a React component; placeholder until wired. Wiring is the next slice candidate.
 
 ## Public roadmap
 
@@ -44,3 +44,7 @@ See docs/ROADMAP.md. Committed work is what is in the current alpha scope and re
 ## Freshness
 
 Update this document and VERSION in the same slice as any version bump or process change. Flag stale sections in DOC_FRESHNESS.md.
+
+## 2026-11-26 — Ownership reaffirmation (REL-002)
+
+Process ownership of release management reaffirmed under the living contract after full four-location read (knowledge base including this file and AGENTS.project.md, implementation workspace especially src/game/, live https://xdruidi.grok.me, Farm Life pack listing). Semantic versioning, notes generation, VERSION file, archive via tags, coordination with pipeline, and public roadmap confirmed current. No version bump (this slice is process/docs only; no new systems shipped to live). Hyper-realism check: yes — a player or journalist looking at the version number and release notes can trust them as accurate for the public source. The most exacting release engineer would approve without reservation.
