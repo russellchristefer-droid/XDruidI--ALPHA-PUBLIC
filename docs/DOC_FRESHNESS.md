@@ -1,6 +1,6 @@
 # Doc Freshness Check
 
-**Dated:** 2026-11-22  
+**Dated:** 2026-11-26  
 **Purpose:** Flag any section whose code has diverged.
 
 ## How to check
@@ -9,7 +9,7 @@
 2. If a constant, type, key, or ensure* list differs, mark the doc stale.
 3. Docs that describe code that no longer exists are defects — delete or rewrite them in the same slice.
 
-## Current known state (2026-11-22)
+## Current known state (2026-11-26)
 
 | Doc | Source | Status |
 |-----|--------|--------|
@@ -19,8 +19,10 @@
 | SYSTEM_MAPS.md | logic.ts + content.ts + README | Current for alpha scope |
 | STYLE_GUIDE.md | AGENTS.project.md + mandate + VISUAL_STYLE_GUIDE.md | Current |
 | VISUAL_STYLE_GUIDE.md | AGENTS.project.md + Farm Life pack + live realm references | Current (initial enforceable bar 2026-10-31) |
-| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (elevations through 2026-11-22, PROCESS-005) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-22, CHANGELOG-010; live /changelog still Not Found pending owner publish) |
+| DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (elevations through 2026-11-23; COMM-001 added) |
+| COMMUNITY_FEEDBACK.md | monitoring process | Current (COMM-001, 2026-11-26) |
+| FAQ.md | living answers | Current (COMM-001, 2026-11-26) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-26, CHANGELOG-012; live /changelog still Not Found pending owner publish) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 | BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
 | MODDING.md / EXTENSION_API.md | src/game/modding.ts | Current |
@@ -70,3 +72,7 @@ Four locations read in full before work (knowledge base docs/ + AGENTS.project.m
 ## 2026-11-22 — CHANGELOG-010
 
 Public changelog source updated with newest-first plain-language entries for PROCESS-005, PIPELINE-002, DOCS-004, and VIS-001. History preserved. East house not mentioned (not relevant). Live publication still pending owner. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit.
+
+## 2026-11-26 — COMM-001
+
+Community and player feedback ownership established. Monitoring process, triage categories (bug, enhancement, question, duplicate), severity, affected system, and source attribution documented. Living FAQ seeded with honest alpha answers; no feature promises. Four locations read in full before work. No player reports or requests found (GitHub issues 0 open; no game itch.io page; art-pack comments not game-specific; no social reports). High-value items (none this cycle) feed to Chief of Staff backlog via explicit work orders. Hyper-realism check: the feedback loop is responsive, organized, and honest about what will and will not happen. Live /changelog remains Not Found pending owner publish.
