@@ -1,6 +1,6 @@
 # Doc Freshness Check
 
-**Dated:** 2026-11-26  
+**Dated:** 2026-11-27  
 **Purpose:** Flag any section whose code has diverged.
 
 ## How to check
@@ -9,7 +9,7 @@
 2. If a constant, type, key, or ensure* list differs, mark the doc stale.
 3. Docs that describe code that no longer exists are defects — delete or rewrite them in the same slice.
 
-## Current known state (2026-11-26)
+## Current known state (2026-11-27)
 
 | Doc | Source | Status |
 |-----|--------|--------|
@@ -24,7 +24,7 @@
 | FAQ.md | living answers | Current (COMM-001, 2026-11-26) |
 | Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-26, CHANGELOG-012; live /changelog still Not Found pending owner publish) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
-| BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-001) |
+| BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-003, 2026-11-27) |
 | MODDING.md / EXTENSION_API.md | src/game/modding.ts | Current |
 | .grok/project_memory.md | historical notes | Stale for current alpha (describes prior Three.js / private-repo prototype; not authoritative for XDruidI canvas engine) |
 
@@ -76,3 +76,7 @@ Public changelog source updated with newest-first plain-language entries for PRO
 ## 2026-11-26 — COMM-001
 
 Community and player feedback ownership established. Monitoring process, triage categories (bug, enhancement, question, duplicate), severity, affected system, and source attribution documented. Living FAQ seeded with honest alpha answers; no feature promises. Four locations read in full before work. No player reports or requests found (GitHub issues 0 open; no game itch.io page; art-pack comments not game-specific; no social reports). High-value items (none this cycle) feed to Chief of Staff backlog via explicit work orders. Hyper-realism check: the feedback loop is responsive, organized, and honest about what will and will not happen. Live /changelog remains Not Found pending owner publish.
+
+## 2026-11-27 — PIPELINE-003
+
+Build pipeline ownership reaffirmed after full four-location read. docs/BUILD_PIPELINE.md updated with dated entry confirming all stages, exact commands, budgets, secret handling, deploy, and rollback current against package.json, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, and vite.config.ts. Live site remains runnable. Hyper-realism check: yes — the pipeline is professional studio craft. No other docs diverged. Live /changelog remains Not Found pending owner publish.
