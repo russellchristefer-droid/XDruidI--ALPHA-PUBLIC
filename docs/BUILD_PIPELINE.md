@@ -1,7 +1,7 @@
 # Build Pipeline — XDruid I / Assay Homestead
 
-**Dated:** 2026-11-22 (ownership reaffirmed under current contract; PIPELINE-001 retained)  
-**Work order:** PIPELINE-002  
+**Dated:** 2026-11-27 (ownership reaffirmed under current contract after full four-location read; PIPELINE-002 retained)  
+**Work order:** PIPELINE-003  
 **Status:** Living. A broken build must never reach https://xdruidi.grok.me.  
 **Hyper-realism check:** This pipeline is the one a real studio ships on. Every stage is gated, documented with exact commands, fails closed, and leaves an audit trail. Manual copy-paste deploys are forbidden. The most exacting release engineer would approve without reservation.
 
@@ -82,7 +82,7 @@ Known-failing tests (`camp.test.ts`, `dev-sprites.test.ts`) run in a separate no
 node scripts/check-bundle-size.mjs dist
 ```
 
-Locked budgets (2026-11-12, reaffirmed 2026-11-22):
+Locked budgets (2026-11-12, reaffirmed 2026-11-22, reaffirmed 2026-11-27):
 
 - Total `dist/` (excluding source maps): ≤ 8 MiB
 - Total JavaScript: ≤ 4 MiB
@@ -115,7 +115,7 @@ Exact steps (owner or authorized operator only):
    ```
 2. Tag the release (optional but recommended):  
    ```bash
-   git tag -a v-alpha-$(date +%Y%m%d-%H%M) -m "PIPELINE-002 gated build"
+   git tag -a v-alpha-$(date +%Y%m%d-%H%M) -m "PIPELINE-003 gated build"
    git push origin --tags
    ```
 3. Trigger the platform deploy of that exact commit (Vercel / host dashboard or CLI).  
@@ -170,3 +170,9 @@ Update this document in the same slice as any change to scripts, CI, Vite config
 Process ownership of the build pipeline assigned and locked under the living contract. Four locations read in full. Pipeline stages, exact commands, gates, budgets, secret handling, deploy, and rollback confirmed current against package.json, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, and vite.config.ts. Hyper-realism check: yes — the combination of deterministic install, gated typecheck/lint/test/build/size, explicit secret handling, documented deploy of only green commits, and a one-command rollback path is the workflow a senior webmaster and release engineer would approve without reservation. It is not a manual copy-paste deploy. A broken build must never reach live.
 
 **Hyper-realism check:** The combination of deterministic install, gated typecheck/lint/test/build/size, explicit secret handling, documented deploy of only green commits, and a one-command rollback path is the workflow a senior webmaster and release engineer would approve without reservation. It is not a manual copy-paste deploy.
+
+## 2026-11-27 — Ownership reaffirmation (PIPELINE-003)
+
+Process ownership of the build pipeline reaffirmed and locked under the living contract after full four-location read (knowledge base including this file, AGENTS.project.md, and DRUIDI_BOT_CONTRACT.md; implementation workspace especially package.json, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts, and src/game/; live https://xdruidi.grok.me showing ONE YARD runnable with no obvious breakage; Farm Life pack listing matching gap policy). All stages, exact commands, budgets, secret handling, deploy of only green SHAs, and rollback procedure confirmed current. Hyper-realism check: yes — the pipeline feels like something a real studio ships on. Deterministic install, fail-closed gates on typecheck/lint/test/build/size/secrets, documented reversible deploy, and audit trail would be approved without reservation by the most exacting release engineer. A broken build must never reach live. It is not a manual copy-paste deploy.
+
+**Hyper-realism check:** Yes. The gated, documented, fail-closed pipeline with explicit budgets, secret isolation, green-only deploys, and one-step rollback is professional craft a senior studio release engineer would accept without reservation.
