@@ -22,7 +22,7 @@
 | DRUIDI_BOT_CONTRACT.md | this file + AGENTS.project.md + mandate | Current (elevations through 2026-11-23; COMM-001 added) |
 | COMMUNITY_FEEDBACK.md | monitoring process | Current (COMM-001, 2026-11-26) |
 | FAQ.md | living answers | Current (COMM-001, 2026-11-26) |
-| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-26, CHANGELOG-012; live /changelog still Not Found pending owner publish) |
+| Public changelog | src/routes/changelog.tsx | Current (CHANGELOG series through 2026-11-27, CHANGELOG-013; live /changelog still Not Found pending owner publish) |
 | CI | .github/workflows/ci.yml, package.json scripts | Current (CI-001, 2026-10-31) |
 | BUILD_PIPELINE.md | package.json scripts, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, vite.config.ts | Current (PIPELINE-003, 2026-11-27) |
 | MODDING.md / EXTENSION_API.md | src/game/modding.ts | Current |
@@ -80,3 +80,7 @@ Community and player feedback ownership established. Monitoring process, triage 
 ## 2026-11-27 — PIPELINE-003
 
 Build pipeline ownership reaffirmed after full four-location read. docs/BUILD_PIPELINE.md updated with dated entry confirming all stages, exact commands, budgets, secret handling, deploy, and rollback current against package.json, .github/workflows/ci.yml, scripts/check-bundle-size.mjs, and vite.config.ts. Live site remains runnable. Hyper-realism check: yes — the pipeline is professional studio craft. No other docs diverged. Live /changelog remains Not Found pending owner publish.
+
+## 2026-11-27 — CHANGELOG-013
+
+Public changelog source updated with newest-first plain-language entry for the continuous development record and PIPELINE-003 reaffirmation. History preserved (prior entries retained). East house not mentioned (not relevant). Live publication still pending owner. Hyper-realism check: a returning visitor reading the public source sees immediately what has changed since the last visit. Four locations read in full before the update.
