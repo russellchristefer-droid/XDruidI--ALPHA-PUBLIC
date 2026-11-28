@@ -19,6 +19,19 @@ function Changelog() {
           <Link to="/">Back to the yard</Link>
         </p>
 
+        <h2>2026-11-27</h2>
+        <h3>Systems</h3>
+        <ul>
+          <li>
+            The public changelog continues as the visible proof of continuous development. Dated entries in plain language a non-developer can read, grouped by theme, newest first, each linking to its work-order ID, remain in the public source. History is never removed. The east house is mentioned only when relevant. The live yard at xdruidi.grok.me/changelog still returns Not Found; publication of this page awaits the owner.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/commits/main/src/routes/changelog.tsx">CHANGELOG-013</a>
+          </li>
+          <li>
+            Ownership of the gated build pipeline was reaffirmed after a full four-location read. Development server, production build, size budgets, secret handling, deploy steps, and rollback remain documented so a broken build cannot reach the live yard.{" "}
+            <a href="https://github.com/russellchristefer-droid/XDruidI--ALPHA-PUBLIC/blob/main/docs/BUILD_PIPELINE.md">PIPELINE-003</a>
+          </li>
+        </ul>
+
         <h2>2026-11-26</h2>
         <h3>Systems</h3>
         <ul>
